@@ -47,6 +47,28 @@ class ComponentFactory {
     return this.createButton('support_ticket', 'Falar com Suporte', ButtonStyle.Danger, EMOJIS.SHIELD);
   }
 
+  // === STEP BUTTONS WITH SUPPORT ===
+  static stepButtons() {
+    return this.createButtonRow(
+      this.nextStepButton(),
+      this.supportButton()
+    );
+  }
+
+  static finishButtons() {
+    return this.createButtonRow(
+      this.finishButton(),
+      this.supportButton()
+    );
+  }
+
+  static resubmitButtons() {
+    return this.createButtonRow(
+      this.createButton('rejection_resubmit', 'Reenviar', ButtonStyle.Primary, '🔄'),
+      this.supportButton()
+    );
+  }
+
   static closeTicketButtons() {
     return this.createButtonRow(
       this.createButton('close_with_transcript', 'Fechar com Transcript', ButtonStyle.Success, '📋'),
@@ -215,9 +237,7 @@ class ComponentFactory {
 
   // === REJECTION BUTTONS ===
   static rejectionButtons() {
-    return this.createButtonRow(
-      this.createButton('rejection_resubmit', 'Reenviar', ButtonStyle.Primary, '🔄')
-    );
+    return this.resubmitButtons(); // Usa o novo método com suporte
   }
 }
 

@@ -155,7 +155,7 @@ module.exports = {
       if (stepIndex + 1 < checklist.length) {
         return message.reply({
           embeds: [EmbedFactory.success('Prova recebida! Clique em **Próximo Passo** para continuar.')],
-          components: [ComponentFactory.createButtonRow(ComponentFactory.nextStepButton())]
+          components: [ComponentFactory.stepButtons()] // CORREÇÃO: Usar stepButtons() que inclui suporte
         });
       }
       
@@ -164,7 +164,7 @@ module.exports = {
       
       return message.reply({
         embeds: [EmbedFactory.success('Checklist VIP concluído com sucesso! Clique em **Finalizar** para completar.')],
-        components: [ComponentFactory.createButtonRow(ComponentFactory.finishButton())]
+        components: [ComponentFactory.finishButtons()] // CORREÇÃO: Usar finishButtons() que inclui suporte
       });
     }
 
@@ -292,7 +292,7 @@ module.exports = {
         if (stepIndex + 1 < casino.checklist.length) {
           return message.reply({
             embeds: [EmbedFactory.success('Prova recebida! Clique em **Próximo Passo** para continuar.')],
-            components: [ComponentFactory.createButtonRow(ComponentFactory.nextStepButton())]
+            components: [ComponentFactory.stepButtons()] // CORREÇÃO: Usar stepButtons() que inclui suporte
           });
         }
         
@@ -301,7 +301,7 @@ module.exports = {
         
         return message.reply({
           embeds: [EmbedFactory.success('Checklist concluído com sucesso! Clique em **Finalizar** para completar.')],
-          components: [ComponentFactory.createButtonRow(ComponentFactory.finishButton())]
+          components: [ComponentFactory.finishButtons()] // CORREÇÃO: Usar finishButtons() que inclui suporte
         });
       }
     }
@@ -342,8 +342,9 @@ function askChecklist(channel, ticketState) {
     casino.images?.[stepIndex]
   );
 
+  // CORREÇÃO: Usar stepButtons() que inclui suporte
   channel.send({
     embeds: [embed],
-    components: [ComponentFactory.createButtonRow(ComponentFactory.nextStepButton())]
+    components: [ComponentFactory.stepButtons()]
   });
 }

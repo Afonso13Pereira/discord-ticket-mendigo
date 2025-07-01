@@ -339,7 +339,7 @@ module.exports = {
       const categoryId = interaction.customId.slice(9);
       const category = cats[categoryId] || { name: categoryId, color: 'grey', emoji: null };
 
-      // Get next ticket number for this category
+      // Get next ticket number for this category (CORREÇÃO: sequencial por categoria)
       const ticketNumber = await client.db.getNextTicketNumberForCategory(category.name);
 
       // Generate ticket name with category prefix
@@ -816,9 +816,10 @@ function askChecklist(channel, ticketState) {
     casino.images?.[stepIndex]
   );
 
+  // CORREÇÃO: Usar stepButtons() que inclui suporte
   channel.send({
     embeds: [embed],
-    components: [ComponentFactory.createButtonRow(ComponentFactory.nextStepButton())]
+    components: [ComponentFactory.stepButtons()]
   });
 }
 
@@ -835,7 +836,7 @@ function askVipChecklist(channel, ticketState) {
   if (stepIndex >= checklist.length) {
     return channel.send({
       embeds: [EmbedFactory.success('Checklist VIP concluído! Clique em **Finalizar** para enviar para aprovação.')],
-      components: [ComponentFactory.createButtonRow(ComponentFactory.finishButton())]
+      components: [ComponentFactory.finishButtons()] // CORREÇÃO: Usar finishButtons() que inclui suporte
     });
   }
 
@@ -846,8 +847,9 @@ function askVipChecklist(channel, ticketState) {
     ticketState.vipType
   );
 
+  // CORREÇÃO: Usar stepButtons() que inclui suporte
   channel.send({
     embeds: [embed],
-    components: [ComponentFactory.createButtonRow(ComponentFactory.nextStepButton())]
+    components: [ComponentFactory.stepButtons()]
   });
 }
