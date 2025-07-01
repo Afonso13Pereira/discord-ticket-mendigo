@@ -12,7 +12,7 @@ const { cats, create: createCat } = require('../utils/categories');
 const EmbedFactory = require('../utils/embeds');
 const ComponentFactory = require('../utils/components');
 const TranscriptManager = require('../utils/transcripts');
-const { CHANNELS, EMOJIS, VIP_TYPES, VIP_CASINOS } = require('../config/constants');
+const { CHANNELS, ROLES, EMOJIS, VIP_TYPES, VIP_CASINOS } = require('../config/constants');
 
 const CONFIRM_RX = /^sim[, ]*eu confirmo$/i;
 
@@ -88,6 +88,118 @@ module.exports = {
         
         return interaction.reply({
           embeds: [EmbedFactory.success(`Categoria **${name}** criada com sucesso!\nID: \`${id}\``)],
+          flags: 64
+        });
+      }
+
+      // Prize Modal
+      if (interaction.customId.startsWith('prize_modal_')) {
+        const submissionId = interaction.customId.split('_')[2];
+        const prize = interaction.fields.getTextInputValue('prize_value').trim();
+        
+        const submission = await client.db.getSubmission(submissionId);
+        if (!submission) {
+          return interaction.reply({
+            embeds: [EmbedFactory.error('Submissão não encontrada')],
+            flags: 64
+          });
+        }
+
+        // Create approval
+        const approvalId = await client.db.saveApproval(
+          submission.ticketChannelId,
+          submission.ticketNumber,
+          submission.userId,
+          submission.userTag,
+          submission.casino,
+          prize,
+          submission.ltcAddress
+        );
+
+        // Send to approval channel
+        const approveChannel = await interaction.guild.channels.fetch(CHANNELS.APPROVE);
+        const embed = EmbedFactory.approvalFinal(
+          submission.casino,
+          prize,
+          submission.userTag,
+          submission.ticketNumber,
+          submission.ltcAddress
+        );
+        const components = ComponentFactory.approvalButtons(approvalId);
+
+        const approvalMessage = await approveChannel.send({
+          embeds: [embed],
+          components: [components]
+        });
+
+        // Update approval with message info
+        await client.db.updateApproval(approvalId, approvalMessage.id, approveChannel.id, 'pending');
+
+        // Update submission status
+        await client.db.updateSubmission(submissionId, null, null, 'approved');
+
+        return interaction.reply({
+          embeds: [EmbedFactory.success(`Giveaway aprovado com prémio de **${prize}** e enviado para aprovações finais!`)],
+          flags: 64
+        });
+      }
+
+      // Rejection Modal
+      if (interaction.customId.startsWith('reject_modal_')) {
+        const submissionId = interaction.customId.split('_')[2];
+        const reason = interaction.fields.getTextInputValue('reject_reason').trim();
+        
+        const submission = await client.db.getSubmission(submissionId);
+        if (!submission) {
+          return interaction.reply({
+            embeds: [EmbedFactory.error('Submissão não encontrada')],
+            flags: 64
+          });
+        }
+
+        // Send rejection to ticket
+        const ticketChannel = await interaction.guild.channels.fetch(submission.ticketChannelId);
+        const embed = EmbedFactory.rejectionReason(reason);
+        const components = ComponentFactory.rejectionButtons();
+
+        await ticketChannel.send({
+          embeds: [embed],
+          components: [components]
+        });
+
+        // Update submission status
+        await client.db.updateSubmission(submissionId, null, null, 'rejected');
+
+        return interaction.reply({
+          embeds: [EmbedFactory.success(`Giveaway rejeitado. Motivo enviado ao usuário.`)],
+          flags: 64
+        });
+      }
+
+      // Review Modal
+      if (interaction.customId.startsWith('review_modal_')) {
+        const approvalId = interaction.customId.split('_')[2];
+        const reason = interaction.fields.getTextInputValue('review_reason').trim();
+        
+        const approval = await client.db.getApproval(approvalId);
+        if (!approval) {
+          return interaction.reply({
+            embeds: [EmbedFactory.error('Aprovação não encontrada')],
+            flags: 64
+          });
+        }
+
+        // Send to staff channel as support request
+        const staffChannel = await interaction.guild.channels.fetch(CHANNELS.STAFF);
+        const embed = EmbedFactory.reviewRequest(reason, approval.ticketNumber, approval.userTag);
+
+        await staffChannel.send({ embeds: [embed] });
+
+        // Update approval status
+        await client.db.updateApproval(approvalId, null, null, 'review');
+
+        return interaction.reply({
+          embeds: [EmbedFactory.success(`Solicitação de revisão enviada para o suporte humano.`)],
           flags: 64
         });
       }
@@ -472,38 +584,178 @@ module.exports = {
       
       const ticketState = client.ticketStates.get(interaction.channel.id);
       
-      // Send to approval channel
-      const resultChannel = await interaction.guild.channels.fetch(CHANNELS.RESULT);
-      const embed = EmbedFactory.approvalRequest(
-        ticketState.ticketNumber,
-        ticketState.ownerTag,
-        ticketState.gwType || ticketState.vipType || 'unknown',
-        ticketState.casino || ticketState.vipCasino,
-        ticketState.prize
-      );
-      
-      const approvalMessage = await resultChannel.send({ embeds: [embed] });
-      
-      // Add reactions
-      await approvalMessage.react('👍');
-      await approvalMessage.react('❌');
-      
-      // Save approval to database
-      await client.db.saveApproval(
-        approvalMessage.id,
-        resultChannel.id,
+      // Create submission
+      const submissionId = await client.db.saveSubmission(
         interaction.channel.id,
         ticketState.ticketNumber,
         ticketState.ownerId,
         ticketState.ownerTag,
         ticketState.gwType || ticketState.vipType || 'unknown',
         ticketState.casino || ticketState.vipCasino,
-        ticketState.prize
+        ticketState.prize,
+        ticketState.ltcAddress
       );
+
+      // Send to mod channel
+      const modChannel = await interaction.guild.channels.fetch(CHANNELS.MOD);
+      const embed = EmbedFactory.submissionReady(ticketState.ticketNumber, ticketState.ownerTag, interaction.channel.id);
+      const components = [
+        ComponentFactory.submissionButtons(interaction.channel.id, ticketState.ticketNumber),
+        ComponentFactory.modButtons(submissionId)
+      ];
+
+      const submissionMessage = await modChannel.send({
+        embeds: [embed],
+        components: components
+      });
+
+      // Update submission with message info
+      await client.db.updateSubmission(submissionId, submissionMessage.id, modChannel.id, 'pending');
       
       await interaction.channel.send({
         embeds: [EmbedFactory.success('Solicitação enviada para aprovação! Aguarde a análise da equipe.')]
       });
+    }
+
+    // Mod Approve Button
+    if (interaction.isButton() && interaction.customId.startsWith('mod_approve_')) {
+      // Check if user has mod role
+      if (!interaction.member.roles.cache.has(ROLES.MOD)) {
+        return interaction.reply({
+          embeds: [EmbedFactory.error('Você não tem permissão para usar este botão')],
+          flags: 64
+        });
+      }
+
+      const submissionId = interaction.customId.split('_')[2];
+      
+      // Show prize modal
+      const modal = new ModalBuilder()
+        .setCustomId(`prize_modal_${submissionId}`)
+        .setTitle('💰 Definir Valor da Prenda')
+        .addComponents(
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('prize_value')
+              .setLabel('Valor da Prenda')
+              .setStyle(TextInputStyle.Short)
+              .setPlaceholder('Ex: 30')
+              .setRequired(true)
+          )
+        );
+      
+      return interaction.showModal(modal);
+    }
+
+    // Mod Reject Button
+    if (interaction.isButton() && interaction.customId.startsWith('mod_reject_')) {
+      // Check if user has mod role
+      if (!interaction.member.roles.cache.has(ROLES.MOD)) {
+        return interaction.reply({
+          embeds: [EmbedFactory.error('Você não tem permissão para usar este botão')],
+          flags: 64
+        });
+      }
+
+      const submissionId = interaction.customId.split('_')[2];
+      
+      // Show rejection modal
+      const modal = new ModalBuilder()
+        .setCustomId(`reject_modal_${submissionId}`)
+        .setTitle('❌ Motivo da Rejeição')
+        .addComponents(
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('reject_reason')
+              .setLabel('Motivo da Rejeição')
+              .setStyle(TextInputStyle.Paragraph)
+              .setPlaceholder('Explique o motivo da rejeição...')
+              .setRequired(true)
+          )
+        );
+      
+      return interaction.showModal(modal);
+    }
+
+    // Approval Buttons
+    if (interaction.isButton() && interaction.customId.startsWith('approval_')) {
+      const action = interaction.customId.split('_')[1];
+      const approvalId = interaction.customId.split('_')[2];
+      
+      const approval = await client.db.getApproval(approvalId);
+      if (!approval) {
+        return interaction.reply({
+          embeds: [EmbedFactory.error('Aprovação não encontrada')],
+          flags: 64
+        });
+      }
+
+      if (action === 'goto') {
+        // Redirect to ticket
+        return interaction.reply({
+          content: `🎫 **Ir para Ticket #${approval.ticketNumber}:** <#${approval.ticketChannelId}>`,
+          flags: 64
+        });
+      }
+
+      if (action === 'paid') {
+        // Mark as paid and send message to ticket
+        const ticketChannel = await interaction.guild.channels.fetch(approval.ticketChannelId);
+        await ticketChannel.send({
+          embeds: [EmbedFactory.giveawayPaid()]
+        });
+
+        // Update approval status
+        await client.db.updateApproval(approvalId, null, null, 'paid');
+
+        return interaction.reply({
+          embeds: [EmbedFactory.success(`Giveaway marcado como pago! Mensagem enviada ao ticket #${approval.ticketNumber}.`)],
+          flags: 64
+        });
+      }
+
+      if (action === 'review') {
+        // Show review modal
+        const modal = new ModalBuilder()
+          .setCustomId(`review_modal_${approvalId}`)
+          .setTitle('🔍 Motivo da Revisão')
+          .addComponents(
+            new ActionRowBuilder().addComponents(
+              new TextInputBuilder()
+                .setCustomId('review_reason')
+                .setLabel('Motivo da Revisão')
+                .setStyle(TextInputStyle.Paragraph)
+                .setPlaceholder('Explique o motivo da revisão...')
+                .setRequired(true)
+            )
+          );
+        
+        return interaction.showModal(modal);
+      }
+    }
+
+    // Rejection Resubmit Button
+    if (interaction.isButton() && interaction.customId === 'rejection_resubmit') {
+      try { await interaction.deferUpdate(); } catch {}
+      
+      const ticketState = client.ticketStates.get(interaction.channel.id);
+      
+      // Reset ticket state for resubmission
+      ticketState.step = 0;
+      ticketState.awaitProof = true;
+      await client.saveTicketState(interaction.channel.id, ticketState);
+      
+      await interaction.channel.send({
+        embeds: [EmbedFactory.success('Reenvio iniciado! Por favor, complete novamente o checklist.')]
+      });
+      
+      if (ticketState.vipType) {
+        return askVipChecklist(interaction.channel, ticketState);
+      } else if (ticketState.casino) {
+        return askChecklist(interaction.channel, ticketState);
+      } else {
+        return askCasino(interaction.channel);
+      }
     }
 
     // Support Button

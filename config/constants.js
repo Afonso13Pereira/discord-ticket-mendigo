@@ -5,7 +5,13 @@ module.exports = {
     RESULT: '1386489439680987218',
     STAFF: process.env.STAFF_CHANNEL_ID,
     LOGS: process.env.LOGS_CHANNEL_ID,
-    TRANSCRIPTS: process.env.TRANSCRIPTS_CHANNEL_ID
+    TRANSCRIPTS: process.env.TRANSCRIPTS_CHANNEL_ID,
+    MOD: process.env.MOD_CHANNEL_ID || '1386488872799567902',
+    APPROVE: process.env.APROVE_CHANNEL_ID || '1386489439680987218'
+  },
+
+  ROLES: {
+    MOD: process.env.MOD_ID || '1386505412718887073'
   },
 
   COLORS: {

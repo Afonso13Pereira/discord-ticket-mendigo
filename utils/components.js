@@ -21,6 +21,16 @@ class ComponentFactory {
     return button;
   }
 
+  static createLinkButton(url, label, emoji = null) {
+    const button = new ButtonBuilder()
+      .setURL(url)
+      .setLabel(label)
+      .setStyle(ButtonStyle.Link);
+    
+    if (emoji) button.setEmoji(emoji);
+    return button;
+  }
+
   static createButtonRow(...buttons) {
     return new ActionRowBuilder().addComponents(...buttons);
   }
@@ -175,13 +185,39 @@ class ComponentFactory {
     return rows;
   }
 
-  static ticketLinkButton(channelId, ticketNumber) {
-    return this.createButton(
-      `goto_ticket_${channelId}`,
-      `Ir para Ticket #${ticketNumber}`,
-      ButtonStyle.Link,
-      '🎫'
-    ).setURL(`https://discord.com/channels/@me/${channelId}`);
+  // === SUBMISSION BUTTONS ===
+  static submissionButtons(channelId, ticketNumber) {
+    return this.createButtonRow(
+      this.createLinkButton(
+        `https://discord.com/channels/@me/${channelId}`,
+        `Ir para Ticket #${ticketNumber}`,
+        '🎫'
+      )
+    );
+  }
+
+  // === MOD BUTTONS ===
+  static modButtons(submissionId) {
+    return this.createButtonRow(
+      this.createButton(`mod_approve_${submissionId}`, 'Aprovar', ButtonStyle.Success, '✅'),
+      this.createButton(`mod_reject_${submissionId}`, 'Não Aprovar', ButtonStyle.Danger, '❌')
+    );
+  }
+
+  // === APPROVAL BUTTONS ===
+  static approvalButtons(approvalId) {
+    return this.createButtonRow(
+      this.createButton(`approval_goto_${approvalId}`, 'Ir para Ticket', ButtonStyle.Primary, '🎫'),
+      this.createButton(`approval_paid_${approvalId}`, 'Pago', ButtonStyle.Success, '💰'),
+      this.createButton(`approval_review_${approvalId}`, 'Rever', ButtonStyle.Secondary, '🔍')
+    );
+  }
+
+  // === REJECTION BUTTONS ===
+  static rejectionButtons() {
+    return this.createButtonRow(
+      this.createButton('rejection_resubmit', 'Reenviar', ButtonStyle.Primary, '🔄')
+    );
   }
 }
 

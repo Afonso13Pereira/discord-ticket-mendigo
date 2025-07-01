@@ -293,46 +293,52 @@ class EmbedFactory {
     return embed;
   }
 
-  static approvalRequest(ticketNumber, userTag, gwType, casino, prize) {
-    const embed = new EmbedBuilder()
-      .setColor(COLORS.WARNING)
-      .setTitle(`${EMOJIS.GIFT} Solicitação de Aprovação`)
-      .setDescription([
-        `**Ticket #${ticketNumber} pronto para aprovação**`,
-        '',
-        `👤 **Usuário:** ${userTag}`,
-        `🎁 **Tipo:** ${gwType}`,
-        casino ? `🎰 **Casino:** ${casino}` : '',
-        prize ? `💰 **Prémio:** ${prize}` : '',
-        '',
-        `${EMOJIS.THUMBSUP} Reaja com 👍 para aprovar`,
-        `${EMOJIS.ERROR} Reaja com ❌ para rejeitar`
-      ].filter(line => line).join('\n'))
-      .setTimestamp()
-      .setFooter({ text: 'Sistema de Aprovações' });
-    
-    return embed;
-  }
-
-  static approvalApproved(ticketNumber, userTag) {
+  // === SUBMISSION EMBEDS ===
+  static submissionReady(ticketNumber, userTag, channelId) {
     return new EmbedBuilder()
-      .setColor(COLORS.SUCCESS)
-      .setTitle(`${EMOJIS.SUCCESS} Giveaway Aprovado`)
+      .setColor(COLORS.WARNING)
+      .setTitle(`${EMOJIS.GIFT} Ticket Pronto para Aprovação`)
       .setDescription([
-        `**Ticket #${ticketNumber} foi aprovado!**`,
+        `**Ticket #${ticketNumber} pronto para ser aprovado**`,
         '',
         `👤 **Usuário:** ${userTag}`,
-        `✅ **Status:** Aprovado e notificado`,
-        `📨 **Mensagem:** Enviada automaticamente`
+        `🎫 **Ticket:** #${ticketNumber}`,
+        '',
+        `${EMOJIS.INFO} Use o botão abaixo para ir ao ticket`
       ].join('\n'))
       .setTimestamp()
-      .setFooter({ text: 'Aprovação Concluída' });
+      .setFooter({ text: 'Sistema de Submissões' });
   }
 
-  static giveawayApproved() {
+  // === APPROVAL EMBEDS ===
+  static approvalFinal(casino, prize, userTag, ticketNumber, ltcAddress) {
     return new EmbedBuilder()
       .setColor(COLORS.SUCCESS)
-      .setTitle(`${EMOJIS.SUCCESS} Giveaway Aprovado!`)
+      .setTitle(`${EMOJIS.GIFT} Giveaway Aprovado`)
+      .setDescription([
+        '**Casino**',
+        casino || 'N/A',
+        '',
+        '**Prenda**',
+        prize || 'N/A',
+        '',
+        '**Utilizador**',
+        userTag,
+        '',
+        '**Ticket**',
+        `ticket-${ticketNumber}`,
+        '',
+        '**Endereço LTC**',
+        ltcAddress || 'N/A'
+      ].join('\n'))
+      .setTimestamp()
+      .setFooter({ text: 'Sistema de Aprovações' });
+  }
+
+  static giveawayPaid() {
+    return new EmbedBuilder()
+      .setColor(COLORS.SUCCESS)
+      .setTitle(`${EMOJIS.SUCCESS} Giveaway Pago!`)
       .setDescription([
         '**Foi enviado <3**',
         '',
@@ -343,6 +349,38 @@ class EmbedFactory {
       ].join('\n'))
       .setTimestamp()
       .setFooter({ text: 'Parabéns pelo seu prémio!' });
+  }
+
+  static rejectionReason(reason) {
+    return new EmbedBuilder()
+      .setColor(COLORS.DANGER)
+      .setTitle(`${EMOJIS.ERROR} Giveaway Rejeitado`)
+      .setDescription([
+        '**O seu giveaway foi rejeitado pelo seguinte motivo:**',
+        '',
+        `📝 **Motivo:** ${reason}`,
+        '',
+        `${EMOJIS.INFO} Pode reenviar corrigindo o problema`,
+        `${EMOJIS.SHIELD} Entre em contacto com o suporte se tiver dúvidas`
+      ].join('\n'))
+      .setTimestamp()
+      .setFooter({ text: 'Sistema de Aprovações' });
+  }
+
+  static reviewRequest(reason, ticketNumber, userTag) {
+    return new EmbedBuilder()
+      .setColor(COLORS.WARNING)
+      .setTitle(`${EMOJIS.WARNING} Solicitação de Revisão`)
+      .setDescription([
+        `**Ticket #${ticketNumber} precisa de revisão**`,
+        '',
+        `👤 **Usuário:** ${userTag}`,
+        `📝 **Motivo:** ${reason}`,
+        '',
+        `${EMOJIS.SHIELD} Suporte humano necessário`
+      ].join('\n'))
+      .setTimestamp()
+      .setFooter({ text: 'Sistema de Revisões' });
   }
 }
 

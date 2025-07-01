@@ -73,8 +73,9 @@ const TicketCounterSchema = new mongoose.Schema({
   count: { type: Number, default: 0 }
 });
 
-const ApprovalSchema = new mongoose.Schema({
-  messageId: { type: String, required: true, unique: true },
+const SubmissionSchema = new mongoose.Schema({
+  submissionId: { type: String, required: true, unique: true },
+  messageId: { type: String, required: true },
   channelId: { type: String, required: true },
   ticketChannelId: { type: String, required: true },
   ticketNumber: { type: Number, required: true },
@@ -83,7 +84,23 @@ const ApprovalSchema = new mongoose.Schema({
   gwType: { type: String, required: true },
   casino: { type: String, default: null },
   prize: { type: String, default: null },
-  approved: { type: Boolean, default: false },
+  ltcAddress: { type: String, default: null },
+  status: { type: String, default: 'pending' }, // pending, approved, rejected
+  createdAt: { type: Date, default: Date.now }
+});
+
+const ApprovalSchema = new mongoose.Schema({
+  approvalId: { type: String, required: true, unique: true },
+  messageId: { type: String, required: true },
+  channelId: { type: String, required: true },
+  ticketChannelId: { type: String, required: true },
+  ticketNumber: { type: Number, required: true },
+  userId: { type: String, required: true },
+  userTag: { type: String, required: true },
+  casino: { type: String, required: true },
+  prize: { type: String, required: true },
+  ltcAddress: { type: String, required: true },
+  status: { type: String, default: 'pending' }, // pending, paid, review
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -99,6 +116,7 @@ class DatabaseManager {
     this.ActionLog = null;
     this.Transcript = null;
     this.TicketCounter = null;
+    this.Submission = null;
     this.Approval = null;
     this.connect();
   }
@@ -119,6 +137,7 @@ class DatabaseManager {
       this.ActionLog = mongoose.model('ActionLog', ActionLogSchema, 'DiscordBot.actionLogs');
       this.Transcript = mongoose.model('Transcript', TranscriptSchema, 'DiscordBot.transcripts');
       this.TicketCounter = mongoose.model('TicketCounter', TicketCounterSchema, 'DiscordBot.ticketCounter');
+      this.Submission = mongoose.model('Submission', SubmissionSchema, 'DiscordBot.submissions');
       this.Approval = mongoose.model('Approval', ApprovalSchema, 'DiscordBot.approvals');
 
       this.connected = true;
@@ -266,6 +285,142 @@ class DatabaseManager {
     } catch (error) {
       console.error('Error getting all ticket states:', error);
       return new Map();
+    }
+  }
+
+  // === SUBMISSIONS ===
+  async saveSubmission(ticketChannelId, ticketNumber, userId, userTag, gwType, casino = null, prize = null, ltcAddress = null) {
+    if (!this.connected) return null;
+    
+    try {
+      const submissionId = require('crypto').randomUUID().slice(0, 12);
+      
+      const submission = new this.Submission({
+        submissionId,
+        ticketChannelId,
+        ticketNumber,
+        userId,
+        userTag,
+        gwType,
+        casino,
+        prize,
+        ltcAddress
+      });
+      
+      await submission.save();
+      return submissionId;
+    } catch (error) {
+      console.error('Error saving submission:', error);
+      return null;
+    }
+  }
+
+  async getSubmission(submissionId) {
+    if (!this.connected) return null;
+    
+    try {
+      const doc = await this.Submission.findOne({ submissionId });
+      if (!doc) return null;
+      
+      return {
+        submissionId: doc.submissionId,
+        messageId: doc.messageId,
+        channelId: doc.channelId,
+        ticketChannelId: doc.ticketChannelId,
+        ticketNumber: doc.ticketNumber,
+        userId: doc.userId,
+        userTag: doc.userTag,
+        gwType: doc.gwType,
+        casino: doc.casino,
+        prize: doc.prize,
+        ltcAddress: doc.ltcAddress,
+        status: doc.status,
+        createdAt: doc.createdAt
+      };
+    } catch (error) {
+      console.error('Error getting submission:', error);
+      return null;
+    }
+  }
+
+  async updateSubmission(submissionId, messageId, channelId, status = 'pending') {
+    if (!this.connected) return;
+    
+    try {
+      await this.Submission.findOneAndUpdate(
+        { submissionId },
+        { messageId, channelId, status },
+        { new: true }
+      );
+    } catch (error) {
+      console.error('Error updating submission:', error);
+    }
+  }
+
+  // === APPROVALS ===
+  async saveApproval(ticketChannelId, ticketNumber, userId, userTag, casino, prize, ltcAddress) {
+    if (!this.connected) return null;
+    
+    try {
+      const approvalId = require('crypto').randomUUID().slice(0, 12);
+      
+      const approval = new this.Approval({
+        approvalId,
+        ticketChannelId,
+        ticketNumber,
+        userId,
+        userTag,
+        casino,
+        prize,
+        ltcAddress
+      });
+      
+      await approval.save();
+      return approvalId;
+    } catch (error) {
+      console.error('Error saving approval:', error);
+      return null;
+    }
+  }
+
+  async getApproval(approvalId) {
+    if (!this.connected) return null;
+    
+    try {
+      const doc = await this.Approval.findOne({ approvalId });
+      if (!doc) return null;
+      
+      return {
+        approvalId: doc.approvalId,
+        messageId: doc.messageId,
+        channelId: doc.channelId,
+        ticketChannelId: doc.ticketChannelId,
+        ticketNumber: doc.ticketNumber,
+        userId: doc.userId,
+        userTag: doc.userTag,
+        casino: doc.casino,
+        prize: doc.prize,
+        ltcAddress: doc.ltcAddress,
+        status: doc.status,
+        createdAt: doc.createdAt
+      };
+    } catch (error) {
+      console.error('Error getting approval:', error);
+      return null;
+    }
+  }
+
+  async updateApproval(approvalId, messageId, channelId, status = 'pending') {
+    if (!this.connected) return;
+    
+    try {
+      await this.Approval.findOneAndUpdate(
+        { approvalId },
+        { messageId, channelId, status },
+        { new: true }
+      );
+    } catch (error) {
+      console.error('Error updating approval:', error);
     }
   }
 
@@ -429,69 +584,6 @@ class DatabaseManager {
     } catch (error) {
       console.error('Error cleaning up expired transcripts:', error);
       return 0;
-    }
-  }
-
-  // === APPROVALS ===
-  async saveApproval(messageId, channelId, ticketChannelId, ticketNumber, userId, userTag, gwType, casino = null, prize = null) {
-    if (!this.connected) return;
-    
-    try {
-      const approval = new this.Approval({
-        messageId,
-        channelId,
-        ticketChannelId,
-        ticketNumber,
-        userId,
-        userTag,
-        gwType,
-        casino,
-        prize
-      });
-      
-      await approval.save();
-    } catch (error) {
-      console.error('Error saving approval:', error);
-    }
-  }
-
-  async getApproval(messageId) {
-    if (!this.connected) return null;
-    
-    try {
-      const doc = await this.Approval.findOne({ messageId });
-      if (!doc) return null;
-      
-      return {
-        messageId: doc.messageId,
-        channelId: doc.channelId,
-        ticketChannelId: doc.ticketChannelId,
-        ticketNumber: doc.ticketNumber,
-        userId: doc.userId,
-        userTag: doc.userTag,
-        gwType: doc.gwType,
-        casino: doc.casino,
-        prize: doc.prize,
-        approved: doc.approved,
-        createdAt: doc.createdAt
-      };
-    } catch (error) {
-      console.error('Error getting approval:', error);
-      return null;
-    }
-  }
-
-  async updateApproval(messageId, approved = true) {
-    if (!this.connected) return;
-    
-    try {
-      await this.Approval.findOneAndUpdate(
-        { messageId },
-        { approved },
-        { new: true }
-      );
-    } catch (error) {
-      console.error('Error updating approval:', error);
     }
   }
 
