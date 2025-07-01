@@ -1,15 +1,41 @@
 const { randomUUID } = require('crypto');
-const { load, save } = require('./store');
-const FILE = 'cats.json';
-const cats = load(FILE);         // id → { name,color,emoji,active,created }
+const DatabaseManager = require('./database');
+
+let db = null;
+let cats = {};
+
+function initDatabase() {
+  if (!db) {
+    db = new DatabaseManager();
+    cats = db.getCategories();
+  }
+}
 
 function create(name, color, emoji) {
+  initDatabase();
   const id = randomUUID().slice(0, 8);
-  cats[id] = { name, color, emoji, active: true, created: Date.now() };
-  save(FILE, cats);
+  const category = { name, color, emoji, active: true, created: Date.now() };
+  
+  cats[id] = category;
+  db.saveCategory(id, category);
+  
   return id;
 }
-function close(id) { if (cats[id]) { cats[id].active = false; save(FILE, cats); } }
-function list()  { return Object.entries(cats).sort((a,b)=>b[1].created-a[1].created); }
+
+function close(id) {
+  initDatabase();
+  if (cats[id]) {
+    cats[id].active = false;
+    db.saveCategory(id, cats[id]);
+  }
+}
+
+function list() {
+  initDatabase();
+  return Object.entries(cats).sort((a, b) => b[1].created - a[1].created);
+}
+
+// Initialize on module load
+initDatabase();
 
 module.exports = { cats, create, close, list };

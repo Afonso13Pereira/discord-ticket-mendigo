@@ -40,6 +40,9 @@ module.exports = {
         
         const id = createPromo(name, endISO, casino, color, emoji);
         
+        // Log action
+        client.db.logAction(interaction.channel.id, interaction.user.id, 'promo_created', `ID: ${id}, Name: ${name}`);
+        
         return interaction.reply({
           embeds: [EmbedFactory.success(`Promoção **${name}** criada com sucesso!\nID: \`${id}\``)],
           flags: 64
@@ -52,6 +55,9 @@ module.exports = {
         const emoji = interaction.fields.getTextInputValue('cemoji')?.trim() || null;
         
         const id = createCat(name, color, emoji);
+        
+        // Log action
+        client.db.logAction(interaction.channel.id, interaction.user.id, 'category_created', `ID: ${id}, Name: ${name}`);
         
         return interaction.reply({
           embeds: [EmbedFactory.success(`Categoria **${name}** criada com sucesso!\nID: \`${id}\``)],
@@ -91,7 +97,11 @@ module.exports = {
         ]
       });
 
-      client.ticketStates.set(ticketChannel.id, { ownerTag: interaction.user.tag });
+      const ticketState = { ownerTag: interaction.user.tag };
+      client.saveTicketState(ticketChannel.id, ticketState);
+
+      // Log ticket creation
+      client.db.logAction(ticketChannel.id, interaction.user.id, 'ticket_created', `Category: ${category.name}`);
 
       // Send welcome message
       await ticketChannel.send({
@@ -103,9 +113,9 @@ module.exports = {
       );
 
       if (category.name === 'Giveaways') {
-        const ticketState = client.ticketStates.get(ticketChannel.id);
-        ticketState.awaitConfirm = true;
-        client.ticketStates.set(ticketChannel.id, ticketState);
+        const currentState = client.ticketStates.get(ticketChannel.id);
+        currentState.awaitConfirm = true;
+        client.saveTicketState(ticketChannel.id, currentState);
         
         await ticketChannel.send({
           embeds: [EmbedFactory.confirmation()],
@@ -144,7 +154,7 @@ module.exports = {
           ticketState.casino = null;
           ticketState.step = 0;
           ticketState.awaitProof = true;
-          client.ticketStates.set(interaction.channel.id, ticketState);
+          client.saveTicketState(interaction.channel.id, ticketState);
           
           await interaction.channel.send({
             embeds: [EmbedFactory.success(`Promoção **${promo.name}** selecionada! Agora escolha o casino.`)]
@@ -162,7 +172,7 @@ module.exports = {
         ticketState.casino = casinoId;
         ticketState.step = 0;
         ticketState.awaitProof = true;
-        client.ticketStates.set(interaction.channel.id, ticketState);
+        client.saveTicketState(interaction.channel.id, ticketState);
         
         await interaction.channel.send({
           embeds: [EmbedFactory.success(`Promoção **${promo.name}** selecionada para **${casinoId}**`)]
@@ -174,7 +184,7 @@ module.exports = {
       const type = interaction.customId.split('_')[2];
       ticketState.gwType = type;
       if (type === 'gtb') ticketState.prize = 30;
-      client.ticketStates.set(interaction.channel.id, ticketState);
+      client.saveTicketState(interaction.channel.id, ticketState);
 
       if (type === 'telegram') {
         return interaction.channel.send({
@@ -200,7 +210,7 @@ module.exports = {
       ticketState.casino = choice;
       ticketState.step = 0;
       ticketState.awaitProof = true;
-      client.ticketStates.set(interaction.channel.id, ticketState);
+      client.saveTicketState(interaction.channel.id, ticketState);
       
       return askChecklist(interaction.channel, ticketState);
     }
@@ -219,7 +229,7 @@ module.exports = {
 
       ticketState.step++;
       ticketState.awaitProof = true;
-      client.ticketStates.set(interaction.channel.id, ticketState);
+      client.saveTicketState(interaction.channel.id, ticketState);
       
       return askChecklist(interaction.channel, ticketState);
     }
@@ -232,6 +242,9 @@ module.exports = {
       await staffChannel.send({
         embeds: [EmbedFactory.warning(`${EMOJIS.SHIELD} Suporte solicitado em ${interaction.channel}\nUsuário: ${interaction.user.tag}`)]
       });
+      
+      // Log support request
+      client.db.logAction(interaction.channel.id, interaction.user.id, 'support_requested', null);
       
       return interaction.followUp({
         embeds: [EmbedFactory.success('Equipe de suporte foi notificada! Aguarde um momento.')],
