@@ -75,8 +75,8 @@ const TicketCounterSchema = new mongoose.Schema({
 
 const SubmissionSchema = new mongoose.Schema({
   submissionId: { type: String, required: true, unique: true },
-  messageId: { type: String, required: true },
-  channelId: { type: String, required: true },
+  messageId: { type: String, default: null }, // CORREÇÃO: Não obrigatório
+  channelId: { type: String, default: null }, // CORREÇÃO: Não obrigatório
   ticketChannelId: { type: String, required: true },
   ticketNumber: { type: Number, required: true },
   userId: { type: String, required: true },
@@ -91,8 +91,8 @@ const SubmissionSchema = new mongoose.Schema({
 
 const ApprovalSchema = new mongoose.Schema({
   approvalId: { type: String, required: true, unique: true },
-  messageId: { type: String, required: true },
-  channelId: { type: String, required: true },
+  messageId: { type: String, default: null }, // CORREÇÃO: Não obrigatório
+  channelId: { type: String, default: null }, // CORREÇÃO: Não obrigatório
   ticketChannelId: { type: String, required: true },
   ticketNumber: { type: Number, required: true },
   userId: { type: String, required: true },
@@ -305,6 +305,7 @@ class DatabaseManager {
         casino,
         prize,
         ltcAddress
+        // messageId e channelId são opcionais agora
       });
       
       await submission.save();
@@ -347,9 +348,13 @@ class DatabaseManager {
     if (!this.connected) return;
     
     try {
+      const updateData = { status };
+      if (messageId) updateData.messageId = messageId;
+      if (channelId) updateData.channelId = channelId;
+      
       await this.Submission.findOneAndUpdate(
         { submissionId },
-        { messageId, channelId, status },
+        updateData,
         { new: true }
       );
     } catch (error) {
@@ -373,6 +378,7 @@ class DatabaseManager {
         casino,
         prize,
         ltcAddress
+        // messageId e channelId são opcionais agora
       });
       
       await approval.save();
@@ -414,9 +420,13 @@ class DatabaseManager {
     if (!this.connected) return;
     
     try {
+      const updateData = { status };
+      if (messageId) updateData.messageId = messageId;
+      if (channelId) updateData.channelId = channelId;
+      
       await this.Approval.findOneAndUpdate(
         { approvalId },
-        { messageId, channelId, status },
+        updateData,
         { new: true }
       );
     } catch (error) {
