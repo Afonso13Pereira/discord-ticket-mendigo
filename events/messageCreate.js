@@ -1,142 +1,163 @@
 // events/messageCreate.js
 require('dotenv').config();
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
 const CASINOS = require('./casinos');
 const { promos, refreshExpired } = require('../utils/promotions');
-
-const ICONS = {
-  info  : 'https://i.imgur.com/9N6IwU6.png',
-  ok    : 'https://i.imgur.com/Vy6XWOm.png',
-  error : 'https://i.imgur.com/8yZ4G8p.png'
-};
-
-const styleMap = { blue:ButtonStyle.Primary, grey:ButtonStyle.Secondary,
-                   green:ButtonStyle.Success, red:ButtonStyle.Danger };
+const EmbedFactory = require('../utils/embeds');
+const ComponentFactory = require('../utils/components');
+const { CHANNELS, EMOJIS } = require('../config/constants');
 
 const CONFIRM_RX = /^sim[, ]*eu confirmo$/i;
-const okE  = t => new EmbedBuilder().setColor(0x2ecc71).setThumbnail(ICONS.ok)   .setDescription(t);
-const errE = t => new EmbedBuilder().setColor(0xe74c3c).setThumbnail(ICONS.error).setDescription(t);
-const infoE= t => new EmbedBuilder().setColor(0x3498db).setThumbnail(ICONS.info) .setDescription(t);
 
 module.exports = {
-  name:'messageCreate',
-  async execute(m, client){
-    if (m.author.bot || m.channel.type !== 0) return;
-    const st = client.ticketStates.get(m.channel.id); if (!st) return;
+  name: 'messageCreate',
+  async execute(message, client) {
+    if (message.author.bot || message.channel.type !== 0) return;
+    
+    const ticketState = client.ticketStates.get(message.channel.id);
+    if (!ticketState) return;
 
-    /* ─── CONFIRM 18+ ─── */
-    if (st.awaitConfirm) {
-      if (CONFIRM_RX.test(m.content.trim())) {
-        st.awaitConfirm = false; client.ticketStates.set(m.channel.id, st);
+    // 18+ Confirmation
+    if (ticketState.awaitConfirm) {
+      if (CONFIRM_RX.test(message.content.trim())) {
+        ticketState.awaitConfirm = false;
+        client.ticketStates.set(message.channel.id, ticketState);
 
-        let row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('gw_type_telegram').setLabel('Telegram').setStyle(ButtonStyle.Primary),
-          new ButtonBuilder().setCustomId('gw_type_gtb').setLabel('GTB').setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder().setCustomId('gw_type_other').setLabel('Outro').setStyle(ButtonStyle.Secondary)
-        );
+        // Create giveaway type buttons
+        const typeButtons = ComponentFactory.giveawayTypeButtons();
+        const components = [typeButtons];
 
+        // Add promo buttons
         refreshExpired();
-        const now = Date.now();
-        for (const [pid,p] of Object.entries(promos)) {
-          if (!p.active) continue;
-          if (now > new Date(p.end)) continue;
+        const promoButtons = ComponentFactory.promoButtons(promos);
+        components.push(...promoButtons);
 
-          const btn = new ButtonBuilder()
-            .setCustomId(`gw_promo_${pid}`)
-            .setLabel(p.name)
-            .setStyle(styleMap[p.color] || ButtonStyle.Success);
-          if (p.emoji) btn.setEmoji(p.emoji);
-
-          if (row.components.length === 5) {
-            await m.channel.send({ components:[row] });
-            row = new ActionRowBuilder();
-          }
-          row.addComponents(btn);
-        }
-
-        return m.channel.send({
-          embeds:[
-            new EmbedBuilder().setColor(0x00b0f4).setThumbnail(ICONS.info)
-              .setTitle('🎁 Giveaway ganho!').setDescription('Escolhe o tipo de giveaway:')
-          ],
-          components:[row]
+        return message.channel.send({
+          embeds: [EmbedFactory.giveaway(
+            'Tipo de Giveaway',
+            `${EMOJIS.STAR} **Parabéns!** Escolha o tipo de giveaway:\n\n${EMOJIS.GIFT} **Tipos Disponíveis:**\n• Telegram - Prêmios do bot\n• GTB - Giveaway tradicional\n• Promoções especiais em destaque`
+          )],
+          components: components
         });
       }
-      return m.reply({ embeds:[errE('Escreve exactamente **"Sim, eu confirmo"** para prosseguir.')] });
-    }
-    /* ── TELEGRAM código + print ── */
-    if (st.gwType==='telegram' && !st.casino) {
-      if (m.attachments.size>0) st.telegramHasImg=true;
-      const c=m.content.match(/[a-f0-9]{8}/i); if(c) st.telegramCode=c[0].toLowerCase();
-      client.ticketStates.set(m.channel.id, st);
-
-      if (!st.telegramCode || !st.telegramHasImg){
-        const miss=[]; if(!st.telegramCode) miss.push('**código**'); if(!st.telegramHasImg) miss.push('**print**');
-        return m.reply({ embeds:[errE(`Falta ${miss.join(' e ')}.`)] });
-      }
-
-      const logs=await m.guild.channels.fetch(process.env.LOGS_CHANNEL_ID);
-      const msgs=await logs.messages.fetch({limit:100});
-      const hit =msgs.find(x=>x.content.toLowerCase().includes(st.telegramCode));
-      if(!hit) return m.reply({ embeds:[errE('Código não encontrado nos logs.')] });
-      if(Date.now()-hit.createdTimestamp>48*60*60*1000)
-        return m.reply({ embeds:[errE('Código com +48 h. Aguarda mod.')] });
-
-      const pr=hit.content.match(/prenda\s*:\s*(\d+)/i); if(pr) st.prize=pr[1];
-      st.casino='RioAce'; st.step=0; st.awaitProof=true; client.ticketStates.set(m.channel.id, st);
-      await m.reply({ embeds:[okE('Código validado! Casino: **RioAce**')] });
-      return askChecklist(m.channel, st);
+      
+      return message.reply({
+        embeds: [EmbedFactory.error('Digite exatamente **"Sim, eu confirmo"** para prosseguir')]
+      });
     }
 
-    /* ── CHECKLIST normal ── */
-    if (st.casino && st.awaitProof) {
-      const cfg = CASINOS[st.casino];
-      const idx = st.step;
+    // Telegram Code + Screenshot
+    if (ticketState.gwType === 'telegram' && !ticketState.casino) {
+      if (message.attachments.size > 0) ticketState.telegramHasImg = true;
+      
+      const codeMatch = message.content.match(/[a-f0-9]{8}/i);
+      if (codeMatch) ticketState.telegramCode = codeMatch[0].toLowerCase();
+      
+      client.ticketStates.set(message.channel.id, ticketState);
 
-      if (idx < 3) {
-        if (m.attachments.size===0) return m.reply({ embeds:[errE('Este passo requer **uma imagem**.')] });
-        st.awaitProof = false;
-      } else if (idx === 3) {
-        if (m.attachments.size>0) st.step4HasImg=true;
-        if (m.content && m.content.length>=25){ st.step4HasAddr=true; st.ltcAddress=m.content; }
-        client.ticketStates.set(m.channel.id, st);
-        if (!st.step4HasImg || !st.step4HasAddr) {
-          if(!st.step4HasImg)  m.reply({ embeds:[errE('Falta a **imagem** do depósito.')] });
-          if(!st.step4HasAddr) m.reply({ embeds:[errE('Falta colar o **endereço LTC** em texto.')] });
-          return;
-        }
-        st.awaitProof = false;
+      if (!ticketState.telegramCode || !ticketState.telegramHasImg) {
+        const missing = [];
+        if (!ticketState.telegramCode) missing.push('**código**');
+        if (!ticketState.telegramHasImg) missing.push('**screenshot**');
+        
+        return message.reply({
+          embeds: [EmbedFactory.error(`Ainda falta: ${missing.join(' e ')}`)]
+        });
       }
 
-      if (!st.awaitProof) {
-        client.ticketStates.set(m.channel.id, st);
+      // Validate code in logs
+      const logsChannel = await message.guild.channels.fetch(CHANNELS.LOGS);
+      const messages = await logsChannel.messages.fetch({ limit: 100 });
+      const codeMessage = messages.find(m => m.content.toLowerCase().includes(ticketState.telegramCode));
+      
+      if (!codeMessage) {
+        return message.reply({
+          embeds: [EmbedFactory.error('Código não encontrado nos logs do sistema')]
+        });
+      }
 
-        if (idx+1 < cfg.checklist.length) {
-          const nxt = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('proof_next').setLabel('Próximo passo').setStyle('Primary')
-          );
-          return m.reply({ embeds:[okE('Prova recebida! Clica em **Próximo passo**.')], components:[nxt] });
+      if (Date.now() - codeMessage.createdTimestamp > 48 * 60 * 60 * 1000) {
+        return message.reply({
+          embeds: [EmbedFactory.warning('Código tem mais de 48 horas. Aguarde verificação manual')]
+        });
+      }
+
+      const prizeMatch = codeMessage.content.match(/prenda\s*:\s*(\d+)/i);
+      if (prizeMatch) ticketState.prize = prizeMatch[1];
+      
+      ticketState.casino = 'RioAce';
+      ticketState.step = 0;
+      ticketState.awaitProof = true;
+      client.ticketStates.set(message.channel.id, ticketState);
+      
+      await message.reply({
+        embeds: [EmbedFactory.success('Código validado com sucesso! Casino: **RioAce**')]
+      });
+      return askChecklist(message.channel, ticketState);
+    }
+
+    // Checklist Validation
+    if (ticketState.casino && ticketState.awaitProof) {
+      const casino = CASINOS[ticketState.casino];
+      const stepIndex = ticketState.step;
+
+      if (stepIndex < 3) {
+        if (message.attachments.size === 0) {
+          return message.reply({
+            embeds: [EmbedFactory.error('Este passo requer o envio de uma **imagem**')]
+          });
         }
-        const fin = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('finish_ticket').setLabel('🚀 Finalizar').setStyle('Success')
-        );
-        return m.reply({ embeds:[okE('Checklist concluído! Clica em **Finalizar**.')], components:[fin] });
+        ticketState.awaitProof = false;
+      } else if (stepIndex === 3) {
+        if (message.attachments.size > 0) ticketState.step4HasImg = true;
+        if (message.content && message.content.length >= 25) {
+          ticketState.step4HasAddr = true;
+          ticketState.ltcAddress = message.content;
+        }
+        
+        client.ticketStates.set(message.channel.id, ticketState);
+        
+        if (!ticketState.step4HasImg || !ticketState.step4HasAddr) {
+          const missing = [];
+          if (!ticketState.step4HasImg) missing.push('**imagem do depósito**');
+          if (!ticketState.step4HasAddr) missing.push('**endereço LTC em texto**');
+          
+          return message.reply({
+            embeds: [EmbedFactory.error(`Ainda falta: ${missing.join(' e ')}`)]
+          });
+        }
+        ticketState.awaitProof = false;
+      }
+
+      if (!ticketState.awaitProof) {
+        client.ticketStates.set(message.channel.id, ticketState);
+
+        if (stepIndex + 1 < casino.checklist.length) {
+          return message.reply({
+            embeds: [EmbedFactory.success('Prova recebida! Clique em **Próximo Passo** para continuar.')],
+            components: [ComponentFactory.createButtonRow(ComponentFactory.nextStepButton())]
+          });
+        }
+        
+        return message.reply({
+          embeds: [EmbedFactory.success('Checklist concluído com sucesso! Clique em **Finalizar** para completar.')],
+          components: [ComponentFactory.createButtonRow(ComponentFactory.finishButton())]
+        });
       }
     }
   }
 };
 
-/* ── helper primeira pergunta checklist ── */
-function askChecklist(ch, st) {
-  const cfg = CASINOS[st.casino];
-  const embed = new EmbedBuilder().setColor(0x3498db).setThumbnail(ICONS.info)
-                .setDescription(`1/${cfg.checklist.length} — ${cfg.checklist[0]}`);
-  if (cfg.images && cfg.images[0]) embed.setImage(cfg.images[0]);
+function askChecklist(channel, ticketState) {
+  const casino = CASINOS[ticketState.casino];
+  const embed = EmbedFactory.checklist(
+    1,
+    casino.checklist.length,
+    casino.checklist[0],
+    casino.images?.[0]
+  );
 
-  ch.send({
-    embeds:[embed],
-    components:[ new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('proof_next').setLabel('Próximo passo').setStyle('Primary')
-    )]
+  channel.send({
+    embeds: [embed],
+    components: [ComponentFactory.createButtonRow(ComponentFactory.nextStepButton())]
   });
 }

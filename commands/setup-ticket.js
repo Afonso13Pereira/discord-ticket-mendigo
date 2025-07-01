@@ -1,87 +1,52 @@
 // commands/setup-tickets.js
 const {
   SlashCommandBuilder,
-  PermissionFlagsBits,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  EmbedBuilder
+  PermissionFlagsBits
 } = require('discord.js');
 
-const { cats } = require('../utils/categories');   // ← categorias dinâmicas
+const { cats } = require('../utils/categories');
+const EmbedFactory = require('../utils/embeds');
+const ComponentFactory = require('../utils/components');
+const { EMOJIS } = require('../config/constants');
 
-/* mapa texto → estilos do Discord */
-const styleMap = {
-  blue : ButtonStyle.Primary,
-  grey : ButtonStyle.Secondary,
-  green: ButtonStyle.Success,
-  red  : ButtonStyle.Danger
-};
-
-/* categorias “fixas” (sempre visíveis) */
-const STATIC_CATS = [
-  { id: 'Giveaways', label: 'Giveaways', emoji: '🎁', color: 'blue' },
-  { id: 'VIPS',      label: 'VIPS',      emoji: '👑', color: 'green' },
-  { id: 'Dúvidas',   label: 'Dúvidas',   emoji: '❓', color: 'grey' },
-  { id: 'Website',   label: 'Website',   emoji: '🌐', color: 'grey' },
-  { id: 'Outros',    label: 'Outros',    emoji: '📌', color: 'red'  }
+const STATIC_CATEGORIES = [
+  { id: 'Giveaways', label: 'Giveaways', emoji: EMOJIS.GIFT, color: 'blue' },
+  { id: 'VIPS', label: 'VIPS', emoji: EMOJIS.CROWN, color: 'green' },
+  { id: 'Dúvidas', label: 'Dúvidas', emoji: '❓', color: 'grey' },
+  { id: 'Website', label: 'Website', emoji: '🌐', color: 'grey' },
+  { id: 'Outros', label: 'Outros', emoji: '📌', color: 'red' }
 ];
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('setup-tickets')
-    .setDescription('Publica ou actualiza a mensagem principal dos tickets')
+    .setDescription('Publica ou atualiza a mensagem principal dos tickets')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
-  async execute(inter) {
+  async execute(interaction) {
+    const embed = EmbedFactory.ticket(
+      'Sistema de Suporte',
+      [
+        '**Bem-vindo ao nosso sistema de suporte!**',
+        '',
+        `${EMOJIS.STAR} Clique no botão que melhor descreve o seu pedido`,
+        `${EMOJIS.SHIELD} Suporte disponível 24/7`,
+        `${EMOJIS.DIAMOND} Resposta rápida e profissional`,
+        '',
+        '*Escolha uma categoria abaixo para começar:*'
+      ].join('\n')
+    );
 
-    /* ---------- constroi as rows de botões ---------- */
-    const rows = [];
-    let current = new ActionRowBuilder();
+    const components = ComponentFactory.categoryButtons(STATIC_CATEGORIES, cats);
 
-    /* 1) categorias estáticas */
-    for (const c of STATIC_CATS) {
-      current.addComponents(
-        new ButtonBuilder()
-          .setCustomId(`category_${c.id}`)
-          .setLabel(c.label)
-          .setStyle(styleMap[c.color])
-          .setEmoji(c.emoji)
-      );
-    }
-    rows.push(current);
+    await interaction.reply({ 
+      content: `${EMOJIS.SUCCESS} Mensagem de tickets atualizada com sucesso!`, 
+      flags: 64 
+    });
 
-    /* 2) categorias dinâmicas (máx 5 botões por row) */
-    current = new ActionRowBuilder();
-    for (const [id, cat] of Object.entries(cats)) {
-      if (!cat.active) continue;
-
-      if (current.components.length === 5) {          // inicia nova row
-        rows.push(current);
-        current = new ActionRowBuilder();
-      }
-
-      const btn = new ButtonBuilder()
-        .setCustomId(`category_${id}`)
-        .setLabel(cat.name)
-        .setStyle(styleMap[cat.color] || ButtonStyle.Secondary);
-
-      if (cat.emoji) btn.setEmoji(cat.emoji);
-      current.addComponents(btn);
-    }
-    if (current.components.length) rows.push(current);   // adiciona última row
-
-    /* ---------- envia a mensagem ---------- */
-    await inter.reply({ content: '(Mensagem actualizada)', flags: 64 });
-
-    await inter.channel.send({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(0x5865f2)
-          .setTitle('🛠️ Suporte • Tickets')
-          .setDescription('Clica no botão que melhor descreve o teu pedido:')
-      ],
-      components: rows
+    await interaction.channel.send({
+      embeds: [embed],
+      components: components
     });
   }
 };

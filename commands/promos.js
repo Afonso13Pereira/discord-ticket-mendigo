@@ -1,53 +1,110 @@
 const { SlashCommandBuilder, PermissionFlagsBits,
         ModalBuilder, TextInputBuilder, TextInputStyle,
-        ActionRowBuilder, EmbedBuilder } = require('discord.js');
+        ActionRowBuilder } = require('discord.js');
 const { promos, create, close, list } = require('../utils/promotions');
+const EmbedFactory = require('../utils/embeds');
+const { EMOJIS } = require('../config/constants');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('promos')
-    .setDescription('Gerir promo-flashes')
+    .setDescription('Gerir promoções flash')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-    .addSubcommand(s=>s.setName('create').setDescription('Criar promoção'))
-    .addSubcommand(s=>s.setName('activelist').setDescription('Listar promoções'))
-    .addSubcommand(s=>s.setName('close')
+    .addSubcommand(s => s.setName('create').setDescription('Criar nova promoção'))
+    .addSubcommand(s => s.setName('activelist').setDescription('Listar promoções ativas'))
+    .addSubcommand(s => s.setName('close')
         .setDescription('Fechar promoção')
-        .addStringOption(o=>o.setName('id').setDescription('ID').setRequired(true))),
+        .addStringOption(o => o.setName('id').setDescription('ID da promoção').setRequired(true))),
 
-  async execute(inter){
-    const sub=inter.options.getSubcommand();
-    if(sub==='create'){
-      const modal=new ModalBuilder().setCustomId('promo_create')
-        .setTitle('Criar promoção')
+  async execute(interaction) {
+    const subcommand = interaction.options.getSubcommand();
+
+    if (subcommand === 'create') {
+      const modal = new ModalBuilder()
+        .setCustomId('promo_create')
+        .setTitle(`${EMOJIS.FIRE} Criar Nova Promoção`)
         .addComponents(
           new ActionRowBuilder().addComponents(
-            new TextInputBuilder().setCustomId('pname').setLabel('Nome').setStyle(TextInputStyle.Short).setRequired(true)),
+            new TextInputBuilder()
+              .setCustomId('pname')
+              .setLabel('Nome da Promoção')
+              .setStyle(TextInputStyle.Short)
+              .setPlaceholder('Ex: Flash Promo Weekend')
+              .setRequired(true)
+          ),
           new ActionRowBuilder().addComponents(
-            new TextInputBuilder().setCustomId('pend').setLabel('Termina (AAAA-MM-DD HH:MM)').setStyle(TextInputStyle.Short)
-              .setPlaceholder('2025-12-31 23:30').setRequired(true)),
+            new TextInputBuilder()
+              .setCustomId('pend')
+              .setLabel('Data de Término (AAAA-MM-DD HH:MM)')
+              .setStyle(TextInputStyle.Short)
+              .setPlaceholder('2025-12-31 23:30')
+              .setRequired(true)
+          ),
           new ActionRowBuilder().addComponents(
-            new TextInputBuilder().setCustomId('pcasino').setLabel('Casino ("todos" ou nome)').setStyle(TextInputStyle.Short).setRequired(true)),
+            new TextInputBuilder()
+              .setCustomId('pcasino')
+              .setLabel('Casino ("todos" ou nome específico)')
+              .setStyle(TextInputStyle.Short)
+              .setPlaceholder('RioAce, BCGame, ou "todos"')
+              .setRequired(true)
+          ),
           new ActionRowBuilder().addComponents(
-            new TextInputBuilder().setCustomId('pcolor').setLabel('Cor (blue|grey|green|red)').setStyle(TextInputStyle.Short).setRequired(false)),
+            new TextInputBuilder()
+              .setCustomId('pcolor')
+              .setLabel('Cor do Botão (blue|grey|green|red)')
+              .setStyle(TextInputStyle.Short)
+              .setPlaceholder('blue')
+              .setRequired(false)
+          ),
           new ActionRowBuilder().addComponents(
-            new TextInputBuilder().setCustomId('pemoji').setLabel('Emoji (opcional)').setStyle(TextInputStyle.Short).setRequired(false))
+            new TextInputBuilder()
+              .setCustomId('pemoji')
+              .setLabel('Emoji (opcional)')
+              .setStyle(TextInputStyle.Short)
+              .setPlaceholder('🔥')
+              .setRequired(false)
+          )
         );
-      return inter.showModal(modal);
+      
+      return interaction.showModal(modal);
     }
 
-    if(sub==='activelist'){
-      const arr=list();
-      if(!arr.length) return inter.reply({content:'(nenhuma)',flags:64});
-      const lines=arr.slice(0,15).map(([id,p])=>{
-        const s=p.active?'🟢':'🔴';
-        return `${s} ${p.emoji||''} **${p.name}** \`${id}\` (fecha <t:${Math.floor(new Date(p.end)/1000)}:R>)`;
-      }).join('\n');
-      return inter.reply({embeds:[ new EmbedBuilder().setColor(0x3498db).setTitle('Promoções').setDescription(lines) ], flags:64});
+    if (subcommand === 'activelist') {
+      const promoList = list();
+      
+      if (!promoList.length) {
+        return interaction.reply({
+          embeds: [EmbedFactory.info('Nenhuma promoção encontrada', 'Lista de Promoções')],
+          flags: 64
+        });
+      }
+
+      const description = promoList.slice(0, 15).map(([id, promo]) => {
+        const status = promo.active ? EMOJIS.SUCCESS : EMOJIS.ERROR;
+        const emoji = promo.emoji || EMOJIS.FIRE;
+        return `${status} ${emoji} **${promo.name}**\n└ ID: \`${id}\` • Termina: <t:${Math.floor(new Date(promo.end)/1000)}:R>`;
+      }).join('\n\n');
+
+      const embed = EmbedFactory.primary(description, `${EMOJIS.FIRE} Lista de Promoções`);
+      
+      return interaction.reply({ embeds: [embed], flags: 64 });
     }
 
-    if(sub==='close'){
-      const id=inter.options.getString('id'); if(!promos[id]) return inter.reply({content:'ID inválido',flags:64});
-      close(id); return inter.reply({content:`Promo ${id} fechada.`,flags:64});
+    if (subcommand === 'close') {
+      const id = interaction.options.getString('id');
+      
+      if (!promos[id]) {
+        return interaction.reply({
+          embeds: [EmbedFactory.error('ID de promoção inválido')],
+          flags: 64
+        });
+      }
+
+      close(id);
+      return interaction.reply({
+        embeds: [EmbedFactory.success(`Promoção \`${id}\` foi fechada com sucesso`)],
+        flags: 64
+      });
     }
   }
 };

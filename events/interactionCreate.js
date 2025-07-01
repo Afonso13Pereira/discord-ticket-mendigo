@@ -1,246 +1,275 @@
 // events/interactionCreate.js
-/* eslint-disable no-case-declarations */
 require('dotenv').config();
 const {
-  ActionRowBuilder, ButtonBuilder, ButtonStyle,
   ChannelType, PermissionsBitField,
-  StringSelectMenuBuilder,
   ModalBuilder, TextInputBuilder, TextInputStyle,
-  EmbedBuilder, InteractionType
+  ActionRowBuilder, InteractionType
 } = require('discord.js');
 
-const CASINOS                         = require('./casinos');
-const { promos, create: createPromo,
-        refreshExpired }              = require('../utils/promotions');
-const { cats,   create: createCat   } = require('../utils/categories');
+const CASINOS = require('./casinos');
+const { promos, create: createPromo, refreshExpired } = require('../utils/promotions');
+const { cats, create: createCat } = require('../utils/categories');
+const EmbedFactory = require('../utils/embeds');
+const ComponentFactory = require('../utils/components');
+const { CHANNELS, EMOJIS } = require('../config/constants');
 
-/* canais fixos */
-const READY_CHANNEL_ID  = '1386488872799567902';
-const RESULT_CHANNEL_ID = '1386489439680987218';
+const CONFIRM_RX = /^sim[, ]*eu confirmo$/i;
 
-/* ícones */
-const ICONS = {
-  info  : 'https://i.imgur.com/9N6IwU6.png',
-  ok    : 'https://i.imgur.com/Vy6XWOm.png',
-  warn  : 'https://i.imgur.com/M8JAvLm.png',
-  error : 'https://i.imgur.com/8yZ4G8p.png'
-};
-const WELCOME_GIF = 'https://cliply.co/wp-content/uploads/2019/05/371905140_MEET_ROBOT_400px.gif';
-
-/* helpers */
-const okE  = t => new EmbedBuilder().setColor(0x2ecc71).setThumbnail(ICONS.ok)   .setDescription(t);
-const errE = t => new EmbedBuilder().setColor(0xe74c3c).setThumbnail(ICONS.error).setDescription(t);
-const infoE= t => new EmbedBuilder().setColor(0x3498db).setThumbnail(ICONS.info) .setDescription(t);
-
-const styleMap = { blue:ButtonStyle.Primary, grey:ButtonStyle.Secondary,
-                   green:ButtonStyle.Success, red:ButtonStyle.Danger };
 const findCasinoId = name =>
   Object.keys(CASINOS).find(id => id.toLowerCase() === name.toLowerCase()) || null;
 
-/* embed 18+ */
-const CONFIRM_EMBED = new EmbedBuilder()
-  .setColor(0xf1c40f)
-  .setThumbnail('https://gifmania.com.br/wp-content/uploads/2020/09/proibido_para_menores_gif.gif')
-  .setTitle('Confirmação de elegibilidade')
-  .setDescription([
-    'Escreve **`Sim, eu confirmo`** para aceitar:',
-    '• Tenho mais de 18 anos;',
-    '• Desejo reclamar o prémio;',
-    '• Assumo responsabilidade pelas minhas apostas;',
-    '• Reconheço risco de dependência.\n',
-    '*Apenas após a confirmação poderás continuar.*'
-  ].join('\n'));
-
-/* ═══════════════════════════════════════════════════════ */
 module.exports = {
   name: 'interactionCreate',
-  async execute(i, client) {
+  async execute(interaction, client) {
+    refreshExpired();
 
-    refreshExpired();                         // promo expiradas → inativas
-
-    /* Slash-commands */
-    if (i.isChatInputCommand()) {
-      const cmd = client.commands.get(i.commandName);
-      if (cmd) return cmd.execute(i, client);
+    // Slash Commands
+    if (interaction.isChatInputCommand()) {
+      const command = client.commands.get(interaction.commandName);
+      if (command) return command.execute(interaction, client);
     }
 
-    /* ───────── MODALS ───────── */
-
-    if (i.type === InteractionType.ModalSubmit) {
-      /* Promo create */
-      if (i.customId === 'promo_create') {
-        const name   = i.fields.getTextInputValue('pname').trim();
-        const endISO = i.fields.getTextInputValue('pend').trim();
-        const casino = i.fields.getTextInputValue('pcasino').trim();
-        const color  = (i.fields.getTextInputValue('pcolor')?.trim().toLowerCase() || 'grey');
-        const emoji  = (i.fields.getTextInputValue('pemoji')?.trim() || null);
-        const id     = createPromo(name,endISO,casino,color,emoji);
-        return i.reply({ content:`✅ Promo **${name}** criada (ID \`${id}\`).`, flags:64 });
+    // Modal Submissions
+    if (interaction.type === InteractionType.ModalSubmit) {
+      if (interaction.customId === 'promo_create') {
+        const name = interaction.fields.getTextInputValue('pname').trim();
+        const endISO = interaction.fields.getTextInputValue('pend').trim();
+        const casino = interaction.fields.getTextInputValue('pcasino').trim();
+        const color = interaction.fields.getTextInputValue('pcolor')?.trim().toLowerCase() || 'grey';
+        const emoji = interaction.fields.getTextInputValue('pemoji')?.trim() || null;
+        
+        const id = createPromo(name, endISO, casino, color, emoji);
+        
+        return interaction.reply({
+          embeds: [EmbedFactory.success(`Promoção **${name}** criada com sucesso!\nID: \`${id}\``)],
+          flags: 64
+        });
       }
 
-      /* Categoria create */
-      if (i.customId === 'cat_create') {
-        const name  = i.fields.getTextInputValue('cname').trim();
-        const color = (i.fields.getTextInputValue('ccolor')?.trim().toLowerCase() || 'grey');
-        const emoji = (i.fields.getTextInputValue('cemoji')?.trim() || null);
-        const id    = createCat(name,color,emoji);
-        return i.reply({ content:`✅ Categoria **${name}** criada (ID \`${id}\`).`, flags:64 });
+      if (interaction.customId === 'cat_create') {
+        const name = interaction.fields.getTextInputValue('cname').trim();
+        const color = interaction.fields.getTextInputValue('ccolor')?.trim().toLowerCase() || 'grey';
+        const emoji = interaction.fields.getTextInputValue('cemoji')?.trim() || null;
+        
+        const id = createCat(name, color, emoji);
+        
+        return interaction.reply({
+          embeds: [EmbedFactory.success(`Categoria **${name}** criada com sucesso!\nID: \`${id}\``)],
+          flags: 64
+        });
       }
     }
 
-    /* ───────── Abrir ticket (category_*) ───────── */
-    if (i.isButton() && i.customId.startsWith('category_')) {
-      const catId = i.customId.slice(9);
-      const cat   = cats[catId] || { name: catId, color:'grey', emoji:null };
+    // Category Buttons (Ticket Creation)
+    if (interaction.isButton() && interaction.customId.startsWith('category_')) {
+      const categoryId = interaction.customId.slice(9);
+      const category = cats[categoryId] || { name: categoryId, color: 'grey', emoji: null };
 
-      /* cria canal ticket-N */
-      const parent = i.guild.channels.cache
-        .find(c => c.name === cat.name && c.type === ChannelType.GuildCategory);
-      const num = Math.max(0,
-        ...i.guild.channels.cache.filter(c=>c.name?.startsWith('ticket-'))
-          .map(c=>parseInt(c.name.split('-')[1])||0)) + 1;
+      // Create ticket channel
+      const parentCategory = interaction.guild.channels.cache
+        .find(c => c.name === category.name && c.type === ChannelType.GuildCategory);
+      
+      const ticketNumber = Math.max(0,
+        ...interaction.guild.channels.cache
+          .filter(c => c.name?.startsWith('ticket-'))
+          .map(c => parseInt(c.name.split('-')[1]) || 0)
+      ) + 1;
 
-      const ticket = await i.guild.channels.create({
-        name:`ticket-${num}`,
+      const ticketChannel = await interaction.guild.channels.create({
+        name: `ticket-${ticketNumber}`,
         type: ChannelType.GuildText,
-        parent: parent?.id,
-        permissionOverwrites:[
-          { id:i.user.id, allow:[PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-          { id:i.guild.roles.everyone.id, deny:[PermissionsBitField.Flags.ViewChannel] }
+        parent: parentCategory?.id,
+        permissionOverwrites: [
+          {
+            id: interaction.user.id,
+            allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
+          },
+          {
+            id: interaction.guild.roles.everyone.id,
+            deny: [PermissionsBitField.Flags.ViewChannel]
+          }
         ]
       });
 
-      client.ticketStates.set(ticket.id,{ ownerTag:i.user.tag });
+      client.ticketStates.set(ticketChannel.id, { ownerTag: interaction.user.tag });
 
-      await ticket.send({
-        embeds:[ new EmbedBuilder().setColor(0x3498db).setTitle('Olá! Eu sou o bot 🤖')
-                 .setDescription('Segue as instruções abaixo para continuares.')
-                 .setImage(WELCOME_GIF) ]
+      // Send welcome message
+      await ticketChannel.send({
+        embeds: [EmbedFactory.welcome()]
       });
 
-      const supportRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('support_ticket').setLabel('Falar com suporte').setStyle(ButtonStyle.Danger)
+      const supportRow = ComponentFactory.createButtonRow(
+        ComponentFactory.supportButton()
       );
 
-      if (cat.name === 'Giveaways') {
-        const st = client.ticketStates.get(ticket.id); st.awaitConfirm = true; client.ticketStates.set(ticket.id, st);
-        await ticket.send({ embeds:[CONFIRM_EMBED], components:[supportRow] });
+      if (category.name === 'Giveaways') {
+        const ticketState = client.ticketStates.get(ticketChannel.id);
+        ticketState.awaitConfirm = true;
+        client.ticketStates.set(ticketChannel.id, ticketState);
+        
+        await ticketChannel.send({
+          embeds: [EmbedFactory.confirmation()],
+          components: [supportRow]
+        });
       } else {
-        await ticket.send({ components:[supportRow] });
+        await ticketChannel.send({ components: [supportRow] });
       }
-      return i.reply({ content:`Ticket criado: ${ticket}`, flags:64 });
+
+      return interaction.reply({
+        embeds: [EmbedFactory.success(`Ticket criado com sucesso: ${ticketChannel}`)],
+        flags: 64
+      });
     }
 
-    /* ───────── Botões tipo Giveaway ───────── */
-    if (i.isButton() && (i.customId.startsWith('gw_type_') || i.customId.startsWith('gw_promo_'))) {
-      try{ await i.deferUpdate(); }catch{}
-      const st = client.ticketStates.get(i.channel.id);
-      if (st.awaitConfirm) return;
+    // Giveaway Type and Promo Buttons
+    if (interaction.isButton() && (interaction.customId.startsWith('gw_type_') || interaction.customId.startsWith('gw_promo_'))) {
+      try { await interaction.deferUpdate(); } catch {}
+      
+      const ticketState = client.ticketStates.get(interaction.channel.id);
+      if (ticketState?.awaitConfirm) return;
 
-      /* promo dinâmica */
-      if (i.customId.startsWith('gw_promo_')) {
-        const pid = i.customId.split('_')[2];
-        const p   = promos[pid];
-        if (!p || !p.active || Date.now() > new Date(p.end))
-          return i.channel.send({ embeds:[errE('Esta promoção já terminou.')] });
-
-        st.gwType = `promo:${pid}`;
-
-        if (/todos/i.test(p.casino) || p.casino.includes(',')) {
-          st.casino=null; st.step=0; st.awaitProof=true; client.ticketStates.set(i.channel.id,st);
-          await i.channel.send({ embeds:[ okE(`Promoção **${p.name}** seleccionada! Escolhe o casino.`) ] });
-          return askCasino(i.channel);
+      if (interaction.customId.startsWith('gw_promo_')) {
+        const promoId = interaction.customId.split('_')[2];
+        const promo = promos[promoId];
+        
+        if (!promo || !promo.active || Date.now() > new Date(promo.end)) {
+          return interaction.channel.send({
+            embeds: [EmbedFactory.error('Esta promoção já terminou ou não está disponível')]
+          });
         }
 
-        const cid = findCasinoId(p.casino);
-        if (!cid) return i.channel.send({ embeds:[errE(`Casino **${p.casino}** não configurado.`)] });
+        ticketState.gwType = `promo:${promoId}`;
 
-        st.casino=cid; st.step=0; st.awaitProof=true; client.ticketStates.set(i.channel.id, st);
-        await i.channel.send({ embeds:[ okE(`Promoção **${p.name}** seleccionada em **${cid}**.`) ] });
-        return askChecklist(i.channel, st);
+        if (/todos/i.test(promo.casino) || promo.casino.includes(',')) {
+          ticketState.casino = null;
+          ticketState.step = 0;
+          ticketState.awaitProof = true;
+          client.ticketStates.set(interaction.channel.id, ticketState);
+          
+          await interaction.channel.send({
+            embeds: [EmbedFactory.success(`Promoção **${promo.name}** selecionada! Agora escolha o casino.`)]
+          });
+          return askCasino(interaction.channel);
+        }
+
+        const casinoId = findCasinoId(promo.casino);
+        if (!casinoId) {
+          return interaction.channel.send({
+            embeds: [EmbedFactory.error(`Casino **${promo.casino}** não está configurado`)]
+          });
+        }
+
+        ticketState.casino = casinoId;
+        ticketState.step = 0;
+        ticketState.awaitProof = true;
+        client.ticketStates.set(interaction.channel.id, ticketState);
+        
+        await interaction.channel.send({
+          embeds: [EmbedFactory.success(`Promoção **${promo.name}** selecionada para **${casinoId}**`)]
+        });
+        return askChecklist(interaction.channel, ticketState);
       }
 
-      /* fixos */
-      const type=i.customId.split('_')[2];
-      st.gwType=type; if(type==='gtb') st.prize=30; client.ticketStates.set(i.channel.id, st);
+      // Handle fixed giveaway types
+      const type = interaction.customId.split('_')[2];
+      ticketState.gwType = type;
+      if (type === 'gtb') ticketState.prize = 30;
+      client.ticketStates.set(interaction.channel.id, ticketState);
 
-      if(type==='telegram'){
-        return i.channel.send({ embeds:[ infoE('📩 Envia **código** + **print** da mensagem do bot.') ] });
+      if (type === 'telegram') {
+        return interaction.channel.send({
+          embeds: [EmbedFactory.info('📱 Envie o **código** + **print** da mensagem do bot Telegram')]
+        });
       }
-      return askCasino(i.channel);
+      return askCasino(interaction.channel);
     }
 
-    /* SELECT casino */
-    if (i.isStringSelectMenu() && i.customId==='select_casino'){
-      try{ await i.deferUpdate(); }catch{}
-      const choice=i.values[0];
-      if(choice==='none')
-        return i.followUp({ content:'Seleciona um casino válido.', flags:64 });
+    // Casino Selection
+    if (interaction.isStringSelectMenu() && interaction.customId === 'select_casino') {
+      try { await interaction.deferUpdate(); } catch {}
+      
+      const choice = interaction.values[0];
+      if (choice === 'none') {
+        return interaction.followUp({
+          embeds: [EmbedFactory.warning('Por favor, selecione um casino válido')],
+          flags: 64
+        });
+      }
 
-      const st=client.ticketStates.get(i.channel.id);
-      st.casino=choice; st.step=0; st.awaitProof=true; client.ticketStates.set(i.channel.id, st);
-      return askChecklist(i.channel, st);
+      const ticketState = client.ticketStates.get(interaction.channel.id);
+      ticketState.casino = choice;
+      ticketState.step = 0;
+      ticketState.awaitProof = true;
+      client.ticketStates.set(interaction.channel.id, ticketState);
+      
+      return askChecklist(interaction.channel, ticketState);
     }
 
-    /* Próximo passo */
-    if (i.isButton() && i.customId==='proof_next') {
-      try{ await i.deferUpdate(); }catch{}
-      const st=client.ticketStates.get(i.channel.id);
-      if(!st || st.awaitProof)
-        return i.followUp({ embeds:[errE('Ainda falta enviar a prova.')], flags:64 });
+    // Next Step Button
+    if (interaction.isButton() && interaction.customId === 'proof_next') {
+      try { await interaction.deferUpdate(); } catch {}
+      
+      const ticketState = client.ticketStates.get(interaction.channel.id);
+      if (!ticketState || ticketState.awaitProof) {
+        return interaction.followUp({
+          embeds: [EmbedFactory.error('Ainda é necessário enviar a prova antes de continuar')],
+          flags: 64
+        });
+      }
 
-      st.step++; st.awaitProof=true; client.ticketStates.set(i.channel.id, st);
-      return askChecklist(i.channel, st);
+      ticketState.step++;
+      ticketState.awaitProof = true;
+      client.ticketStates.set(interaction.channel.id, ticketState);
+      
+      return askChecklist(interaction.channel, ticketState);
     }
 
-    /* suporte humano */
-    if (i.isButton() && i.customId==='support_ticket') {
-      try{ await i.deferUpdate(); }catch{}
-      const staff=await i.guild.channels.fetch(process.env.STAFF_CHANNEL_ID);
-      await staff.send(`🚨 ${i.channel} precisa de suporte — ${i.user.tag}`);
-      return i.followUp({ embeds:[okE('Equipe notificada!')], flags:64 });
+    // Support Button
+    if (interaction.isButton() && interaction.customId === 'support_ticket') {
+      try { await interaction.deferUpdate(); } catch {}
+      
+      const staffChannel = await interaction.guild.channels.fetch(CHANNELS.STAFF);
+      await staffChannel.send({
+        embeds: [EmbedFactory.warning(`${EMOJIS.SHIELD} Suporte solicitado em ${interaction.channel}\nUsuário: ${interaction.user.tag}`)]
+      });
+      
+      return interaction.followUp({
+        embeds: [EmbedFactory.success('Equipe de suporte foi notificada! Aguarde um momento.')],
+        flags: 64
+      });
     }
-
-    /* sendToReady / finalize (mantém no teu projecto) */
   }
 };
 
-/* ═════════════ HELPERS ═════════════ */
-function casinoOptions(){
-  return [
-    { label:'— Selecionar casino —', value:'none', emoji:'❓', default:true, disabled:true },
-    ...Object.values(CASINOS).map(c=>({ label:c.label, value:c.id, emoji:c.emoji||undefined }))
-  ];
-}
-function askCasino(ch){
-  ch.send({
-    embeds:[ new EmbedBuilder().setColor(0xf1c40f).setThumbnail(ICONS.warn)
-             .setDescription('⚠️ Selecciona o casino (sujeito a BAN se não cumprires).') ],
-    components:[
-      new ActionRowBuilder().addComponents(
-        new StringSelectMenuBuilder()
-          .setCustomId('select_casino')
-          .setPlaceholder('Seleciona o casino')
-          .addOptions(casinoOptions())
-      )
-    ]
+// Helper Functions
+function askCasino(channel) {
+  channel.send({
+    embeds: [EmbedFactory.casino(
+      'Seleção de Casino',
+      `${EMOJIS.WARNING} **Importante:** Selecione o casino correto\n${EMOJIS.SHIELD} Sujeito a BAN se não cumprir as regras`
+    )],
+    components: [ComponentFactory.casinoSelectMenu(CASINOS)]
   });
 }
-function askChecklist(ch, st){
-  const cfg=CASINOS[st.casino];
-  if(!cfg) return ch.send({ embeds:[errE('Casino não configurado.')] });
 
-  const idx=st.step??0;
-  const embed=new EmbedBuilder().setColor(0x3498db).setThumbnail(ICONS.info)
-               .setDescription(`${idx+1}/${cfg.checklist.length} — ${cfg.checklist[idx]}`);
-  if(cfg.images && cfg.images[idx]) embed.setImage(cfg.images[idx]);
+function askChecklist(channel, ticketState) {
+  const casino = CASINOS[ticketState.casino];
+  if (!casino) {
+    return channel.send({
+      embeds: [EmbedFactory.error('Casino não configurado no sistema')]
+    });
+  }
 
-  ch.send({
-    embeds:[embed],
-    components:[
-      new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('proof_next').setLabel('Próximo passo').setStyle(ButtonStyle.Primary)
-      )
-    ]
+  const stepIndex = ticketState.step ?? 0;
+  const embed = EmbedFactory.checklist(
+    stepIndex + 1,
+    casino.checklist.length,
+    casino.checklist[stepIndex],
+    casino.images?.[stepIndex]
+  );
+
+  channel.send({
+    embeds: [embed],
+    components: [ComponentFactory.createButtonRow(ComponentFactory.nextStepButton())]
   });
 }
