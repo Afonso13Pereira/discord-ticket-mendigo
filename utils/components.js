@@ -196,7 +196,7 @@ class ComponentFactory {
     );
   }
 
-  // === MOD BUTTONS ===
+  // === MOD BUTTONS (agora aparecem no ticket) ===
   static modButtons(submissionId) {
     return this.createButtonRow(
       this.createButton(`mod_approve_${submissionId}`, 'Aprovar', ButtonStyle.Success, '✅'),

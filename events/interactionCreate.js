@@ -417,6 +417,15 @@ module.exports = {
           embeds: [EmbedFactory.questionDescription()],
           components: [supportRow]
         });
+      } else if (category.name === 'Website') {
+        const currentState = client.ticketStates.get(ticketChannel.id);
+        currentState.awaitDescription = true;
+        await client.saveTicketState(ticketChannel.id, currentState);
+        
+        await ticketChannel.send({
+          embeds: [EmbedFactory.questionDescription()],
+          components: [supportRow]
+        });
       } else if (category.name === 'Outros') {
         const currentState = client.ticketStates.get(ticketChannel.id);
         currentState.awaitDescription = true;
@@ -599,25 +608,25 @@ module.exports = {
       // Send to mod channel
       const modChannel = await interaction.guild.channels.fetch(CHANNELS.MOD);
       const embed = EmbedFactory.submissionReady(ticketState.ticketNumber, ticketState.ownerTag, interaction.channel.id);
-      const components = [
-        ComponentFactory.submissionButtons(interaction.channel.id, ticketState.ticketNumber),
-        ComponentFactory.modButtons(submissionId)
-      ];
+      const components = ComponentFactory.submissionButtons(interaction.channel.id, ticketState.ticketNumber);
 
-      const submissionMessage = await modChannel.send({
+      await modChannel.send({
         embeds: [embed],
-        components: components
+        components: [components]
       });
 
       // Update submission with message info
-      await client.db.updateSubmission(submissionId, submissionMessage.id, modChannel.id, 'pending');
+      await client.db.updateSubmission(submissionId, null, modChannel.id, 'pending');
       
+      // Send mod buttons to the ticket itself (CORREÇÃO AQUI!)
+      const modButtons = ComponentFactory.modButtons(submissionId);
       await interaction.channel.send({
-        embeds: [EmbedFactory.success('Solicitação enviada para aprovação! Aguarde a análise da equipe.')]
+        embeds: [EmbedFactory.info('Solicitação enviada para aprovação! Aguarde a análise da equipe.')],
+        components: [modButtons]
       });
     }
 
-    // Mod Approve Button
+    // Mod Approve Button (agora no ticket)
     if (interaction.isButton() && interaction.customId.startsWith('mod_approve_')) {
       // Check if user has mod role
       if (!interaction.member.roles.cache.has(ROLES.MOD)) {
@@ -647,7 +656,7 @@ module.exports = {
       return interaction.showModal(modal);
     }
 
-    // Mod Reject Button
+    // Mod Reject Button (agora no ticket)
     if (interaction.isButton() && interaction.customId.startsWith('mod_reject_')) {
       // Check if user has mod role
       if (!interaction.member.roles.cache.has(ROLES.MOD)) {
