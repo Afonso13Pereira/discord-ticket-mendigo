@@ -26,7 +26,7 @@
     "casino": "Todos",
     "color": "grey",
     "emoji": "🌐",
-    "active": true,
+    "active": false,
     "created": 1750813964180
   }
 }
