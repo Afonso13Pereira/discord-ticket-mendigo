@@ -81,18 +81,44 @@ module.exports = {
         });
       }
 
+      // Extract prize from logs
       const prizeMatch = codeMessage.content.match(/prenda\s*:\s*(\d+)/i);
       if (prizeMatch) ticketState.prize = prizeMatch[1];
-      
-      ticketState.casino = 'RioAce';
-      ticketState.step = 0;
-      ticketState.awaitProof = true;
-      client.ticketStates.set(message.channel.id, ticketState);
-      
-      await message.reply({
-        embeds: [EmbedFactory.success('Código validado com sucesso! Casino: **RioAce**')]
-      });
-      return askChecklist(message.channel, ticketState);
+
+      // Extract casino from logs
+      const casinoMatch = codeMessage.content.match(/casino\s*:\s*([^\n\r]+)/i);
+      let logsCasino = casinoMatch ? casinoMatch[1].trim() : 'RioAce'; // default fallback
+
+      // Check if casino is "Todos" or specific
+      if (/todos/i.test(logsCasino)) {
+        // Casino is "Todos" - user can choose any casino
+        ticketState.step = 0;
+        ticketState.awaitProof = true;
+        client.ticketStates.set(message.channel.id, ticketState);
+        
+        await message.reply({
+          embeds: [EmbedFactory.success(`Código validado! Casino nas logs: **${logsCasino}** - Você pode escolher qualquer casino.`)]
+        });
+        return askCasino(message.channel);
+      } else {
+        // Casino is specific - find matching casino
+        const casinoId = findCasinoId(logsCasino);
+        if (!casinoId) {
+          return message.reply({
+            embeds: [EmbedFactory.error(`Casino **${logsCasino}** das logs não está configurado no sistema`)]
+          });
+        }
+
+        ticketState.casino = casinoId;
+        ticketState.step = 0;
+        ticketState.awaitProof = true;
+        client.ticketStates.set(message.channel.id, ticketState);
+        
+        await message.reply({
+          embeds: [EmbedFactory.success(`Código validado! Casino obrigatório: **${casinoId}**`)]
+        });
+        return askChecklist(message.channel, ticketState);
+      }
     }
 
     // Checklist Validation
@@ -147,13 +173,38 @@ module.exports = {
   }
 };
 
+// Helper Functions
+function findCasinoId(name) {
+  return Object.keys(CASINOS).find(id => 
+    id.toLowerCase() === name.toLowerCase() || 
+    CASINOS[id].label.toLowerCase() === name.toLowerCase()
+  ) || null;
+}
+
+function askCasino(channel) {
+  channel.send({
+    embeds: [EmbedFactory.casino(
+      'Seleção de Casino',
+      `${EMOJIS.STAR} **Você pode escolher qualquer casino!**\n${EMOJIS.WARNING} Selecione o casino onde deseja jogar\n${EMOJIS.SHIELD} Sujeito a BAN se não cumprir as regras`
+    )],
+    components: [ComponentFactory.casinoSelectMenu(CASINOS)]
+  });
+}
+
 function askChecklist(channel, ticketState) {
   const casino = CASINOS[ticketState.casino];
+  if (!casino) {
+    return channel.send({
+      embeds: [EmbedFactory.error('Casino não configurado no sistema')]
+    });
+  }
+
+  const stepIndex = ticketState.step ?? 0;
   const embed = EmbedFactory.checklist(
-    1,
+    stepIndex + 1,
     casino.checklist.length,
-    casino.checklist[0],
-    casino.images?.[0]
+    casino.checklist[stepIndex],
+    casino.images?.[stepIndex]
   );
 
   channel.send({
