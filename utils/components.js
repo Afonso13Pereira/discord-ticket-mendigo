@@ -37,6 +37,20 @@ class ComponentFactory {
     return this.createButton('support_ticket', 'Falar com Suporte', ButtonStyle.Danger, EMOJIS.SHIELD);
   }
 
+  static closeTicketButtons() {
+    return this.createButtonRow(
+      this.createButton('close_with_transcript', 'Fechar com Transcript', ButtonStyle.Success, '📋'),
+      this.createButton('close_delete_ticket', 'Eliminar Ticket', ButtonStyle.Danger, '🗑️')
+    );
+  }
+
+  static transcriptButtons(transcriptId) {
+    return this.createButtonRow(
+      this.createButton(`view_transcript_${transcriptId}`, 'Ver Transcript', ButtonStyle.Primary, '📋'),
+      this.createButton(`download_transcript_${transcriptId}`, 'Download', ButtonStyle.Secondary, '💾')
+    );
+  }
+
   static giveawayTypeButtons() {
     return this.createButtonRow(
       this.createButton('gw_type_telegram', 'Telegram', ButtonStyle.Primary, '📱'),

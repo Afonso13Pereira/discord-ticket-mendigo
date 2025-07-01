@@ -47,6 +47,19 @@ const ActionLogSchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now }
 });
 
+const TranscriptSchema = new mongoose.Schema({
+  transcriptId: { type: String, required: true, unique: true },
+  channelId: { type: String, required: true },
+  channelName: { type: String, required: true },
+  ownerTag: { type: String, required: true },
+  content: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+  expiresAt: { type: Date, required: true }
+});
+
+// Add index for automatic deletion
+TranscriptSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
 class DatabaseManager {
   constructor() {
     this.connected = false;
@@ -54,6 +67,7 @@ class DatabaseManager {
     this.Promotion = null;
     this.Category = null;
     this.ActionLog = null;
+    this.Transcript = null;
     this.connect();
   }
 
@@ -71,6 +85,7 @@ class DatabaseManager {
       this.Promotion = mongoose.model('Promotion', PromotionSchema, 'DiscordBot.promotions');
       this.Category = mongoose.model('Category', CategorySchema, 'DiscordBot.categories');
       this.ActionLog = mongoose.model('ActionLog', ActionLogSchema, 'DiscordBot.actionLogs');
+      this.Transcript = mongoose.model('Transcript', TranscriptSchema, 'DiscordBot.transcripts');
 
       this.connected = true;
       console.log('✅ Connected to MongoDB (mendigo/DiscordBot)');
@@ -269,6 +284,69 @@ class DatabaseManager {
     } catch (error) {
       console.error('Error getting categories:', error);
       return {};
+    }
+  }
+
+  // === TRANSCRIPTS ===
+  async saveTranscript(channelId, channelName, ownerTag, content, expirationDays = 14) {
+    if (!this.connected) return null;
+    
+    try {
+      const transcriptId = require('crypto').randomUUID().slice(0, 12);
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + expirationDays);
+      
+      const transcript = new this.Transcript({
+        transcriptId,
+        channelId,
+        channelName,
+        ownerTag,
+        content,
+        expiresAt
+      });
+      
+      await transcript.save();
+      return transcriptId;
+    } catch (error) {
+      console.error('Error saving transcript:', error);
+      return null;
+    }
+  }
+
+  async getTranscript(transcriptId) {
+    if (!this.connected) return null;
+    
+    try {
+      const doc = await this.Transcript.findOne({ transcriptId });
+      if (!doc) return null;
+      
+      return {
+        transcriptId: doc.transcriptId,
+        channelId: doc.channelId,
+        channelName: doc.channelName,
+        ownerTag: doc.ownerTag,
+        content: doc.content,
+        createdAt: doc.createdAt,
+        expiresAt: doc.expiresAt
+      };
+    } catch (error) {
+      console.error('Error getting transcript:', error);
+      return null;
+    }
+  }
+
+  async cleanupExpiredTranscripts() {
+    if (!this.connected) return 0;
+    
+    try {
+      const result = await this.Transcript.deleteMany({
+        expiresAt: { $lt: new Date() }
+      });
+      
+      return result.deletedCount;
+    } catch (error) {
+      console.error('Error cleaning up expired transcripts:', error);
+      return 0;
     }
   }
 

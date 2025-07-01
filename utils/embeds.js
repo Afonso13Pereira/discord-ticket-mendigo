@@ -140,6 +140,59 @@ class EmbedFactory {
     if (image) embed.setImage(image);
     return embed;
   }
+
+  static ticketClose() {
+    return new EmbedBuilder()
+      .setColor(COLORS.WARNING)
+      .setTitle(`${EMOJIS.WARNING} Fechar Ticket`)
+      .setDescription([
+        '**Como deseja proceder com este ticket?**',
+        '',
+        '📋 **Fechar com Transcript** - Salva todas as mensagens por 2 semanas',
+        '🗑️ **Eliminar Ticket** - Remove o canal permanentemente',
+        '',
+        `${EMOJIS.INFO} Transcripts expiram automaticamente após 2 semanas`
+      ].join('\n'))
+      .setTimestamp()
+      .setFooter({ text: 'Escolha uma opção abaixo' });
+  }
+
+  static transcriptCreated(transcriptId, channelName) {
+    return new EmbedBuilder()
+      .setColor(COLORS.SUCCESS)
+      .setTitle(`${EMOJIS.SUCCESS} Transcript Criado`)
+      .setDescription([
+        `**Transcript do canal #${channelName} foi salvo com sucesso!**`,
+        '',
+        `📋 **ID:** \`${transcriptId}\``,
+        `⏰ **Expira em:** <t:${Math.floor((Date.now() + 14 * 24 * 60 * 60 * 1000) / 1000)}:R>`,
+        `🔒 **Acesso:** Apenas staff autorizado`,
+        '',
+        `${EMOJIS.INFO} Use os botões abaixo para visualizar ou fazer download`
+      ].join('\n'))
+      .setTimestamp()
+      .setFooter({ text: 'Transcript • Expira em 2 semanas' });
+  }
+
+  static transcriptView(transcript) {
+    const embed = new EmbedBuilder()
+      .setColor(COLORS.INFO)
+      .setTitle(`📋 Transcript: #${transcript.channelName}`)
+      .setDescription([
+        `**Usuário:** ${transcript.ownerTag}`,
+        `**Criado:** <t:${Math.floor(transcript.createdAt.getTime() / 1000)}:F>`,
+        `**Expira:** <t:${Math.floor(transcript.expiresAt.getTime() / 1000)}:R>`,
+        '',
+        `**Prévia do conteúdo:**`,
+        '```',
+        transcript.content.substring(0, 1000) + (transcript.content.length > 1000 ? '...' : ''),
+        '```'
+      ].join('\n'))
+      .setTimestamp()
+      .setFooter({ text: `ID: ${transcript.transcriptId}` });
+    
+    return embed;
+  }
 }
 
 module.exports = EmbedFactory;

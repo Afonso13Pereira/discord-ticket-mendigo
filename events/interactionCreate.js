@@ -3,7 +3,7 @@ require('dotenv').config();
 const {
   ChannelType, PermissionsBitField,
   ModalBuilder, TextInputBuilder, TextInputStyle,
-  ActionRowBuilder, InteractionType
+  ActionRowBuilder, InteractionType, AttachmentBuilder
 } = require('discord.js');
 
 const CASINOS = require('./casinos');
@@ -11,6 +11,7 @@ const { promos, create: createPromo, refreshExpired } = require('../utils/promot
 const { cats, create: createCat } = require('../utils/categories');
 const EmbedFactory = require('../utils/embeds');
 const ComponentFactory = require('../utils/components');
+const TranscriptManager = require('../utils/transcripts');
 const { CHANNELS, EMOJIS } = require('../config/constants');
 
 const CONFIRM_RX = /^sim[, ]*eu confirmo$/i;
@@ -22,6 +23,9 @@ module.exports = {
   name: 'interactionCreate',
   async execute(interaction, client) {
     await refreshExpired();
+
+    // Initialize transcript manager
+    const transcriptManager = new TranscriptManager(client.db);
 
     // Slash Commands
     if (interaction.isChatInputCommand()) {
@@ -61,6 +65,124 @@ module.exports = {
         
         return interaction.reply({
           embeds: [EmbedFactory.success(`Categoria **${name}** criada com sucesso!\nID: \`${id}\``)],
+          flags: 64
+        });
+      }
+    }
+
+    // Close Ticket Buttons
+    if (interaction.isButton() && (interaction.customId === 'close_with_transcript' || interaction.customId === 'close_delete_ticket')) {
+      try { await interaction.deferReply({ flags: 64 }); } catch {}
+
+      const ticketState = client.ticketStates.get(interaction.channel.id);
+      
+      if (interaction.customId === 'close_with_transcript') {
+        try {
+          // Generate transcript
+          const transcriptId = await transcriptManager.generateTranscript(interaction.channel, ticketState || { ownerTag: 'Unknown' });
+          
+          // Log transcript creation
+          await client.db.logAction(interaction.channel.id, interaction.user.id, 'transcript_created', `ID: ${transcriptId}`);
+          
+          // Send transcript info to staff channel
+          const staffChannel = await interaction.guild.channels.fetch(CHANNELS.STAFF);
+          const embed = EmbedFactory.transcriptCreated(transcriptId, interaction.channel.name);
+          const components = ComponentFactory.transcriptButtons(transcriptId);
+          
+          await staffChannel.send({
+            embeds: [embed],
+            components: [components]
+          });
+
+          // Clean up ticket state
+          await client.deleteTicketState(interaction.channel.id);
+          
+          await interaction.editReply({
+            embeds: [EmbedFactory.success(`Transcript criado com ID: \`${transcriptId}\`\nCanal será eliminado em 10 segundos...`)]
+          });
+
+          // Delete channel after 10 seconds
+          setTimeout(async () => {
+            try {
+              await interaction.channel.delete();
+            } catch (error) {
+              console.error('Error deleting channel:', error);
+            }
+          }, 10000);
+
+        } catch (error) {
+          console.error('Error creating transcript:', error);
+          await interaction.editReply({
+            embeds: [EmbedFactory.error('Erro ao criar transcript. Tente novamente.')]
+          });
+        }
+      }
+
+      if (interaction.customId === 'close_delete_ticket') {
+        // Log ticket deletion
+        await client.db.logAction(interaction.channel.id, interaction.user.id, 'ticket_deleted', 'No transcript');
+        
+        // Clean up ticket state
+        await client.deleteTicketState(interaction.channel.id);
+        
+        await interaction.editReply({
+          embeds: [EmbedFactory.warning('Ticket será eliminado em 5 segundos...')]
+        });
+
+        // Delete channel after 5 seconds
+        setTimeout(async () => {
+          try {
+            await interaction.channel.delete();
+          } catch (error) {
+            console.error('Error deleting channel:', error);
+          }
+        }, 5000);
+      }
+
+      return;
+    }
+
+    // Transcript View/Download Buttons
+    if (interaction.isButton() && (interaction.customId.startsWith('view_transcript_') || interaction.customId.startsWith('download_transcript_'))) {
+      const transcriptId = interaction.customId.split('_')[2];
+      
+      if (interaction.customId.startsWith('view_transcript_')) {
+        const transcript = await client.db.getTranscript(transcriptId);
+        
+        if (!transcript) {
+          return interaction.reply({
+            embeds: [EmbedFactory.error('Transcript não encontrado ou expirado')],
+            flags: 64
+          });
+        }
+
+        const embed = EmbedFactory.transcriptView(transcript);
+        
+        return interaction.reply({
+          embeds: [embed],
+          flags: 64
+        });
+      }
+
+      if (interaction.customId.startsWith('download_transcript_')) {
+        const transcript = await client.db.getTranscript(transcriptId);
+        
+        if (!transcript) {
+          return interaction.reply({
+            embeds: [EmbedFactory.error('Transcript não encontrado ou expirado')],
+            flags: 64
+          });
+        }
+
+        // Create text file attachment
+        const buffer = Buffer.from(transcript.content, 'utf-8');
+        const attachment = new AttachmentBuilder(buffer, {
+          name: `transcript-${transcript.channelName}-${transcriptId}.txt`
+        });
+
+        return interaction.reply({
+          embeds: [EmbedFactory.success(`Download do transcript **${transcript.channelName}**`)],
+          files: [attachment],
           flags: 64
         });
       }

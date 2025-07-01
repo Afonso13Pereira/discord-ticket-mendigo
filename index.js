@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { Client, GatewayIntentBits, Partials, Collection } = require('discord.js');
 const DatabaseManager = require('./utils/database');
+const TranscriptManager = require('./utils/transcripts');
 
 const client = new Client({
   intents: [
@@ -69,12 +70,17 @@ for (const file of fs.readdirSync(eventsPath).filter(f => f.endsWith('.js'))) {
   else client.on(evt.name, (...args) => evt.execute(...args, client));
 }
 
-// Cleanup old tickets daily
+// Cleanup old tickets and transcripts daily
 setInterval(async () => {
   try {
-    const cleaned = await db.cleanupOldTickets(7);
-    if (cleaned > 0) {
-      console.log(`🧹 Cleaned up ${cleaned} old ticket states from MongoDB`);
+    const cleanedTickets = await db.cleanupOldTickets(7);
+    const cleanedTranscripts = await db.cleanupExpiredTranscripts();
+    
+    if (cleanedTickets > 0) {
+      console.log(`🧹 Cleaned up ${cleanedTickets} old ticket states from MongoDB`);
+    }
+    if (cleanedTranscripts > 0) {
+      console.log(`🧹 Cleaned up ${cleanedTranscripts} expired transcripts from MongoDB`);
     }
   } catch (error) {
     console.error('Error during cleanup:', error);
