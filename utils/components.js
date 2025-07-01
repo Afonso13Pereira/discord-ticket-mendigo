@@ -1,6 +1,6 @@
 // utils/components.js
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
-const { EMOJIS } = require('../config/constants');
+const { EMOJIS, VIP_CASINOS } = require('../config/constants');
 
 class ComponentFactory {
   static styleMap = {
@@ -56,6 +56,21 @@ class ComponentFactory {
       this.createButton('gw_type_telegram', 'Telegram', ButtonStyle.Primary, '📱'),
       this.createButton('gw_type_gtb', 'GTB', ButtonStyle.Secondary, EMOJIS.STAR),
       this.createButton('gw_type_other', 'Outro', ButtonStyle.Secondary, EMOJIS.GIFT)
+    );
+  }
+
+  static vipCasinoButtons() {
+    const buttons = VIP_CASINOS.map(casino => 
+      this.createButton(`vip_casino_${casino.id}`, casino.label, ButtonStyle.Primary, casino.emoji)
+    );
+    
+    return this.createButtonRow(...buttons);
+  }
+
+  static vipTypeButtons() {
+    return this.createButtonRow(
+      this.createButton('vip_type_semanal', 'Semanal', ButtonStyle.Primary, EMOJIS.STAR),
+      this.createButton('vip_type_leaderboard', 'Leaderboard', ButtonStyle.Success, EMOJIS.CROWN)
     );
   }
 
@@ -158,6 +173,15 @@ class ComponentFactory {
     }
 
     return rows;
+  }
+
+  static ticketLinkButton(channelId, ticketNumber) {
+    return this.createButton(
+      `goto_ticket_${channelId}`,
+      `Ir para Ticket #${ticketNumber}`,
+      ButtonStyle.Link,
+      '🎫'
+    ).setURL(`https://discord.com/channels/@me/${channelId}`);
   }
 }
 

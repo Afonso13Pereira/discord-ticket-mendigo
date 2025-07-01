@@ -82,6 +82,24 @@ class EmbedFactory {
       .setFooter({ text: 'Sistema de Giveaways' });
   }
 
+  static vip(title, description) {
+    return new EmbedBuilder()
+      .setColor(COLORS.PURPLE)
+      .setTitle(`${EMOJIS.VIP} ${title}`)
+      .setDescription(description)
+      .setTimestamp()
+      .setFooter({ text: 'Sistema VIP' });
+  }
+
+  static question(title, description) {
+    return new EmbedBuilder()
+      .setColor(COLORS.INFO)
+      .setTitle(`${EMOJIS.QUESTION} ${title}`)
+      .setDescription(description)
+      .setTimestamp()
+      .setFooter({ text: 'Sistema de Dúvidas' });
+  }
+
   static promo(promo) {
     const embed = new EmbedBuilder()
       .setColor(COLORS.PURPLE)
@@ -129,6 +147,82 @@ class EmbedFactory {
       .setFooter({ text: 'Confirmação Obrigatória +18' });
   }
 
+  static vipCasinoSelection() {
+    return new EmbedBuilder()
+      .setColor(COLORS.PURPLE)
+      .setTitle(`${EMOJIS.VIP} Seleção de Casino VIP`)
+      .setDescription([
+        '**Escolha o casino onde deseja reclamar o VIP:**',
+        '',
+        `${EMOJIS.DIAMOND} Casinos VIP disponíveis`,
+        `${EMOJIS.SHIELD} Suporte especializado`,
+        `${EMOJIS.STAR} Benefícios exclusivos`
+      ].join('\n'))
+      .setTimestamp()
+      .setFooter({ text: 'Sistema VIP' });
+  }
+
+  static vipTypeSelection() {
+    return new EmbedBuilder()
+      .setColor(COLORS.PURPLE)
+      .setTitle(`${EMOJIS.VIP} Tipo de VIP`)
+      .setDescription([
+        '**Escolha o tipo de VIP que deseja reclamar:**',
+        '',
+        `${EMOJIS.STAR} **Semanal** - VIP por uma semana`,
+        `${EMOJIS.CROWN} **Leaderboard** - VIP por posição no ranking`,
+        '',
+        `${EMOJIS.INFO} Cada tipo tem requisitos diferentes`
+      ].join('\n'))
+      .setTimestamp()
+      .setFooter({ text: 'Sistema VIP' });
+  }
+
+  static vipChecklist(step, total, description, type) {
+    const embed = new EmbedBuilder()
+      .setColor(COLORS.PURPLE)
+      .setTitle(`${EMOJIS.VIP} VIP ${type.toUpperCase()} - Passo ${step}/${total}`)
+      .setDescription(`**${description}**`)
+      .setTimestamp()
+      .setFooter({ text: `Progresso VIP: ${step}/${total} passos concluídos` });
+    
+    return embed;
+  }
+
+  static questionDescription() {
+    return new EmbedBuilder()
+      .setColor(COLORS.INFO)
+      .setTitle(`${EMOJIS.QUESTION} Descreva a sua Dúvida`)
+      .setDescription([
+        '**Por favor, descreva o seu problema da melhor forma possível:**',
+        '',
+        `${EMOJIS.INFO} Seja específico e detalhado`,
+        `${EMOJIS.STAR} Inclua capturas de ecrã se necessário`,
+        `${EMOJIS.SHIELD} A nossa equipa irá ajudá-lo`,
+        '',
+        '**Digite a sua dúvida abaixo:**'
+      ].join('\n'))
+      .setTimestamp()
+      .setFooter({ text: 'Sistema de Dúvidas' });
+  }
+
+  static otherHelp() {
+    return new EmbedBuilder()
+      .setColor(COLORS.SECONDARY)
+      .setTitle(`${EMOJIS.INFO} Como Podemos Ajudar?`)
+      .setDescription([
+        '**Em que podemos ajudá-lo hoje?**',
+        '',
+        `${EMOJIS.STAR} Descreva o que precisa`,
+        `${EMOJIS.SHIELD} A nossa equipa está aqui para ajudar`,
+        `${EMOJIS.DIAMOND} Suporte personalizado`,
+        '',
+        '**Digite a sua solicitação abaixo:**'
+      ].join('\n'))
+      .setTimestamp()
+      .setFooter({ text: 'Suporte Geral' });
+  }
+
   static checklist(step, total, description, image = null) {
     const embed = new EmbedBuilder()
       .setColor(COLORS.INFO)
@@ -157,14 +251,17 @@ class EmbedFactory {
       .setFooter({ text: 'Escolha uma opção abaixo' });
   }
 
-  static transcriptCreated(transcriptId, channelName) {
+  static transcriptCreated(transcriptId, channelName, ticketNumber, ownerTag, category) {
     return new EmbedBuilder()
       .setColor(COLORS.SUCCESS)
       .setTitle(`${EMOJIS.SUCCESS} Transcript Criado`)
       .setDescription([
-        `**Transcript do canal #${channelName} foi salvo com sucesso!**`,
+        `**Transcript do ticket #${ticketNumber} foi salvo com sucesso!**`,
         '',
         `📋 **ID:** \`${transcriptId}\``,
+        `🎫 **Ticket:** #${ticketNumber} (${channelName})`,
+        `👤 **Usuário:** ${ownerTag}`,
+        `📂 **Categoria:** ${category}`,
         `⏰ **Expira em:** <t:${Math.floor((Date.now() + 14 * 24 * 60 * 60 * 1000) / 1000)}:R>`,
         `🔒 **Acesso:** Apenas staff autorizado`,
         '',
@@ -177,9 +274,11 @@ class EmbedFactory {
   static transcriptView(transcript) {
     const embed = new EmbedBuilder()
       .setColor(COLORS.INFO)
-      .setTitle(`📋 Transcript: #${transcript.channelName}`)
+      .setTitle(`📋 Transcript: Ticket #${transcript.ticketNumber}`)
       .setDescription([
+        `**Canal:** #${transcript.channelName}`,
         `**Usuário:** ${transcript.ownerTag}`,
+        `**Categoria:** ${transcript.category}`,
         `**Criado:** <t:${Math.floor(transcript.createdAt.getTime() / 1000)}:F>`,
         `**Expira:** <t:${Math.floor(transcript.expiresAt.getTime() / 1000)}:R>`,
         '',
@@ -192,6 +291,58 @@ class EmbedFactory {
       .setFooter({ text: `ID: ${transcript.transcriptId}` });
     
     return embed;
+  }
+
+  static approvalRequest(ticketNumber, userTag, gwType, casino, prize) {
+    const embed = new EmbedBuilder()
+      .setColor(COLORS.WARNING)
+      .setTitle(`${EMOJIS.GIFT} Solicitação de Aprovação`)
+      .setDescription([
+        `**Ticket #${ticketNumber} pronto para aprovação**`,
+        '',
+        `👤 **Usuário:** ${userTag}`,
+        `🎁 **Tipo:** ${gwType}`,
+        casino ? `🎰 **Casino:** ${casino}` : '',
+        prize ? `💰 **Prémio:** ${prize}` : '',
+        '',
+        `${EMOJIS.THUMBSUP} Reaja com 👍 para aprovar`,
+        `${EMOJIS.ERROR} Reaja com ❌ para rejeitar`
+      ].filter(line => line).join('\n'))
+      .setTimestamp()
+      .setFooter({ text: 'Sistema de Aprovações' });
+    
+    return embed;
+  }
+
+  static approvalApproved(ticketNumber, userTag) {
+    return new EmbedBuilder()
+      .setColor(COLORS.SUCCESS)
+      .setTitle(`${EMOJIS.SUCCESS} Giveaway Aprovado`)
+      .setDescription([
+        `**Ticket #${ticketNumber} foi aprovado!**`,
+        '',
+        `👤 **Usuário:** ${userTag}`,
+        `✅ **Status:** Aprovado e notificado`,
+        `📨 **Mensagem:** Enviada automaticamente`
+      ].join('\n'))
+      .setTimestamp()
+      .setFooter({ text: 'Aprovação Concluída' });
+  }
+
+  static giveawayApproved() {
+    return new EmbedBuilder()
+      .setColor(COLORS.SUCCESS)
+      .setTitle(`${EMOJIS.SUCCESS} Giveaway Aprovado!`)
+      .setDescription([
+        '**Foi enviado <3**',
+        '',
+        'Assim que conseguires confirma que recebeste!',
+        'Sempre com juízo no casino!',
+        '',
+        'Se não tiveres mais questões podes fechar o ticket'
+      ].join('\n'))
+      .setTimestamp()
+      .setFooter({ text: 'Parabéns pelo seu prémio!' });
   }
 }
 

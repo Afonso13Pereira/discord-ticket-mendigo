@@ -33,7 +33,10 @@ class TranscriptManager {
       const transcriptId = await this.db.saveTranscript(
         channel.id,
         channel.name,
+        ticketState.ticketNumber || 0,
         ticketState.ownerTag,
+        ticketState.ownerId,
+        ticketState.category || 'unknown',
         transcript,
         14 // 14 days expiration
       );
@@ -52,7 +55,9 @@ class TranscriptManager {
       '═══════════════════════════════════════',
       '',
       `📋 Canal: #${channel.name}`,
+      `🎫 Ticket: #${ticketState.ticketNumber || 'N/A'}`,
       `👤 Usuário: ${ticketState.ownerTag}`,
+      `📂 Categoria: ${ticketState.category || 'unknown'}`,
       `📅 Data de Criação: ${new Date(channel.createdTimestamp).toLocaleString('pt-PT')}`,
       `📊 Total de Mensagens: ${messages.length}`,
       '',

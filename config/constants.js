@@ -34,7 +34,10 @@ module.exports = {
     DIAMOND: '💎',
     FIRE: '🔥',
     CROWN: '👑',
-    SHIELD: '🛡️'
+    SHIELD: '🛡️',
+    VIP: '💎',
+    QUESTION: '❓',
+    THUMBSUP: '👍'
   },
 
   ICONS: {
@@ -50,5 +53,15 @@ module.exports = {
     welcome: 'https://media.giphy.com/media/3oKIPnAiaMCws8nOsE/giphy.gif',
     celebration: 'https://media.giphy.com/media/26u4cqiYI30juCOGY/giphy.gif',
     loading: 'https://media.giphy.com/media/3oEjI6SIIHBdRxXI40/giphy.gif'
-  }
+  },
+
+  VIP_TYPES: {
+    SEMANAL: 'semanal',
+    LEADERBOARD: 'leaderboard'
+  },
+
+  VIP_CASINOS: [
+    { id: 'BCGame', label: 'BC.Game', emoji: '🎲' }
+    // Adicionar mais casinos VIP aqui conforme necessário
+  ]
 };

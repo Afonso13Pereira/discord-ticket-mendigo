@@ -12,12 +12,28 @@ const { cats, create: createCat } = require('../utils/categories');
 const EmbedFactory = require('../utils/embeds');
 const ComponentFactory = require('../utils/components');
 const TranscriptManager = require('../utils/transcripts');
-const { CHANNELS, EMOJIS } = require('../config/constants');
+const { CHANNELS, EMOJIS, VIP_TYPES, VIP_CASINOS } = require('../config/constants');
 
 const CONFIRM_RX = /^sim[, ]*eu confirmo$/i;
 
 const findCasinoId = name =>
   Object.keys(CASINOS).find(id => id.toLowerCase() === name.toLowerCase()) || null;
+
+const VIP_CHECKLISTS = {
+  semanal: [
+    "📱 Envie **print do perfil** com ID visível",
+    "💬 Envie o **ID em texto**",
+    "💰 Envie **prints dos depósitos**",
+    "💸 Envie **prints dos levantamentos**",
+    "🏦 Envie **prints dos cofres**",
+    "📥 Envie **print do depósito LTC** com QR visível"
+  ],
+  leaderboard: [
+    "📱 Envie **print da conta** com ID visível",
+    "💬 Envie o **ID em texto**",
+    "📥 Envie **print do depósito LTC** com QR visível"
+  ]
+};
 
 module.exports = {
   name: 'interactionCreate',
@@ -79,14 +95,25 @@ module.exports = {
       if (interaction.customId === 'close_with_transcript') {
         try {
           // Generate transcript
-          const transcriptId = await transcriptManager.generateTranscript(interaction.channel, ticketState || { ownerTag: 'Unknown' });
+          const transcriptId = await transcriptManager.generateTranscript(interaction.channel, ticketState || { 
+            ownerTag: 'Unknown', 
+            ownerId: 'Unknown',
+            ticketNumber: 0,
+            category: 'unknown'
+          });
           
           // Log transcript creation
           await client.db.logAction(interaction.channel.id, interaction.user.id, 'transcript_created', `ID: ${transcriptId}`);
           
           // Send transcript info to transcripts channel
           const transcriptsChannel = await interaction.guild.channels.fetch(CHANNELS.TRANSCRIPTS);
-          const embed = EmbedFactory.transcriptCreated(transcriptId, interaction.channel.name);
+          const embed = EmbedFactory.transcriptCreated(
+            transcriptId, 
+            interaction.channel.name,
+            ticketState?.ticketNumber || 0,
+            ticketState?.ownerTag || 'Unknown',
+            ticketState?.category || 'unknown'
+          );
           const components = ComponentFactory.transcriptButtons(transcriptId);
           
           await transcriptsChannel.send({
@@ -193,20 +220,24 @@ module.exports = {
       const categoryId = interaction.customId.slice(9);
       const category = cats[categoryId] || { name: categoryId, color: 'grey', emoji: null };
 
-      // Create ticket channel
-      const parentCategory = interaction.guild.channels.cache
-        .find(c => c.name === category.name && c.type === ChannelType.GuildCategory);
+      // Get next ticket number
+      const ticketNumber = await client.db.getNextTicketNumber();
+
+      // Find or create category channel
+      let parentCategory = interaction.guild.channels.cache
+        .find(c => c.name.toLowerCase() === category.name.toLowerCase() && c.type === ChannelType.GuildCategory);
       
-      const ticketNumber = Math.max(0,
-        ...interaction.guild.channels.cache
-          .filter(c => c.name?.startsWith('ticket-'))
-          .map(c => parseInt(c.name.split('-')[1]) || 0)
-      ) + 1;
+      if (!parentCategory) {
+        parentCategory = await interaction.guild.channels.create({
+          name: category.name,
+          type: ChannelType.GuildCategory
+        });
+      }
 
       const ticketChannel = await interaction.guild.channels.create({
         name: `ticket-${ticketNumber}`,
         type: ChannelType.GuildText,
-        parent: parentCategory?.id,
+        parent: parentCategory.id,
         permissionOverwrites: [
           {
             id: interaction.user.id,
@@ -219,11 +250,16 @@ module.exports = {
         ]
       });
 
-      const ticketState = { ownerTag: interaction.user.tag };
+      const ticketState = { 
+        ticketNumber,
+        ownerTag: interaction.user.tag,
+        ownerId: interaction.user.id,
+        category: category.name
+      };
       await client.saveTicketState(ticketChannel.id, ticketState);
 
       // Log ticket creation
-      await client.db.logAction(ticketChannel.id, interaction.user.id, 'ticket_created', `Category: ${category.name}`);
+      await client.db.logAction(ticketChannel.id, interaction.user.id, 'ticket_created', `Category: ${category.name}, Number: ${ticketNumber}`);
 
       // Send welcome message
       await ticketChannel.send({
@@ -234,6 +270,7 @@ module.exports = {
         ComponentFactory.supportButton()
       );
 
+      // Handle different category types
       if (category.name === 'Giveaways') {
         const currentState = client.ticketStates.get(ticketChannel.id);
         currentState.awaitConfirm = true;
@@ -243,14 +280,72 @@ module.exports = {
           embeds: [EmbedFactory.confirmation()],
           components: [supportRow]
         });
+      } else if (category.name === 'VIPS') {
+        await ticketChannel.send({
+          embeds: [EmbedFactory.vipCasinoSelection()],
+          components: [ComponentFactory.vipCasinoButtons(), supportRow]
+        });
+      } else if (category.name === 'Dúvidas') {
+        const currentState = client.ticketStates.get(ticketChannel.id);
+        currentState.awaitDescription = true;
+        await client.saveTicketState(ticketChannel.id, currentState);
+        
+        await ticketChannel.send({
+          embeds: [EmbedFactory.questionDescription()],
+          components: [supportRow]
+        });
+      } else if (category.name === 'Outros') {
+        const currentState = client.ticketStates.get(ticketChannel.id);
+        currentState.awaitDescription = true;
+        await client.saveTicketState(ticketChannel.id, currentState);
+        
+        await ticketChannel.send({
+          embeds: [EmbedFactory.otherHelp()],
+          components: [supportRow]
+        });
       } else {
         await ticketChannel.send({ components: [supportRow] });
       }
 
       return interaction.reply({
-        embeds: [EmbedFactory.success(`Ticket criado com sucesso: ${ticketChannel}`)],
+        embeds: [EmbedFactory.success(`Ticket #${ticketNumber} criado com sucesso: ${ticketChannel}`)],
         flags: 64
       });
+    }
+
+    // VIP Casino Selection
+    if (interaction.isButton() && interaction.customId.startsWith('vip_casino_')) {
+      try { await interaction.deferUpdate(); } catch {}
+      
+      const casinoId = interaction.customId.split('_')[2];
+      const ticketState = client.ticketStates.get(interaction.channel.id);
+      
+      ticketState.vipCasino = casinoId;
+      await client.saveTicketState(interaction.channel.id, ticketState);
+      
+      await interaction.channel.send({
+        embeds: [EmbedFactory.vipTypeSelection()],
+        components: [ComponentFactory.vipTypeButtons()]
+      });
+    }
+
+    // VIP Type Selection
+    if (interaction.isButton() && interaction.customId.startsWith('vip_type_')) {
+      try { await interaction.deferUpdate(); } catch {}
+      
+      const vipType = interaction.customId.split('_')[2];
+      const ticketState = client.ticketStates.get(interaction.channel.id);
+      
+      ticketState.vipType = vipType;
+      ticketState.step = 0;
+      ticketState.awaitProof = true;
+      await client.saveTicketState(interaction.channel.id, ticketState);
+      
+      await interaction.channel.send({
+        embeds: [EmbedFactory.success(`Tipo VIP **${vipType.toUpperCase()}** selecionado para **${ticketState.vipCasino}**!`)]
+      });
+      
+      return askVipChecklist(interaction.channel, ticketState);
     }
 
     // Giveaway Type and Promo Buttons
@@ -353,16 +448,62 @@ module.exports = {
       ticketState.awaitProof = true;
       await client.saveTicketState(interaction.channel.id, ticketState);
       
-      return askChecklist(interaction.channel, ticketState);
+      if (ticketState.vipType) {
+        return askVipChecklist(interaction.channel, ticketState);
+      } else {
+        return askChecklist(interaction.channel, ticketState);
+      }
+    }
+
+    // Finish Button
+    if (interaction.isButton() && interaction.customId === 'finish_ticket') {
+      try { await interaction.deferUpdate(); } catch {}
+      
+      const ticketState = client.ticketStates.get(interaction.channel.id);
+      
+      // Send to approval channel
+      const resultChannel = await interaction.guild.channels.fetch(CHANNELS.RESULT);
+      const embed = EmbedFactory.approvalRequest(
+        ticketState.ticketNumber,
+        ticketState.ownerTag,
+        ticketState.gwType || ticketState.vipType || 'unknown',
+        ticketState.casino || ticketState.vipCasino,
+        ticketState.prize
+      );
+      
+      const approvalMessage = await resultChannel.send({ embeds: [embed] });
+      
+      // Add reactions
+      await approvalMessage.react('👍');
+      await approvalMessage.react('❌');
+      
+      // Save approval to database
+      await client.db.saveApproval(
+        approvalMessage.id,
+        resultChannel.id,
+        interaction.channel.id,
+        ticketState.ticketNumber,
+        ticketState.ownerId,
+        ticketState.ownerTag,
+        ticketState.gwType || ticketState.vipType || 'unknown',
+        ticketState.casino || ticketState.vipCasino,
+        ticketState.prize
+      );
+      
+      await interaction.channel.send({
+        embeds: [EmbedFactory.success('Solicitação enviada para aprovação! Aguarde a análise da equipe.')]
+      });
     }
 
     // Support Button
     if (interaction.isButton() && interaction.customId === 'support_ticket') {
       try { await interaction.deferUpdate(); } catch {}
       
+      const ticketState = client.ticketStates.get(interaction.channel.id);
       const staffChannel = await interaction.guild.channels.fetch(CHANNELS.STAFF);
+      
       await staffChannel.send({
-        embeds: [EmbedFactory.warning(`${EMOJIS.SHIELD} Suporte solicitado em ${interaction.channel}\nUsuário: ${interaction.user.tag}`)]
+        embeds: [EmbedFactory.warning(`${EMOJIS.SHIELD} Suporte solicitado em ${interaction.channel}\nTicket: #${ticketState?.ticketNumber || 'N/A'}\nUsuário: ${interaction.user.tag}`)]
       });
       
       // Log support request
@@ -401,6 +542,36 @@ function askChecklist(channel, ticketState) {
     casino.checklist.length,
     casino.checklist[stepIndex],
     casino.images?.[stepIndex]
+  );
+
+  channel.send({
+    embeds: [embed],
+    components: [ComponentFactory.createButtonRow(ComponentFactory.nextStepButton())]
+  });
+}
+
+function askVipChecklist(channel, ticketState) {
+  const checklist = VIP_CHECKLISTS[ticketState.vipType];
+  if (!checklist) {
+    return channel.send({
+      embeds: [EmbedFactory.error('Tipo VIP não configurado no sistema')]
+    });
+  }
+
+  const stepIndex = ticketState.step ?? 0;
+  
+  if (stepIndex >= checklist.length) {
+    return channel.send({
+      embeds: [EmbedFactory.success('Checklist VIP concluído! Clique em **Finalizar** para enviar para aprovação.')],
+      components: [ComponentFactory.createButtonRow(ComponentFactory.finishButton())]
+    });
+  }
+
+  const embed = EmbedFactory.vipChecklist(
+    stepIndex + 1,
+    checklist.length,
+    checklist[stepIndex],
+    ticketState.vipType
   );
 
   channel.send({

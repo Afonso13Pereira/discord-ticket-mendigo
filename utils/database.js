@@ -3,18 +3,25 @@ const mongoose = require('mongoose');
 // Schemas
 const TicketStateSchema = new mongoose.Schema({
   channelId: { type: String, required: true, unique: true },
+  ticketNumber: { type: Number, required: true },
   ownerTag: { type: String, required: true },
+  ownerId: { type: String, required: true },
+  category: { type: String, required: true },
   gwType: { type: String, default: null },
+  vipType: { type: String, default: null },
+  vipCasino: { type: String, default: null },
   casino: { type: String, default: null },
   step: { type: Number, default: 0 },
   awaitConfirm: { type: Boolean, default: false },
   awaitProof: { type: Boolean, default: false },
+  awaitDescription: { type: Boolean, default: false },
   prize: { type: String, default: null },
   telegramCode: { type: String, default: null },
   telegramHasImg: { type: Boolean, default: false },
   step4HasImg: { type: Boolean, default: false },
   step4HasAddr: { type: Boolean, default: false },
   ltcAddress: { type: String, default: null },
+  description: { type: String, default: null },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
@@ -51,10 +58,32 @@ const TranscriptSchema = new mongoose.Schema({
   transcriptId: { type: String, required: true, unique: true },
   channelId: { type: String, required: true },
   channelName: { type: String, required: true },
+  ticketNumber: { type: Number, required: true },
   ownerTag: { type: String, required: true },
+  ownerId: { type: String, required: true },
+  category: { type: String, required: true },
   content: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
   expiresAt: { type: Date, required: true }
+});
+
+const TicketCounterSchema = new mongoose.Schema({
+  _id: { type: String, default: 'ticket_counter' },
+  count: { type: Number, default: 0 }
+});
+
+const ApprovalSchema = new mongoose.Schema({
+  messageId: { type: String, required: true, unique: true },
+  channelId: { type: String, required: true },
+  ticketChannelId: { type: String, required: true },
+  ticketNumber: { type: Number, required: true },
+  userId: { type: String, required: true },
+  userTag: { type: String, required: true },
+  gwType: { type: String, required: true },
+  casino: { type: String, default: null },
+  prize: { type: String, default: null },
+  approved: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now }
 });
 
 // Add index for automatic deletion
@@ -68,6 +97,8 @@ class DatabaseManager {
     this.Category = null;
     this.ActionLog = null;
     this.Transcript = null;
+    this.TicketCounter = null;
+    this.Approval = null;
     this.connect();
   }
 
@@ -86,12 +117,32 @@ class DatabaseManager {
       this.Category = mongoose.model('Category', CategorySchema, 'DiscordBot.categories');
       this.ActionLog = mongoose.model('ActionLog', ActionLogSchema, 'DiscordBot.actionLogs');
       this.Transcript = mongoose.model('Transcript', TranscriptSchema, 'DiscordBot.transcripts');
+      this.TicketCounter = mongoose.model('TicketCounter', TicketCounterSchema, 'DiscordBot.ticketCounter');
+      this.Approval = mongoose.model('Approval', ApprovalSchema, 'DiscordBot.approvals');
 
       this.connected = true;
       console.log('✅ Connected to MongoDB (mendigo/DiscordBot)');
     } catch (error) {
       console.error('❌ MongoDB connection error:', error);
       this.connected = false;
+    }
+  }
+
+  // === TICKET COUNTER ===
+  async getNextTicketNumber() {
+    if (!this.connected) return 1;
+    
+    try {
+      const counter = await this.TicketCounter.findOneAndUpdate(
+        { _id: 'ticket_counter' },
+        { $inc: { count: 1 } },
+        { upsert: true, new: true }
+      );
+      
+      return counter.count;
+    } catch (error) {
+      console.error('Error getting next ticket number:', error);
+      return Date.now() % 10000; // Fallback
     }
   }
 
@@ -104,18 +155,25 @@ class DatabaseManager {
         { channelId },
         {
           channelId,
+          ticketNumber: state.ticketNumber || 0,
           ownerTag: state.ownerTag || null,
+          ownerId: state.ownerId || null,
+          category: state.category || 'unknown',
           gwType: state.gwType || null,
+          vipType: state.vipType || null,
+          vipCasino: state.vipCasino || null,
           casino: state.casino || null,
           step: state.step || 0,
           awaitConfirm: state.awaitConfirm || false,
           awaitProof: state.awaitProof || false,
+          awaitDescription: state.awaitDescription || false,
           prize: state.prize || null,
           telegramCode: state.telegramCode || null,
           telegramHasImg: state.telegramHasImg || false,
           step4HasImg: state.step4HasImg || false,
           step4HasAddr: state.step4HasAddr || false,
           ltcAddress: state.ltcAddress || null,
+          description: state.description || null,
           updatedAt: new Date()
         },
         { upsert: true, new: true }
@@ -133,18 +191,25 @@ class DatabaseManager {
       if (!doc) return null;
       
       return {
+        ticketNumber: doc.ticketNumber,
         ownerTag: doc.ownerTag,
+        ownerId: doc.ownerId,
+        category: doc.category,
         gwType: doc.gwType,
+        vipType: doc.vipType,
+        vipCasino: doc.vipCasino,
         casino: doc.casino,
         step: doc.step,
         awaitConfirm: doc.awaitConfirm,
         awaitProof: doc.awaitProof,
+        awaitDescription: doc.awaitDescription,
         prize: doc.prize,
         telegramCode: doc.telegramCode,
         telegramHasImg: doc.telegramHasImg,
         step4HasImg: doc.step4HasImg,
         step4HasAddr: doc.step4HasAddr,
-        ltcAddress: doc.ltcAddress
+        ltcAddress: doc.ltcAddress,
+        description: doc.description
       };
     } catch (error) {
       console.error('Error getting ticket state:', error);
@@ -171,18 +236,25 @@ class DatabaseManager {
       
       docs.forEach(doc => {
         states.set(doc.channelId, {
+          ticketNumber: doc.ticketNumber,
           ownerTag: doc.ownerTag,
+          ownerId: doc.ownerId,
+          category: doc.category,
           gwType: doc.gwType,
+          vipType: doc.vipType,
+          vipCasino: doc.vipCasino,
           casino: doc.casino,
           step: doc.step,
           awaitConfirm: doc.awaitConfirm,
           awaitProof: doc.awaitProof,
+          awaitDescription: doc.awaitDescription,
           prize: doc.prize,
           telegramCode: doc.telegramCode,
           telegramHasImg: doc.telegramHasImg,
           step4HasImg: doc.step4HasImg,
           step4HasAddr: doc.step4HasAddr,
-          ltcAddress: doc.ltcAddress
+          ltcAddress: doc.ltcAddress,
+          description: doc.description
         });
       });
       
@@ -288,7 +360,7 @@ class DatabaseManager {
   }
 
   // === TRANSCRIPTS ===
-  async saveTranscript(channelId, channelName, ownerTag, content, expirationDays = 14) {
+  async saveTranscript(channelId, channelName, ticketNumber, ownerTag, ownerId, category, content, expirationDays = 14) {
     if (!this.connected) return null;
     
     try {
@@ -300,7 +372,10 @@ class DatabaseManager {
         transcriptId,
         channelId,
         channelName,
+        ticketNumber,
         ownerTag,
+        ownerId,
+        category,
         content,
         expiresAt
       });
@@ -324,7 +399,10 @@ class DatabaseManager {
         transcriptId: doc.transcriptId,
         channelId: doc.channelId,
         channelName: doc.channelName,
+        ticketNumber: doc.ticketNumber,
         ownerTag: doc.ownerTag,
+        ownerId: doc.ownerId,
+        category: doc.category,
         content: doc.content,
         createdAt: doc.createdAt,
         expiresAt: doc.expiresAt
@@ -347,6 +425,69 @@ class DatabaseManager {
     } catch (error) {
       console.error('Error cleaning up expired transcripts:', error);
       return 0;
+    }
+  }
+
+  // === APPROVALS ===
+  async saveApproval(messageId, channelId, ticketChannelId, ticketNumber, userId, userTag, gwType, casino = null, prize = null) {
+    if (!this.connected) return;
+    
+    try {
+      const approval = new this.Approval({
+        messageId,
+        channelId,
+        ticketChannelId,
+        ticketNumber,
+        userId,
+        userTag,
+        gwType,
+        casino,
+        prize
+      });
+      
+      await approval.save();
+    } catch (error) {
+      console.error('Error saving approval:', error);
+    }
+  }
+
+  async getApproval(messageId) {
+    if (!this.connected) return null;
+    
+    try {
+      const doc = await this.Approval.findOne({ messageId });
+      if (!doc) return null;
+      
+      return {
+        messageId: doc.messageId,
+        channelId: doc.channelId,
+        ticketChannelId: doc.ticketChannelId,
+        ticketNumber: doc.ticketNumber,
+        userId: doc.userId,
+        userTag: doc.userTag,
+        gwType: doc.gwType,
+        casino: doc.casino,
+        prize: doc.prize,
+        approved: doc.approved,
+        createdAt: doc.createdAt
+      };
+    } catch (error) {
+      console.error('Error getting approval:', error);
+      return null;
+    }
+  }
+
+  async updateApproval(messageId, approved = true) {
+    if (!this.connected) return;
+    
+    try {
+      await this.Approval.findOneAndUpdate(
+        { messageId },
+        { approved },
+        { new: true }
+      );
+    } catch (error) {
+      console.error('Error updating approval:', error);
     }
   }
 

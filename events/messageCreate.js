@@ -8,6 +8,22 @@ const { CHANNELS, EMOJIS } = require('../config/constants');
 
 const CONFIRM_RX = /^sim[, ]*eu confirmo$/i;
 
+const VIP_CHECKLISTS = {
+  semanal: [
+    "📱 Envie **print do perfil** com ID visível",
+    "💬 Envie o **ID em texto**",
+    "💰 Envie **prints dos depósitos**",
+    "💸 Envie **prints dos levantamentos**",
+    "🏦 Envie **prints dos cofres**",
+    "📥 Envie **print do depósito LTC** com QR visível"
+  ],
+  leaderboard: [
+    "📱 Envie **print da conta** com ID visível",
+    "💬 Envie o **ID em texto**",
+    "📥 Envie **print do depósito LTC** com QR visível"
+  ]
+};
+
 module.exports = {
   name: 'messageCreate',
   async execute(message, client) {
@@ -45,6 +61,89 @@ module.exports = {
       
       return message.reply({
         embeds: [EmbedFactory.error('Digite exatamente **"Sim, eu confirmo"** para prosseguir')]
+      });
+    }
+
+    // Description for Dúvidas and Outros
+    if (ticketState.awaitDescription) {
+      if (message.content.trim().length < 10) {
+        return message.reply({
+          embeds: [EmbedFactory.error('Por favor, forneça uma descrição mais detalhada (mínimo 10 caracteres)')]
+        });
+      }
+
+      ticketState.description = message.content.trim();
+      ticketState.awaitDescription = false;
+      await client.saveTicketState(message.channel.id, ticketState);
+
+      // Log description
+      await client.db.logAction(message.channel.id, message.author.id, 'description_provided', ticketState.description.substring(0, 100));
+
+      // Notify staff
+      const staffChannel = await message.guild.channels.fetch(CHANNELS.STAFF);
+      const embed = EmbedFactory.warning(
+        `**Novo ticket de ${ticketState.category}**\n\n` +
+        `🎫 **Ticket:** #${ticketState.ticketNumber}\n` +
+        `👤 **Usuário:** ${ticketState.ownerTag}\n` +
+        `📂 **Categoria:** ${ticketState.category}\n` +
+        `📝 **Descrição:** ${ticketState.description}\n\n` +
+        `📍 **Canal:** ${message.channel}`
+      );
+      
+      await staffChannel.send({ embeds: [embed] });
+
+      // If it's Website category, also notify website support
+      if (ticketState.category === 'Website') {
+        // Here you would integrate with your website notification system
+        console.log(`Website support notification: Ticket #${ticketState.ticketNumber} - ${ticketState.description}`);
+      }
+
+      return message.reply({
+        embeds: [EmbedFactory.success('Descrição recebida! A nossa equipe foi notificada e irá ajudá-lo em breve.')]
+      });
+    }
+
+    // VIP Checklist Validation
+    if (ticketState.vipType && ticketState.awaitProof) {
+      const checklist = VIP_CHECKLISTS[ticketState.vipType];
+      const stepIndex = ticketState.step;
+
+      // Handle ID text step (step 1 for both types)
+      if (stepIndex === 1) {
+        if (message.content.trim().length < 5) {
+          return message.reply({
+            embeds: [EmbedFactory.error('Por favor, envie o ID em texto (mínimo 5 caracteres)')]
+          });
+        }
+        ticketState.awaitProof = false;
+        await client.saveTicketState(message.channel.id, ticketState);
+      } else {
+        // Other steps require images
+        if (message.attachments.size === 0) {
+          return message.reply({
+            embeds: [EmbedFactory.error('Este passo requer o envio de uma **imagem**')]
+          });
+        }
+        ticketState.awaitProof = false;
+        await client.saveTicketState(message.channel.id, ticketState);
+      }
+
+      // Log step completion
+      await client.db.logAction(message.channel.id, message.author.id, 'vip_step_completed', `${ticketState.vipType} Step ${stepIndex + 1}`);
+
+      if (stepIndex + 1 < checklist.length) {
+        return message.reply({
+          embeds: [EmbedFactory.success('Prova recebida! Clique em **Próximo Passo** para continuar.')],
+          components: [ComponentFactory.createButtonRow(ComponentFactory.nextStepButton())]
+        });
+      }
+      
+      // VIP checklist completed
+      await client.db.logAction(message.channel.id, message.author.id, 'vip_checklist_completed', `Type: ${ticketState.vipType}, Casino: ${ticketState.vipCasino}`);
+      
+      return message.reply({
+        embeds: [EmbedFactory.success('Checklist VIP concluído com sucesso! Clique em **Finalizar** para completar.')],
+        components: [ComponentFactory.createButtonRow(ComponentFactory.finishButton())]
       });
     }
 
@@ -129,7 +228,7 @@ module.exports = {
     }
 
     // Checklist Validation
-    if (ticketState.casino && ticketState.awaitProof) {
+    if (ticketState.casino && ticketState.awaitProof && !ticketState.vipType) {
       const casino = CASINOS[ticketState.casino];
       const stepIndex = ticketState.step;
 
