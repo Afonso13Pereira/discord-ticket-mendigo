@@ -10,17 +10,15 @@ const CONFIRM_RX = /^sim[, ]*eu confirmo$/i;
 
 const VIP_CHECKLISTS = {
   semanal: [
-    "📱 Envie **print do perfil** com ID visível",
-    "💬 Envie o **ID em texto**",
+    "📱 Envie **print do perfil** com ID visível **e** o **ID em texto**",
     "💰 Envie **prints dos depósitos**",
     "💸 Envie **prints dos levantamentos**",
     "🏦 Envie **prints dos cofres**",
-    "📥 Envie **print do depósito LTC** com QR visível"
+    "📥 Envie **print do depósito LTC** com QR visível **e** o **endereço LTC em texto**"
   ],
   leaderboard: [
-    "📱 Envie **print da conta** com ID visível",
-    "💬 Envie o **ID em texto**",
-    "📥 Envie **print do depósito LTC** com QR visível"
+    "📱 Envie **print da conta** com ID visível **e** o **ID em texto**",
+    "📥 Envie **print do depósito LTC** com QR visível **e** o **endereço LTC em texto**"
   ]
 };
 
@@ -108,17 +106,40 @@ module.exports = {
       const checklist = VIP_CHECKLISTS[ticketState.vipType];
       const stepIndex = ticketState.step;
 
-      // Handle ID text step (step 1 for both types)
-      if (stepIndex === 1) {
-        if (message.content.trim().length < 5) {
+      // Handle combined steps (image + text)
+      if (stepIndex === 0 || (ticketState.vipType === 'semanal' && stepIndex === 4) || (ticketState.vipType === 'leaderboard' && stepIndex === 1)) {
+        // These steps require both image and text
+        if (message.attachments.size > 0) {
+          ticketState.step4HasImg = true;
+        }
+        if (message.content && message.content.trim().length >= 5) {
+          ticketState.step4HasAddr = true;
+          if (stepIndex === 0) {
+            ticketState.vipId = message.content.trim();
+          } else {
+            ticketState.ltcAddress = message.content.trim();
+          }
+        }
+        
+        await client.saveTicketState(message.channel.id, ticketState);
+        
+        if (!ticketState.step4HasImg || !ticketState.step4HasAddr) {
+          const missing = [];
+          if (!ticketState.step4HasImg) missing.push('**imagem**');
+          if (!ticketState.step4HasAddr) missing.push(stepIndex === 0 ? '**ID em texto**' : '**endereço LTC em texto**');
+          
           return message.reply({
-            embeds: [EmbedFactory.error('Por favor, envie o ID em texto (mínimo 5 caracteres)')]
+            embeds: [EmbedFactory.error(`Ainda falta: ${missing.join(' e ')}`)]
           });
         }
+        
+        // Reset flags for next step
+        ticketState.step4HasImg = false;
+        ticketState.step4HasAddr = false;
         ticketState.awaitProof = false;
         await client.saveTicketState(message.channel.id, ticketState);
       } else {
-        // Other steps require images
+        // Other steps require only images
         if (message.attachments.size === 0) {
           return message.reply({
             embeds: [EmbedFactory.error('Este passo requer o envio de uma **imagem**')]

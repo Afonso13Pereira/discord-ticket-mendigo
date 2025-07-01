@@ -21,18 +21,25 @@ const findCasinoId = name =>
 
 const VIP_CHECKLISTS = {
   semanal: [
-    "📱 Envie **print do perfil** com ID visível",
-    "💬 Envie o **ID em texto**",
+    "📱 Envie **print do perfil** com ID visível **e** o **ID em texto**",
     "💰 Envie **prints dos depósitos**",
     "💸 Envie **prints dos levantamentos**",
     "🏦 Envie **prints dos cofres**",
-    "📥 Envie **print do depósito LTC** com QR visível"
+    "📥 Envie **print do depósito LTC** com QR visível **e** o **endereço LTC em texto**"
   ],
   leaderboard: [
-    "📱 Envie **print da conta** com ID visível",
-    "💬 Envie o **ID em texto**",
-    "📥 Envie **print do depósito LTC** com QR visível"
+    "📱 Envie **print da conta** com ID visível **e** o **ID em texto**",
+    "📥 Envie **print do depósito LTC** com QR visível **e** o **endereço LTC em texto**"
   ]
+};
+
+// Category prefixes for ticket naming
+const CATEGORY_PREFIXES = {
+  'Giveaways': 'G',
+  'VIPS': 'V',
+  'Dúvidas': 'D',
+  'Website': 'W',
+  'Outros': 'O'
 };
 
 module.exports = {
@@ -223,6 +230,10 @@ module.exports = {
       // Get next ticket number
       const ticketNumber = await client.db.getNextTicketNumber();
 
+      // Generate ticket name with category prefix
+      const prefix = CATEGORY_PREFIXES[category.name] || category.name.toLowerCase();
+      const ticketName = `ticket-${prefix}${String(ticketNumber).padStart(4, '0')}`;
+
       // Find or create category channel
       let parentCategory = interaction.guild.channels.cache
         .find(c => c.name.toLowerCase() === category.name.toLowerCase() && c.type === ChannelType.GuildCategory);
@@ -235,7 +246,7 @@ module.exports = {
       }
 
       const ticketChannel = await interaction.guild.channels.create({
-        name: `ticket-${ticketNumber}`,
+        name: ticketName,
         type: ChannelType.GuildText,
         parent: parentCategory.id,
         permissionOverwrites: [
