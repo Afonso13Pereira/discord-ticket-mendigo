@@ -4,7 +4,8 @@ module.exports = {
     READY: '1386488872799567902',
     RESULT: '1386489439680987218',
     STAFF: process.env.STAFF_CHANNEL_ID,
-    LOGS: process.env.LOGS_CHANNEL_ID
+    LOGS: process.env.LOGS_CHANNEL_ID,
+    TRANSCRIPTS: process.env.TRANSCRIPTS_CHANNEL_ID
   },
 
   COLORS: {

@@ -84,12 +84,12 @@ module.exports = {
           // Log transcript creation
           await client.db.logAction(interaction.channel.id, interaction.user.id, 'transcript_created', `ID: ${transcriptId}`);
           
-          // Send transcript info to staff channel
-          const staffChannel = await interaction.guild.channels.fetch(CHANNELS.STAFF);
+          // Send transcript info to transcripts channel
+          const transcriptsChannel = await interaction.guild.channels.fetch(CHANNELS.TRANSCRIPTS);
           const embed = EmbedFactory.transcriptCreated(transcriptId, interaction.channel.name);
           const components = ComponentFactory.transcriptButtons(transcriptId);
           
-          await staffChannel.send({
+          await transcriptsChannel.send({
             embeds: [embed],
             components: [components]
           });
