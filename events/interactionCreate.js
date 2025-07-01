@@ -339,8 +339,8 @@ module.exports = {
       const categoryId = interaction.customId.slice(9);
       const category = cats[categoryId] || { name: categoryId, color: 'grey', emoji: null };
 
-      // Get next ticket number
-      const ticketNumber = await client.db.getNextTicketNumber();
+      // Get next ticket number for this category
+      const ticketNumber = await client.db.getNextTicketNumberForCategory(category.name);
 
       // Generate ticket name with category prefix
       const prefix = CATEGORY_PREFIXES[category.name] || category.name.toLowerCase();

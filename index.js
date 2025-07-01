@@ -4,6 +4,8 @@ const path = require('path');
 const { Client, GatewayIntentBits, Partials, Collection } = require('discord.js');
 const DatabaseManager = require('./utils/database');
 const TranscriptManager = require('./utils/transcripts');
+const EmbedFactory = require('./utils/embeds');
+const { CHANNELS } = require('./config/constants');
 
 const client = new Client({
   intents: [
@@ -48,6 +50,36 @@ async function deleteTicketState(channelId) {
   await db.deleteTicketState(channelId);
 }
 
+// Update statistics in stats channel
+async function updateStatistics() {
+  try {
+    const guild = client.guilds.cache.first();
+    if (!guild) return;
+
+    const statsChannel = await guild.channels.fetch(CHANNELS.STATS);
+    if (!statsChannel) return;
+
+    const stats = await db.getTicketStatistics();
+    if (!stats) return;
+
+    const embed = EmbedFactory.ticketStatistics(stats);
+    
+    // Clear channel and send new stats
+    const messages = await statsChannel.messages.fetch({ limit: 100 });
+    if (messages.size > 0) {
+      await statsChannel.bulkDelete(messages);
+    }
+    
+    await statsChannel.send({
+      embeds: [embed]
+    });
+
+    console.log('📊 Statistics updated in stats channel');
+  } catch (error) {
+    console.error('Error updating statistics:', error);
+  }
+}
+
 // Expose database functions to client
 client.saveTicketState = saveTicketState;
 client.deleteTicketState = deleteTicketState;
@@ -70,6 +102,9 @@ for (const file of fs.readdirSync(eventsPath).filter(f => f.endsWith('.js'))) {
   else client.on(evt.name, (...args) => evt.execute(...args, client));
 }
 
+// Update statistics every 30 minutes
+setInterval(updateStatistics, 30 * 60 * 1000);
+
 // Cleanup old tickets and transcripts daily
 setInterval(async () => {
   try {
@@ -90,6 +125,9 @@ setInterval(async () => {
 client.once('ready', () => {
   console.log(`✅ Bot online como ${client.user.tag}`);
   restoreTicketStates();
+  
+  // Update statistics on startup
+  setTimeout(updateStatistics, 5000); // Wait 5 seconds for everything to load
 });
 
 // Graceful shutdown

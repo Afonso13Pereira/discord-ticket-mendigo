@@ -382,6 +382,56 @@ class EmbedFactory {
       .setTimestamp()
       .setFooter({ text: 'Sistema de Revisões' });
   }
+
+  // === STATISTICS EMBED ===
+  static ticketStatistics(stats) {
+    const embed = new EmbedBuilder()
+      .setColor(COLORS.PRIMARY)
+      .setTitle(`${EMOJIS.CHART} Estatísticas dos Tickets`)
+      .setDescription([
+        `${EMOJIS.CALENDAR} **Tickets Criados por Período:**`,
+        `${EMOJIS.CLOCK} **Último dia:** ${stats.ticketsPeriod.last1Day}`,
+        `${EMOJIS.CLOCK} **Últimos 2 dias:** ${stats.ticketsPeriod.last2Days}`,
+        `${EMOJIS.CLOCK} **Últimos 7 dias:** ${stats.ticketsPeriod.last7Days}`,
+        `${EMOJIS.CLOCK} **Últimos 30 dias:** ${stats.ticketsPeriod.last30Days}`,
+        '',
+        `${EMOJIS.TICKET} **Tickets Ativos:** ${stats.activeTickets}`,
+        '',
+        `${EMOJIS.LOADING} **Submissões:**`,
+        `⏳ **Pendentes:** ${stats.submissions.pending}`,
+        `✅ **Aprovadas:** ${stats.submissions.approved}`,
+        `❌ **Rejeitadas:** ${stats.submissions.rejected}`,
+        `📊 **Total:** ${stats.submissions.total}`,
+        '',
+        `${EMOJIS.MONEY} **Aprovações:**`,
+        `⏳ **Pendentes:** ${stats.approvals.pending}`,
+        `💰 **Pagas:** ${stats.approvals.paid}`,
+        `🔍 **Em Revisão:** ${stats.approvals.review}`,
+        `📊 **Total:** ${stats.approvals.total}`,
+        '',
+        `📋 **Transcripts Criados (30 dias):** ${stats.transcriptsCreated}`
+      ].join('\n'))
+      .addFields(
+        {
+          name: `${EMOJIS.STAR} Tickets por Categoria (30 dias)`,
+          value: stats.ticketsByCategory.length > 0 
+            ? stats.ticketsByCategory.map(cat => `**${cat._id}:** ${cat.count}`).join('\n')
+            : 'Nenhum ticket encontrado',
+          inline: true
+        },
+        {
+          name: `${EMOJIS.DIAMOND} Contadores por Categoria`,
+          value: stats.categoryCounters.length > 0
+            ? stats.categoryCounters.map(cat => `**${cat.category}:** ${cat.count}`).join('\n')
+            : 'Nenhum contador encontrado',
+          inline: true
+        }
+      )
+      .setTimestamp()
+      .setFooter({ text: 'Estatísticas atualizadas automaticamente' });
+
+    return embed;
+  }
 }
 
 module.exports = EmbedFactory;

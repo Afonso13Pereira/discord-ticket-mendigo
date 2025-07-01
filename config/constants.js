@@ -7,7 +7,8 @@ module.exports = {
     LOGS: process.env.LOGS_CHANNEL_ID,
     TRANSCRIPTS: process.env.TRANSCRIPTS_CHANNEL_ID,
     MOD: process.env.MOD_CHANNEL_ID || '1386488872799567902',
-    APPROVE: process.env.APROVE_CHANNEL_ID || '1386489439680987218'
+    APPROVE: process.env.APROVE_CHANNEL_ID || '1386489439680987218',
+    STATS: process.env.STATS_CHANNEL_ID || '1389752510889332766'
   },
 
   ROLES: {
@@ -43,7 +44,10 @@ module.exports = {
     SHIELD: '🛡️',
     VIP: '💎',
     QUESTION: '❓',
-    THUMBSUP: '👍'
+    THUMBSUP: '👍',
+    CHART: '📊',
+    CLOCK: '🕐',
+    CALENDAR: '📅'
   },
 
   ICONS: {

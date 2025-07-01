@@ -68,8 +68,9 @@ const TranscriptSchema = new mongoose.Schema({
   expiresAt: { type: Date, required: true }
 });
 
-const TicketCounterSchema = new mongoose.Schema({
-  _id: { type: String, default: 'ticket_counter' },
+// NOVO: Schema para contadores por categoria
+const CategoryCounterSchema = new mongoose.Schema({
+  category: { type: String, required: true, unique: true },
   count: { type: Number, default: 0 }
 });
 
@@ -115,7 +116,7 @@ class DatabaseManager {
     this.Category = null;
     this.ActionLog = null;
     this.Transcript = null;
-    this.TicketCounter = null;
+    this.CategoryCounter = null;
     this.Submission = null;
     this.Approval = null;
     this.connect();
@@ -136,7 +137,7 @@ class DatabaseManager {
       this.Category = mongoose.model('Category', CategorySchema, 'DiscordBot.categories');
       this.ActionLog = mongoose.model('ActionLog', ActionLogSchema, 'DiscordBot.actionLogs');
       this.Transcript = mongoose.model('Transcript', TranscriptSchema, 'DiscordBot.transcripts');
-      this.TicketCounter = mongoose.model('TicketCounter', TicketCounterSchema, 'DiscordBot.ticketCounter');
+      this.CategoryCounter = mongoose.model('CategoryCounter', CategoryCounterSchema, 'DiscordBot.categoryCounters');
       this.Submission = mongoose.model('Submission', SubmissionSchema, 'DiscordBot.submissions');
       this.Approval = mongoose.model('Approval', ApprovalSchema, 'DiscordBot.approvals');
 
@@ -148,20 +149,20 @@ class DatabaseManager {
     }
   }
 
-  // === TICKET COUNTER ===
-  async getNextTicketNumber() {
+  // === CATEGORY COUNTERS ===
+  async getNextTicketNumberForCategory(category) {
     if (!this.connected) return 1;
     
     try {
-      const counter = await this.TicketCounter.findOneAndUpdate(
-        { _id: 'ticket_counter' },
+      const counter = await this.CategoryCounter.findOneAndUpdate(
+        { category },
         { $inc: { count: 1 } },
         { upsert: true, new: true }
       );
       
       return counter.count;
     } catch (error) {
-      console.error('Error getting next ticket number:', error);
+      console.error('Error getting next ticket number for category:', error);
       return Date.now() % 10000; // Fallback
     }
   }
@@ -431,6 +432,79 @@ class DatabaseManager {
       );
     } catch (error) {
       console.error('Error updating approval:', error);
+    }
+  }
+
+  // === STATISTICS ===
+  async getTicketStatistics() {
+    if (!this.connected) return null;
+    
+    try {
+      const now = new Date();
+      const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+      // Tickets criados por período
+      const ticketsLast1Day = await this.TicketState.countDocuments({ createdAt: { $gte: oneDayAgo } });
+      const ticketsLast2Days = await this.TicketState.countDocuments({ createdAt: { $gte: twoDaysAgo } });
+      const ticketsLast7Days = await this.TicketState.countDocuments({ createdAt: { $gte: sevenDaysAgo } });
+      const ticketsLast30Days = await this.TicketState.countDocuments({ createdAt: { $gte: thirtyDaysAgo } });
+
+      // Tickets por categoria (últimos 30 dias)
+      const ticketsByCategory = await this.TicketState.aggregate([
+        { $match: { createdAt: { $gte: thirtyDaysAgo } } },
+        { $group: { _id: '$category', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ]);
+
+      // Submissões pendentes
+      const pendingSubmissions = await this.Submission.countDocuments({ status: 'pending' });
+      const approvedSubmissions = await this.Submission.countDocuments({ status: 'approved' });
+      const rejectedSubmissions = await this.Submission.countDocuments({ status: 'rejected' });
+
+      // Aprovações pendentes
+      const pendingApprovals = await this.Approval.countDocuments({ status: 'pending' });
+      const paidApprovals = await this.Approval.countDocuments({ status: 'paid' });
+      const reviewApprovals = await this.Approval.countDocuments({ status: 'review' });
+
+      // Tickets ativos (ainda não fechados)
+      const activeTickets = await this.TicketState.countDocuments({});
+
+      // Transcripts criados (últimos 30 dias)
+      const transcriptsCreated = await this.Transcript.countDocuments({ createdAt: { $gte: thirtyDaysAgo } });
+
+      // Contadores por categoria
+      const categoryCounters = await this.CategoryCounter.find({}).sort({ count: -1 });
+
+      return {
+        ticketsPeriod: {
+          last1Day: ticketsLast1Day,
+          last2Days: ticketsLast2Days,
+          last7Days: ticketsLast7Days,
+          last30Days: ticketsLast30Days
+        },
+        ticketsByCategory,
+        submissions: {
+          pending: pendingSubmissions,
+          approved: approvedSubmissions,
+          rejected: rejectedSubmissions,
+          total: pendingSubmissions + approvedSubmissions + rejectedSubmissions
+        },
+        approvals: {
+          pending: pendingApprovals,
+          paid: paidApprovals,
+          review: reviewApprovals,
+          total: pendingApprovals + paidApprovals + reviewApprovals
+        },
+        activeTickets,
+        transcriptsCreated,
+        categoryCounters: categoryCounters.map(c => ({ category: c.category, count: c.count }))
+      };
+    } catch (error) {
+      console.error('Error getting ticket statistics:', error);
+      return null;
     }
   }
 
