@@ -20,17 +20,17 @@ module.exports = {
     if (ticketState.awaitConfirm) {
       if (CONFIRM_RX.test(message.content.trim())) {
         ticketState.awaitConfirm = false;
-        client.saveTicketState(message.channel.id, ticketState);
+        await client.saveTicketState(message.channel.id, ticketState);
 
         // Log confirmation
-        client.db.logAction(message.channel.id, message.author.id, 'age_confirmed', null);
+        await client.db.logAction(message.channel.id, message.author.id, 'age_confirmed', null);
 
         // Create giveaway type buttons
         const typeButtons = ComponentFactory.giveawayTypeButtons();
         const components = [typeButtons];
 
         // Add promo buttons
-        refreshExpired();
+        await refreshExpired();
         const promoButtons = ComponentFactory.promoButtons(promos);
         components.push(...promoButtons);
 
@@ -52,13 +52,13 @@ module.exports = {
     if (ticketState.gwType === 'telegram' && !ticketState.casino) {
       if (message.attachments.size > 0) {
         ticketState.telegramHasImg = true;
-        client.saveTicketState(message.channel.id, ticketState);
+        await client.saveTicketState(message.channel.id, ticketState);
       }
       
       const codeMatch = message.content.match(/[a-f0-9]{8}/i);
       if (codeMatch) {
         ticketState.telegramCode = codeMatch[0].toLowerCase();
-        client.saveTicketState(message.channel.id, ticketState);
+        await client.saveTicketState(message.channel.id, ticketState);
       }
 
       if (!ticketState.telegramCode || !ticketState.telegramHasImg) {
@@ -101,7 +101,7 @@ module.exports = {
         // Casino is "Todos" - user can choose any casino
         ticketState.step = 0;
         ticketState.awaitProof = true;
-        client.saveTicketState(message.channel.id, ticketState);
+        await client.saveTicketState(message.channel.id, ticketState);
         
         await message.reply({
           embeds: [EmbedFactory.success(`Código validado! Casino nas logs: **${logsCasino}** - Você pode escolher qualquer casino.`)]
@@ -119,7 +119,7 @@ module.exports = {
         ticketState.casino = casinoId;
         ticketState.step = 0;
         ticketState.awaitProof = true;
-        client.saveTicketState(message.channel.id, ticketState);
+        await client.saveTicketState(message.channel.id, ticketState);
         
         await message.reply({
           embeds: [EmbedFactory.success(`Código validado! Casino obrigatório: **${casinoId}**`)]
@@ -140,7 +140,7 @@ module.exports = {
           });
         }
         ticketState.awaitProof = false;
-        client.saveTicketState(message.channel.id, ticketState);
+        await client.saveTicketState(message.channel.id, ticketState);
       } else if (stepIndex === 3) {
         if (message.attachments.size > 0) {
           ticketState.step4HasImg = true;
@@ -150,7 +150,7 @@ module.exports = {
           ticketState.ltcAddress = message.content;
         }
         
-        client.saveTicketState(message.channel.id, ticketState);
+        await client.saveTicketState(message.channel.id, ticketState);
         
         if (!ticketState.step4HasImg || !ticketState.step4HasAddr) {
           const missing = [];
@@ -162,12 +162,12 @@ module.exports = {
           });
         }
         ticketState.awaitProof = false;
-        client.saveTicketState(message.channel.id, ticketState);
+        await client.saveTicketState(message.channel.id, ticketState);
       }
 
       if (!ticketState.awaitProof) {
         // Log step completion
-        client.db.logAction(message.channel.id, message.author.id, 'step_completed', `Step ${stepIndex + 1}`);
+        await client.db.logAction(message.channel.id, message.author.id, 'step_completed', `Step ${stepIndex + 1}`);
 
         if (stepIndex + 1 < casino.checklist.length) {
           return message.reply({
@@ -177,7 +177,7 @@ module.exports = {
         }
         
         // Log checklist completion
-        client.db.logAction(message.channel.id, message.author.id, 'checklist_completed', `Casino: ${ticketState.casino}`);
+        await client.db.logAction(message.channel.id, message.author.id, 'checklist_completed', `Casino: ${ticketState.casino}`);
         
         return message.reply({
           embeds: [EmbedFactory.success('Checklist concluído com sucesso! Clique em **Finalizar** para completar.')],

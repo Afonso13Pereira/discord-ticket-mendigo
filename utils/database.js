@@ -1,232 +1,320 @@
-const Database = require('better-sqlite3');
-const path = require('path');
+const mongoose = require('mongoose');
+
+// Schemas
+const TicketStateSchema = new mongoose.Schema({
+  channelId: { type: String, required: true, unique: true },
+  ownerTag: { type: String, required: true },
+  gwType: { type: String, default: null },
+  casino: { type: String, default: null },
+  step: { type: Number, default: 0 },
+  awaitConfirm: { type: Boolean, default: false },
+  awaitProof: { type: Boolean, default: false },
+  prize: { type: String, default: null },
+  telegramCode: { type: String, default: null },
+  telegramHasImg: { type: Boolean, default: false },
+  step4HasImg: { type: Boolean, default: false },
+  step4HasAddr: { type: Boolean, default: false },
+  ltcAddress: { type: String, default: null },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+const PromotionSchema = new mongoose.Schema({
+  promoId: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  endDate: { type: String, required: true },
+  casino: { type: String, required: true },
+  color: { type: String, default: 'grey' },
+  emoji: { type: String, default: null },
+  active: { type: Boolean, default: true },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const CategorySchema = new mongoose.Schema({
+  categoryId: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  color: { type: String, default: 'grey' },
+  emoji: { type: String, default: null },
+  active: { type: Boolean, default: true },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const ActionLogSchema = new mongoose.Schema({
+  channelId: { type: String, required: true },
+  userId: { type: String, required: true },
+  action: { type: String, required: true },
+  details: { type: String, default: null },
+  timestamp: { type: Date, default: Date.now }
+});
 
 class DatabaseManager {
   constructor() {
-    this.db = new Database(path.join(__dirname, '..', 'bot.db'));
-    this.initTables();
+    this.connected = false;
+    this.TicketState = null;
+    this.Promotion = null;
+    this.Category = null;
+    this.ActionLog = null;
+    this.connect();
   }
 
-  initTables() {
-    // Tabela para estados de tickets
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS ticket_states (
-        channel_id TEXT PRIMARY KEY,
-        owner_tag TEXT NOT NULL,
-        gw_type TEXT,
-        casino TEXT,
-        step INTEGER DEFAULT 0,
-        await_confirm BOOLEAN DEFAULT FALSE,
-        await_proof BOOLEAN DEFAULT FALSE,
-        prize TEXT,
-        telegram_code TEXT,
-        telegram_has_img BOOLEAN DEFAULT FALSE,
-        step4_has_img BOOLEAN DEFAULT FALSE,
-        step4_has_addr BOOLEAN DEFAULT FALSE,
-        ltc_address TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+  async connect() {
+    try {
+      const mongoUri = 'mongodb+srv://franciscop2004:MendigoTVAPI@mendigoapi.b8mvaps.mongodb.net/mendigo';
+      
+      await mongoose.connect(mongoUri, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true
+      });
 
-    // Tabela para promoções
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS promotions (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        end_date TEXT NOT NULL,
-        casino TEXT NOT NULL,
-        color TEXT DEFAULT 'grey',
-        emoji TEXT,
-        active BOOLEAN DEFAULT TRUE,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+      // Create models with collection names in DiscordBot folder structure
+      this.TicketState = mongoose.model('TicketState', TicketStateSchema, 'DiscordBot.ticketStates');
+      this.Promotion = mongoose.model('Promotion', PromotionSchema, 'DiscordBot.promotions');
+      this.Category = mongoose.model('Category', CategorySchema, 'DiscordBot.categories');
+      this.ActionLog = mongoose.model('ActionLog', ActionLogSchema, 'DiscordBot.actionLogs');
 
-    // Tabela para categorias
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS categories (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        color TEXT DEFAULT 'grey',
-        emoji TEXT,
-        active BOOLEAN DEFAULT TRUE,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    // Tabela para logs de ações
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS action_logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        channel_id TEXT,
-        user_id TEXT,
-        action TEXT,
-        details TEXT,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+      this.connected = true;
+      console.log('✅ Connected to MongoDB (mendigo/DiscordBot)');
+    } catch (error) {
+      console.error('❌ MongoDB connection error:', error);
+      this.connected = false;
+    }
   }
 
   // === TICKET STATES ===
-  saveTicketState(channelId, state) {
-    const stmt = this.db.prepare(`
-      INSERT OR REPLACE INTO ticket_states (
-        channel_id, owner_tag, gw_type, casino, step, await_confirm, 
-        await_proof, prize, telegram_code, telegram_has_img, 
-        step4_has_img, step4_has_addr, ltc_address, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-    `);
+  async saveTicketState(channelId, state) {
+    if (!this.connected) return;
     
-    stmt.run(
-      channelId,
-      state.ownerTag || null,
-      state.gwType || null,
-      state.casino || null,
-      state.step || 0,
-      state.awaitConfirm || false,
-      state.awaitProof || false,
-      state.prize || null,
-      state.telegramCode || null,
-      state.telegramHasImg || false,
-      state.step4HasImg || false,
-      state.step4HasAddr || false,
-      state.ltcAddress || null
-    );
+    try {
+      await this.TicketState.findOneAndUpdate(
+        { channelId },
+        {
+          channelId,
+          ownerTag: state.ownerTag || null,
+          gwType: state.gwType || null,
+          casino: state.casino || null,
+          step: state.step || 0,
+          awaitConfirm: state.awaitConfirm || false,
+          awaitProof: state.awaitProof || false,
+          prize: state.prize || null,
+          telegramCode: state.telegramCode || null,
+          telegramHasImg: state.telegramHasImg || false,
+          step4HasImg: state.step4HasImg || false,
+          step4HasAddr: state.step4HasAddr || false,
+          ltcAddress: state.ltcAddress || null,
+          updatedAt: new Date()
+        },
+        { upsert: true, new: true }
+      );
+    } catch (error) {
+      console.error('Error saving ticket state:', error);
+    }
   }
 
-  getTicketState(channelId) {
-    const stmt = this.db.prepare('SELECT * FROM ticket_states WHERE channel_id = ?');
-    const row = stmt.get(channelId);
+  async getTicketState(channelId) {
+    if (!this.connected) return null;
     
-    if (!row) return null;
-    
-    return {
-      ownerTag: row.owner_tag,
-      gwType: row.gw_type,
-      casino: row.casino,
-      step: row.step,
-      awaitConfirm: row.await_confirm,
-      awaitProof: row.await_proof,
-      prize: row.prize,
-      telegramCode: row.telegram_code,
-      telegramHasImg: row.telegram_has_img,
-      step4HasImg: row.step4_has_img,
-      step4HasAddr: row.step4_has_addr,
-      ltcAddress: row.ltc_address
-    };
+    try {
+      const doc = await this.TicketState.findOne({ channelId });
+      if (!doc) return null;
+      
+      return {
+        ownerTag: doc.ownerTag,
+        gwType: doc.gwType,
+        casino: doc.casino,
+        step: doc.step,
+        awaitConfirm: doc.awaitConfirm,
+        awaitProof: doc.awaitProof,
+        prize: doc.prize,
+        telegramCode: doc.telegramCode,
+        telegramHasImg: doc.telegramHasImg,
+        step4HasImg: doc.step4HasImg,
+        step4HasAddr: doc.step4HasAddr,
+        ltcAddress: doc.ltcAddress
+      };
+    } catch (error) {
+      console.error('Error getting ticket state:', error);
+      return null;
+    }
   }
 
-  deleteTicketState(channelId) {
-    const stmt = this.db.prepare('DELETE FROM ticket_states WHERE channel_id = ?');
-    stmt.run(channelId);
+  async deleteTicketState(channelId) {
+    if (!this.connected) return;
+    
+    try {
+      await this.TicketState.deleteOne({ channelId });
+    } catch (error) {
+      console.error('Error deleting ticket state:', error);
+    }
   }
 
-  getAllTicketStates() {
-    const stmt = this.db.prepare('SELECT * FROM ticket_states');
-    const rows = stmt.all();
+  async getAllTicketStates() {
+    if (!this.connected) return new Map();
     
-    const states = new Map();
-    rows.forEach(row => {
-      states.set(row.channel_id, {
-        ownerTag: row.owner_tag,
-        gwType: row.gw_type,
-        casino: row.casino,
-        step: row.step,
-        awaitConfirm: row.await_confirm,
-        awaitProof: row.await_proof,
-        prize: row.prize,
-        telegramCode: row.telegram_code,
-        telegramHasImg: row.telegram_has_img,
-        step4HasImg: row.step4_has_img,
-        step4HasAddr: row.step4_has_addr,
-        ltcAddress: row.ltc_address
+    try {
+      const docs = await this.TicketState.find({});
+      const states = new Map();
+      
+      docs.forEach(doc => {
+        states.set(doc.channelId, {
+          ownerTag: doc.ownerTag,
+          gwType: doc.gwType,
+          casino: doc.casino,
+          step: doc.step,
+          awaitConfirm: doc.awaitConfirm,
+          awaitProof: doc.awaitProof,
+          prize: doc.prize,
+          telegramCode: doc.telegramCode,
+          telegramHasImg: doc.telegramHasImg,
+          step4HasImg: doc.step4HasImg,
+          step4HasAddr: doc.step4HasAddr,
+          ltcAddress: doc.ltcAddress
+        });
       });
-    });
-    
-    return states;
+      
+      return states;
+    } catch (error) {
+      console.error('Error getting all ticket states:', error);
+      return new Map();
+    }
   }
 
   // === PROMOTIONS ===
-  savePromotion(id, promo) {
-    const stmt = this.db.prepare(`
-      INSERT OR REPLACE INTO promotions (id, name, end_date, casino, color, emoji, active)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
+  async savePromotion(id, promo) {
+    if (!this.connected) return;
     
-    stmt.run(id, promo.name, promo.end, promo.casino, promo.color || 'grey', promo.emoji, promo.active);
+    try {
+      await this.Promotion.findOneAndUpdate(
+        { promoId: id },
+        {
+          promoId: id,
+          name: promo.name,
+          endDate: promo.end,
+          casino: promo.casino,
+          color: promo.color || 'grey',
+          emoji: promo.emoji,
+          active: promo.active
+        },
+        { upsert: true, new: true }
+      );
+    } catch (error) {
+      console.error('Error saving promotion:', error);
+    }
   }
 
-  getPromotions() {
-    const stmt = this.db.prepare('SELECT * FROM promotions');
-    const rows = stmt.all();
+  async getPromotions() {
+    if (!this.connected) return {};
     
-    const promos = {};
-    rows.forEach(row => {
-      promos[row.id] = {
-        name: row.name,
-        end: row.end_date,
-        casino: row.casino,
-        color: row.color,
-        emoji: row.emoji,
-        active: row.active,
-        created: new Date(row.created_at).getTime()
-      };
-    });
-    
-    return promos;
+    try {
+      const docs = await this.Promotion.find({});
+      const promos = {};
+      
+      docs.forEach(doc => {
+        promos[doc.promoId] = {
+          name: doc.name,
+          end: doc.endDate,
+          casino: doc.casino,
+          color: doc.color,
+          emoji: doc.emoji,
+          active: doc.active,
+          created: doc.createdAt.getTime()
+        };
+      });
+      
+      return promos;
+    } catch (error) {
+      console.error('Error getting promotions:', error);
+      return {};
+    }
   }
 
   // === CATEGORIES ===
-  saveCategory(id, category) {
-    const stmt = this.db.prepare(`
-      INSERT OR REPLACE INTO categories (id, name, color, emoji, active)
-      VALUES (?, ?, ?, ?, ?)
-    `);
+  async saveCategory(id, category) {
+    if (!this.connected) return;
     
-    stmt.run(id, category.name, category.color || 'grey', category.emoji, category.active);
+    try {
+      await this.Category.findOneAndUpdate(
+        { categoryId: id },
+        {
+          categoryId: id,
+          name: category.name,
+          color: category.color || 'grey',
+          emoji: category.emoji,
+          active: category.active
+        },
+        { upsert: true, new: true }
+      );
+    } catch (error) {
+      console.error('Error saving category:', error);
+    }
   }
 
-  getCategories() {
-    const stmt = this.db.prepare('SELECT * FROM categories');
-    const rows = stmt.all();
+  async getCategories() {
+    if (!this.connected) return {};
     
-    const cats = {};
-    rows.forEach(row => {
-      cats[row.id] = {
-        name: row.name,
-        color: row.color,
-        emoji: row.emoji,
-        active: row.active,
-        created: new Date(row.created_at).getTime()
-      };
-    });
-    
-    return cats;
+    try {
+      const docs = await this.Category.find({});
+      const cats = {};
+      
+      docs.forEach(doc => {
+        cats[doc.categoryId] = {
+          name: doc.name,
+          color: doc.color,
+          emoji: doc.emoji,
+          active: doc.active,
+          created: doc.createdAt.getTime()
+        };
+      });
+      
+      return cats;
+    } catch (error) {
+      console.error('Error getting categories:', error);
+      return {};
+    }
   }
 
   // === LOGS ===
-  logAction(channelId, userId, action, details = null) {
-    const stmt = this.db.prepare(`
-      INSERT INTO action_logs (channel_id, user_id, action, details)
-      VALUES (?, ?, ?, ?)
-    `);
+  async logAction(channelId, userId, action, details = null) {
+    if (!this.connected) return;
     
-    stmt.run(channelId, userId, action, details);
+    try {
+      const log = new this.ActionLog({
+        channelId,
+        userId,
+        action,
+        details
+      });
+      
+      await log.save();
+    } catch (error) {
+      console.error('Error logging action:', error);
+    }
   }
 
   // === CLEANUP ===
-  cleanupOldTickets(daysOld = 7) {
-    const stmt = this.db.prepare(`
-      DELETE FROM ticket_states 
-      WHERE created_at < datetime('now', '-${daysOld} days')
-    `);
+  async cleanupOldTickets(daysOld = 7) {
+    if (!this.connected) return 0;
     
-    return stmt.run().changes;
+    try {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - daysOld);
+      
+      const result = await this.TicketState.deleteMany({
+        createdAt: { $lt: cutoffDate }
+      });
+      
+      return result.deletedCount;
+    } catch (error) {
+      console.error('Error cleaning up old tickets:', error);
+      return 0;
+    }
   }
 
-  close() {
-    this.db.close();
+  async close() {
+    if (this.connected) {
+      await mongoose.connection.close();
+      this.connected = false;
+      console.log('🔌 MongoDB connection closed');
+    }
   }
 }
 

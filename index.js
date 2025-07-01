@@ -21,23 +21,30 @@ const db = new DatabaseManager();
 client.ticketStates = new Map();
 
 // Restore ticket states from database on startup
-function restoreTicketStates() {
-  const savedStates = db.getAllTicketStates();
-  client.ticketStates = savedStates;
-  
-  console.log(`✅ Restored ${savedStates.size} ticket states from database`);
+async function restoreTicketStates() {
+  // Wait for database connection
+  setTimeout(async () => {
+    try {
+      const savedStates = await db.getAllTicketStates();
+      client.ticketStates = savedStates;
+      
+      console.log(`✅ Restored ${savedStates.size} ticket states from MongoDB`);
+    } catch (error) {
+      console.error('Error restoring ticket states:', error);
+    }
+  }, 2000); // Wait 2 seconds for DB connection
 }
 
 // Save ticket state to database
-function saveTicketState(channelId, state) {
+async function saveTicketState(channelId, state) {
   client.ticketStates.set(channelId, state);
-  db.saveTicketState(channelId, state);
+  await db.saveTicketState(channelId, state);
 }
 
 // Delete ticket state from database
-function deleteTicketState(channelId) {
+async function deleteTicketState(channelId) {
   client.ticketStates.delete(channelId);
-  db.deleteTicketState(channelId);
+  await db.deleteTicketState(channelId);
 }
 
 // Expose database functions to client
@@ -63,10 +70,14 @@ for (const file of fs.readdirSync(eventsPath).filter(f => f.endsWith('.js'))) {
 }
 
 // Cleanup old tickets daily
-setInterval(() => {
-  const cleaned = db.cleanupOldTickets(7);
-  if (cleaned > 0) {
-    console.log(`🧹 Cleaned up ${cleaned} old ticket states`);
+setInterval(async () => {
+  try {
+    const cleaned = await db.cleanupOldTickets(7);
+    if (cleaned > 0) {
+      console.log(`🧹 Cleaned up ${cleaned} old ticket states from MongoDB`);
+    }
+  } catch (error) {
+    console.error('Error during cleanup:', error);
   }
 }, 24 * 60 * 60 * 1000); // 24 hours
 
@@ -76,9 +87,9 @@ client.once('ready', () => {
 });
 
 // Graceful shutdown
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   console.log('🔄 Shutting down gracefully...');
-  db.close();
+  await db.close();
   client.destroy();
   process.exit(0);
 });

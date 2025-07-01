@@ -4,34 +4,37 @@ const DatabaseManager = require('./database');
 let db = null;
 let cats = {};
 
-function initDatabase() {
+async function initDatabase() {
   if (!db) {
     db = new DatabaseManager();
-    cats = db.getCategories();
+    // Wait a bit for connection to establish
+    setTimeout(async () => {
+      cats = await db.getCategories();
+    }, 1000);
   }
 }
 
-function create(name, color, emoji) {
-  initDatabase();
+async function create(name, color, emoji) {
+  await initDatabase();
   const id = randomUUID().slice(0, 8);
   const category = { name, color, emoji, active: true, created: Date.now() };
   
   cats[id] = category;
-  db.saveCategory(id, category);
+  await db.saveCategory(id, category);
   
   return id;
 }
 
-function close(id) {
-  initDatabase();
+async function close(id) {
+  await initDatabase();
   if (cats[id]) {
     cats[id].active = false;
-    db.saveCategory(id, cats[id]);
+    await db.saveCategory(id, cats[id]);
   }
 }
 
-function list() {
-  initDatabase();
+async function list() {
+  await initDatabase();
   return Object.entries(cats).sort((a, b) => b[1].created - a[1].created);
 }
 

@@ -21,7 +21,7 @@ const findCasinoId = name =>
 module.exports = {
   name: 'interactionCreate',
   async execute(interaction, client) {
-    refreshExpired();
+    await refreshExpired();
 
     // Slash Commands
     if (interaction.isChatInputCommand()) {
@@ -38,10 +38,10 @@ module.exports = {
         const color = interaction.fields.getTextInputValue('pcolor')?.trim().toLowerCase() || 'grey';
         const emoji = interaction.fields.getTextInputValue('pemoji')?.trim() || null;
         
-        const id = createPromo(name, endISO, casino, color, emoji);
+        const id = await createPromo(name, endISO, casino, color, emoji);
         
         // Log action
-        client.db.logAction(interaction.channel.id, interaction.user.id, 'promo_created', `ID: ${id}, Name: ${name}`);
+        await client.db.logAction(interaction.channel?.id || 'DM', interaction.user.id, 'promo_created', `ID: ${id}, Name: ${name}`);
         
         return interaction.reply({
           embeds: [EmbedFactory.success(`Promoção **${name}** criada com sucesso!\nID: \`${id}\``)],
@@ -54,10 +54,10 @@ module.exports = {
         const color = interaction.fields.getTextInputValue('ccolor')?.trim().toLowerCase() || 'grey';
         const emoji = interaction.fields.getTextInputValue('cemoji')?.trim() || null;
         
-        const id = createCat(name, color, emoji);
+        const id = await createCat(name, color, emoji);
         
         // Log action
-        client.db.logAction(interaction.channel.id, interaction.user.id, 'category_created', `ID: ${id}, Name: ${name}`);
+        await client.db.logAction(interaction.channel?.id || 'DM', interaction.user.id, 'category_created', `ID: ${id}, Name: ${name}`);
         
         return interaction.reply({
           embeds: [EmbedFactory.success(`Categoria **${name}** criada com sucesso!\nID: \`${id}\``)],
@@ -98,10 +98,10 @@ module.exports = {
       });
 
       const ticketState = { ownerTag: interaction.user.tag };
-      client.saveTicketState(ticketChannel.id, ticketState);
+      await client.saveTicketState(ticketChannel.id, ticketState);
 
       // Log ticket creation
-      client.db.logAction(ticketChannel.id, interaction.user.id, 'ticket_created', `Category: ${category.name}`);
+      await client.db.logAction(ticketChannel.id, interaction.user.id, 'ticket_created', `Category: ${category.name}`);
 
       // Send welcome message
       await ticketChannel.send({
@@ -115,7 +115,7 @@ module.exports = {
       if (category.name === 'Giveaways') {
         const currentState = client.ticketStates.get(ticketChannel.id);
         currentState.awaitConfirm = true;
-        client.saveTicketState(ticketChannel.id, currentState);
+        await client.saveTicketState(ticketChannel.id, currentState);
         
         await ticketChannel.send({
           embeds: [EmbedFactory.confirmation()],
@@ -154,7 +154,7 @@ module.exports = {
           ticketState.casino = null;
           ticketState.step = 0;
           ticketState.awaitProof = true;
-          client.saveTicketState(interaction.channel.id, ticketState);
+          await client.saveTicketState(interaction.channel.id, ticketState);
           
           await interaction.channel.send({
             embeds: [EmbedFactory.success(`Promoção **${promo.name}** selecionada! Agora escolha o casino.`)]
@@ -172,7 +172,7 @@ module.exports = {
         ticketState.casino = casinoId;
         ticketState.step = 0;
         ticketState.awaitProof = true;
-        client.saveTicketState(interaction.channel.id, ticketState);
+        await client.saveTicketState(interaction.channel.id, ticketState);
         
         await interaction.channel.send({
           embeds: [EmbedFactory.success(`Promoção **${promo.name}** selecionada para **${casinoId}**`)]
@@ -184,7 +184,7 @@ module.exports = {
       const type = interaction.customId.split('_')[2];
       ticketState.gwType = type;
       if (type === 'gtb') ticketState.prize = 30;
-      client.saveTicketState(interaction.channel.id, ticketState);
+      await client.saveTicketState(interaction.channel.id, ticketState);
 
       if (type === 'telegram') {
         return interaction.channel.send({
@@ -210,7 +210,7 @@ module.exports = {
       ticketState.casino = choice;
       ticketState.step = 0;
       ticketState.awaitProof = true;
-      client.saveTicketState(interaction.channel.id, ticketState);
+      await client.saveTicketState(interaction.channel.id, ticketState);
       
       return askChecklist(interaction.channel, ticketState);
     }
@@ -229,7 +229,7 @@ module.exports = {
 
       ticketState.step++;
       ticketState.awaitProof = true;
-      client.saveTicketState(interaction.channel.id, ticketState);
+      await client.saveTicketState(interaction.channel.id, ticketState);
       
       return askChecklist(interaction.channel, ticketState);
     }
@@ -244,7 +244,7 @@ module.exports = {
       });
       
       // Log support request
-      client.db.logAction(interaction.channel.id, interaction.user.id, 'support_requested', null);
+      await client.db.logAction(interaction.channel.id, interaction.user.id, 'support_requested', null);
       
       return interaction.followUp({
         embeds: [EmbedFactory.success('Equipe de suporte foi notificada! Aguarde um momento.')],
