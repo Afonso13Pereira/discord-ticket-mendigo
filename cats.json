@@ -1,0 +1,36 @@
+{
+  "1a4bcea8": {
+    "name": "FlashPromo Hexabet",
+    "active": false,
+    "created": 1750807428219
+  },
+  "a45f2aa8": {
+    "name": "OlympusCup",
+    "active": true,
+    "created": 1750808293574
+  },
+  "8b12cd1f": {
+    "name": "asdasd",
+    "active": true,
+    "created": 1750808807741
+  },
+  "dc08e40b": {
+    "name": "asdasdas",
+    "active": true,
+    "created": 1750809287625
+  },
+  "541a93ac": {
+    "name": "OlympusCup",
+    "color": "blue",
+    "emoji": "⚡",
+    "active": true,
+    "created": 1750813851528
+  },
+  "e7294e82": {
+    "name": "werrw",
+    "color": "grey",
+    "emoji": "zap",
+    "active": false,
+    "created": 1750813898988
+  }
+}
