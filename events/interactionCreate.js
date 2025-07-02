@@ -158,7 +158,8 @@ module.exports = {
           submission.userTag,
           submission.casino,
           prize,
-          submission.ltcAddress
+          submission.ltcAddress,
+          bcGameId
         );
 
         // Send to approval channel
@@ -858,12 +859,22 @@ module.exports = {
       // Update submission with message info
       await client.db.updateSubmission(submissionId, null, modChannel.id, 'pending');
       
-      // Send mod buttons to the ticket itself (APENAS VISÍVEL PARA MODS)
-      const modButtons = ComponentFactory.modButtons(submissionId);
-      await interaction.channel.send({
-        embeds: [EmbedFactory.info('Solicitação enviada para aprovação! Aguarde a análise da equipe.')],
-        components: [modButtons]
-      });
+      // CORREÇÃO CRÍTICA: Verificar se o usuário tem cargo MOD antes de mostrar botões
+      const hasMod = interaction.member.roles.cache.has(ROLES.MOD);
+      
+      if (hasMod) {
+        // Send mod buttons to the ticket itself (APENAS VISÍVEL PARA MODS)
+        const modButtons = ComponentFactory.modButtons(submissionId);
+        await interaction.channel.send({
+          embeds: [EmbedFactory.info('Solicitação enviada para aprovação! Aguarde a análise da equipe.')],
+          components: [modButtons]
+        });
+      } else {
+        // Para usuários normais, apenas mostrar mensagem sem botões
+        await interaction.channel.send({
+          embeds: [EmbedFactory.info('Solicitação enviada para aprovação! Aguarde a análise da equipe.')]
+        });
+      }
     }
 
     // Mod Approve Button (agora no ticket)
