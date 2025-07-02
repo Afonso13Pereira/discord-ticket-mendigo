@@ -136,8 +136,6 @@ class ComponentFactory {
     let currentRow = new ActionRowBuilder();
 
     console.log(`🔧 Building category buttons with ${staticCats.length} static categories`);
-    console.log(`🔧 Dynamic categories received:`, Object.keys(dynamicCats));
-    console.log(`🔧 Dynamic categories data:`, dynamicCats);
 
     // Add static categories
     for (const cat of staticCats) {
@@ -154,7 +152,6 @@ class ComponentFactory {
           cat.emoji
         )
       );
-      console.log(`➕ Added static category: ${cat.label} (${cat.id})`);
     }
 
     // CORREÇÃO CRÍTICA: Add dynamic categories (verificar se estão ativos)
@@ -162,10 +159,7 @@ class ComponentFactory {
     console.log(`🔧 Processing ${dynamicEntries.length} dynamic category entries`);
     
     for (const [id, cat] of dynamicEntries) {
-      console.log(`🔍 Checking dynamic category: ${cat.name} (${id}) - active: ${cat.active}`);
-      
       if (!cat.active) {
-        console.log(`⏭️ Skipping inactive category: ${cat.name} (${id})`);
         continue;
       }
 
@@ -182,7 +176,6 @@ class ComponentFactory {
           cat.emoji
         )
       );
-      console.log(`➕ Added dynamic category: ${cat.name} (${id})`);
     }
 
     if (currentRow.components.length > 0) {
@@ -201,7 +194,6 @@ class ComponentFactory {
 
     for (const [pid, promo] of Object.entries(promos)) {
       if (!promo.active || Date.now() > new Date(promo.end)) {
-        console.log(`⏭️ Skipping inactive/expired promo: ${promo.name} (${pid})`);
         continue;
       }
 
@@ -218,7 +210,6 @@ class ComponentFactory {
           promo.emoji || EMOJIS.FIRE
         )
       );
-      console.log(`➕ Added active promo: ${promo.name} (${pid})`);
     }
 
     if (currentRow.components.length > 0) {

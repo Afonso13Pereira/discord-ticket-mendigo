@@ -535,11 +535,8 @@ class DatabaseManager {
     if (!this.connected) return {};
     
     try {
-      console.log('🔍 Database: Getting promotions from MongoDB...');
       const docs = await this.Promotion.find({});
       const promos = {};
-      
-      console.log(`🔍 Database: Found ${docs.length} promotion documents`);
       
       docs.forEach(doc => {
         promos[doc.promoId] = {
@@ -551,10 +548,8 @@ class DatabaseManager {
           active: doc.active,
           created: doc.createdAt.getTime()
         };
-        console.log(`  📋 Promotion: ${doc.name} (${doc.promoId}) - active: ${doc.active}`);
       });
       
-      console.log(`✅ Database: Returning ${Object.keys(promos).length} promotions`);
       return promos;
     } catch (error) {
       console.error('❌ Database: Error getting promotions:', error);
@@ -567,9 +562,7 @@ class DatabaseManager {
     if (!this.connected) return;
     
     try {
-      console.log(`💾 Database: Saving category ${category.name} (${id}) to MongoDB...`);
-      
-      const result = await this.Category.findOneAndUpdate(
+      await this.Category.findOneAndUpdate(
         { categoryId: id },
         {
           categoryId: id,
@@ -580,8 +573,6 @@ class DatabaseManager {
         },
         { upsert: true, new: true }
       );
-      
-      console.log(`✅ Database: Category saved successfully:`, result.categoryId);
     } catch (error) {
       console.error('❌ Database: Error saving category:', error);
     }
@@ -591,11 +582,8 @@ class DatabaseManager {
     if (!this.connected) return {};
     
     try {
-      console.log('🔍 Database: Getting categories from MongoDB...');
       const docs = await this.Category.find({});
       const cats = {};
-      
-      console.log(`🔍 Database: Found ${docs.length} category documents`);
       
       docs.forEach(doc => {
         cats[doc.categoryId] = {
@@ -605,10 +593,8 @@ class DatabaseManager {
           active: doc.active,
           created: doc.createdAt.getTime()
         };
-        console.log(`  📋 Category: ${doc.name} (${doc.categoryId}) - active: ${doc.active}`);
       });
       
-      console.log(`✅ Database: Returning ${Object.keys(cats).length} categories`);
       return cats;
     } catch (error) {
       console.error('❌ Database: Error getting categories:', error);

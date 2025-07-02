@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const EmbedFactory = require('../utils/embeds');
 const { cats, refreshCategories, forceRefresh, getCategoriesFromDB } = require('../utils/categories');
-const { promos, refreshPromotions } = require('../utils/promotions');
+const { promos, refreshPromotions, forceRefresh: forceRefreshPromos, getPromotionsFromDB } = require('../utils/promotions');
 const { EMOJIS } = require('../config/constants');
 
 module.exports = {
@@ -68,15 +68,22 @@ module.exports = {
         // Get promotions from memory
         const memoryPromos = Object.keys(promos);
         
+        // Get promotions directly from database
+        const dbPromos = await getPromotionsFromDB();
+        const dbPromosKeys = Object.keys(dbPromos);
+        
         // Force refresh
-        await refreshPromotions();
+        await forceRefreshPromos();
         const refreshedPromos = Object.keys(promos);
         
         const embed = EmbedFactory.info([
           `**🧠 Promoções na Memória:** ${memoryPromos.length}`,
           memoryPromos.length > 0 ? memoryPromos.map(id => `• ${promos[id]?.name || 'Unknown'} (${id}) - active: ${promos[id]?.active}`).join('\n') : 'Nenhuma promoção na memória',
           '',
-          `**🔄 Após Refresh:** ${refreshedPromos.length}`,
+          `**💾 Promoções na Base de Dados:** ${dbPromosKeys.length}`,
+          dbPromosKeys.length > 0 ? dbPromosKeys.map(id => `• ${dbPromos[id]?.name || 'Unknown'} (${id}) - active: ${dbPromos[id]?.active}`).join('\n') : 'Nenhuma promoção na base de dados',
+          '',
+          `**🔄 Após Force Refresh:** ${refreshedPromos.length}`,
           refreshedPromos.length > 0 ? refreshedPromos.map(id => `• ${promos[id]?.name || 'Unknown'} (${id}) - active: ${promos[id]?.active}`).join('\n') : 'Nenhuma promoção após refresh'
         ].join('\n'), 'Debug das Promoções');
         
@@ -98,7 +105,7 @@ module.exports = {
       try {
         // Force refresh everything
         await forceRefresh();
-        await refreshPromotions();
+        await forceRefreshPromos();
         
         const categoriesCount = Object.keys(cats).length;
         const promosCount = Object.keys(promos).length;
