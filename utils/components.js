@@ -47,32 +47,38 @@ class ComponentFactory {
     return this.createButton('support_ticket', 'Falar com Suporte', ButtonStyle.Danger, EMOJIS.SHIELD);
   }
 
+  static closeTicketButton() {
+    return this.createButton('close_ticket_menu', 'Fechar Ticket', ButtonStyle.Secondary, '🔒');
+  }
+
   // === WEBSITE BUTTONS ===
   static websiteTypeButtons() {
     return this.createButtonRow(
       this.createButton('website_bug', 'Reportar Bug', ButtonStyle.Danger, '🐛'),
       this.createButton('website_redeem', 'Resgatar Redeem', ButtonStyle.Success, '🎁'),
-      this.supportButton()
+      this.supportButton(),
+      this.closeTicketButton()
     );
   }
 
   static redeemSelectButtons(redeems) {
     const buttons = [];
-    const maxButtons = Math.min(redeems.length, 5); // Máximo 5 botões por row
+    const maxButtons = Math.min(redeems.length, 3); // Máximo 3 botões para deixar espaço para suporte e fechar
     
     for (let i = 0; i < maxButtons; i++) {
       buttons.push(
         this.createButton(
           `select_redeem_${redeems[i].id}`,
-          `${i + 1}. ${redeems[i].itemName.substring(0, 20)}${redeems[i].itemName.length > 20 ? '...' : ''}`,
+          `${i + 1}. ${redeems[i].itemName.substring(0, 15)}${redeems[i].itemName.length > 15 ? '...' : ''}`,
           ButtonStyle.Primary,
           '🎁'
         )
       );
     }
     
-    // Add support button
+    // Add support and close buttons
     buttons.push(this.supportButton());
+    buttons.push(this.closeTicketButton());
     
     return this.createButtonRow(...buttons);
   }
@@ -85,25 +91,28 @@ class ComponentFactory {
     );
   }
 
-  // === STEP BUTTONS WITH SUPPORT ===
+  // === STEP BUTTONS WITH SUPPORT AND CLOSE ===
   static stepButtons() {
     return this.createButtonRow(
       this.nextStepButton(),
-      this.supportButton()
+      this.supportButton(),
+      this.closeTicketButton()
     );
   }
 
   static finishButtons() {
     return this.createButtonRow(
       this.finishButton(),
-      this.supportButton()
+      this.supportButton(),
+      this.closeTicketButton()
     );
   }
 
   static resubmitButtons() {
     return this.createButtonRow(
       this.createButton('rejection_resubmit', 'Reenviar', ButtonStyle.Primary, '🔄'),
-      this.supportButton()
+      this.supportButton(),
+      this.closeTicketButton()
     );
   }
 
@@ -262,7 +271,7 @@ class ComponentFactory {
     );
   }
 
-  // === MOD BUTTONS (agora aparecem no ticket) ===
+  // === MOD BUTTONS (apenas visíveis para mods) ===
   static modButtons(submissionId) {
     return this.createButtonRow(
       this.createButton(`mod_approve_${submissionId}`, 'Aprovar', ButtonStyle.Success, '✅'),
@@ -279,9 +288,16 @@ class ComponentFactory {
     );
   }
 
+  // === SUPPORT COMPLETION BUTTON ===
+  static supportCompletionButton(supportId) {
+    return this.createButtonRow(
+      this.createButton(`support_complete_${supportId}`, 'Marcar como Concluído', ButtonStyle.Success, '✅')
+    );
+  }
+
   // === REJECTION BUTTONS ===
   static rejectionButtons() {
-    return this.resubmitButtons(); // Usa o novo método com suporte
+    return this.resubmitButtons();
   }
 }
 

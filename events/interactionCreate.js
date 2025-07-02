@@ -143,6 +143,13 @@ module.exports = {
           });
         }
 
+        // NOVO: Para BCGame, obter o ID do usuário
+        let bcGameId = null;
+        if (submission.casino === 'BCGame') {
+          const ticketState = client.ticketStates.get(submission.ticketChannelId);
+          bcGameId = ticketState?.vipId || ticketState?.bcGameId || null;
+        }
+
         // Create approval
         const approvalId = await client.db.saveApproval(
           submission.ticketChannelId,
@@ -161,7 +168,8 @@ module.exports = {
           prize,
           submission.userTag,
           submission.ticketNumber,
-          submission.ltcAddress
+          submission.ltcAddress,
+          bcGameId
         );
         const components = ComponentFactory.approvalButtons(approvalId);
 
@@ -230,11 +238,23 @@ module.exports = {
         // Send to staff channel as support request
         const staffChannel = await interaction.guild.channels.fetch(CHANNELS.STAFF);
         const embed = EmbedFactory.reviewRequest(reason, approval.ticketNumber, approval.userTag);
+        const components = ComponentFactory.supportCompletionButton(`review_${approvalId}`);
 
-        await staffChannel.send({ embeds: [embed] });
+        const supportMessage = await staffChannel.send({ 
+          embeds: [embed],
+          components: [components]
+        });
 
         // Update approval status
         await client.db.updateApproval(approvalId, null, null, 'review');
+
+        // Delete original approval message
+        try {
+          const originalMessage = await interaction.guild.channels.cache.get(approval.channelId)?.messages.fetch(approval.messageId);
+          if (originalMessage) await originalMessage.delete();
+        } catch (error) {
+          console.error('Error deleting original approval message:', error);
+        }
 
         return interaction.reply({
           embeds: [EmbedFactory.success(`Solicitação de revisão enviada para o suporte humano.`)],
@@ -256,7 +276,7 @@ module.exports = {
         
         await interaction.channel.send({
           embeds: [EmbedFactory.websiteBugReport()],
-          components: [ComponentFactory.createButtonRow(ComponentFactory.supportButton())]
+          components: [ComponentFactory.createButtonRow(ComponentFactory.supportButton(), ComponentFactory.closeTicketButton())]
         });
       }
       
@@ -267,7 +287,7 @@ module.exports = {
         
         await interaction.channel.send({
           embeds: [EmbedFactory.websiteRedeemNick()],
-          components: [ComponentFactory.createButtonRow(ComponentFactory.supportButton())]
+          components: [ComponentFactory.createButtonRow(ComponentFactory.supportButton(), ComponentFactory.closeTicketButton())]
         });
       }
     }
@@ -343,6 +363,18 @@ module.exports = {
           flags: 64
         });
       }
+    }
+
+    // Close Ticket Menu Button
+    if (interaction.isButton() && interaction.customId === 'close_ticket_menu') {
+      const embed = EmbedFactory.ticketClose();
+      const components = ComponentFactory.closeTicketButtons();
+
+      return interaction.reply({
+        embeds: [embed],
+        components: [components],
+        flags: 64
+      });
     }
 
     // Close Ticket Buttons
@@ -426,6 +458,29 @@ module.exports = {
       }
 
       return;
+    }
+
+    // Support Completion Button
+    if (interaction.isButton() && interaction.customId.startsWith('support_complete_')) {
+      // Check if user has mod role
+      if (!interaction.member.roles.cache.has(ROLES.MOD)) {
+        return interaction.reply({
+          embeds: [EmbedFactory.error('Você não tem permissão para usar este botão')],
+          flags: 64
+        });
+      }
+
+      // Delete the support message
+      try {
+        await interaction.message.delete();
+      } catch (error) {
+        console.error('Error deleting support message:', error);
+      }
+
+      return interaction.reply({
+        embeds: [EmbedFactory.success('Suporte marcado como concluído!')],
+        flags: 64
+      });
     }
 
     // Transcript View/Download Buttons
@@ -534,36 +589,28 @@ module.exports = {
       });
 
       const supportRow = ComponentFactory.createButtonRow(
-        ComponentFactory.supportButton()
+        ComponentFactory.supportButton(),
+        ComponentFactory.closeTicketButton()
       );
 
       // Handle different category types
       if (category.name === 'Giveaways') {
-        // NOVO: Verificar se o usuário tem cargos de verificação
-        const verifiedCasinos = getUserVerifiedCasinos(interaction.member);
+        // SEMPRE mostrar confirmação, independente de ser verificado
+        const currentState = client.ticketStates.get(ticketChannel.id);
+        currentState.awaitConfirm = true;
         
+        // Verificar se o usuário tem cargos de verificação
+        const verifiedCasinos = getUserVerifiedCasinos(interaction.member);
         if (verifiedCasinos.length > 0) {
-          // Usuário já é verificado - mostrar opção simplificada
-          const currentState = client.ticketStates.get(ticketChannel.id);
-          currentState.awaitConfirm = true;
           currentState.isVerified = true;
-          await client.saveTicketState(ticketChannel.id, currentState);
-          
-          await ticketChannel.send({
-            embeds: [EmbedFactory.verifiedUserConfirmation('Giveaway', verifiedCasinos)],
-            components: [supportRow]
-          });
-        } else {
-          // Usuário não verificado - processo normal
-          const currentState = client.ticketStates.get(ticketChannel.id);
-          currentState.awaitConfirm = true;
-          await client.saveTicketState(ticketChannel.id, currentState);
-          
-          await ticketChannel.send({
-            embeds: [EmbedFactory.confirmation()],
-            components: [supportRow]
-          });
         }
+        
+        await client.saveTicketState(ticketChannel.id, currentState);
+        
+        await ticketChannel.send({
+          embeds: [EmbedFactory.confirmation()],
+          components: [supportRow]
+        });
       } else if (category.name === 'VIPS') {
         await ticketChannel.send({
           embeds: [EmbedFactory.vipCasinoSelection()],
@@ -679,7 +726,7 @@ module.exports = {
 
         ticketState.casino = casinoId;
         
-        // NOVO: Verificar se o usuário tem cargo de verificação para este casino
+        // Verificar se o usuário tem cargo de verificação para este casino
         const isVerified = isUserVerifiedForCasino(interaction.member, casinoId);
         
         if (isVerified && ticketState.isVerified) {
@@ -689,7 +736,7 @@ module.exports = {
           await client.saveTicketState(interaction.channel.id, ticketState);
           
           await interaction.channel.send({
-            embeds: [EmbedFactory.verifiedUserLtcRequest()],
+            embeds: [EmbedFactory.success(`Promoção **${promo.name}** selecionada para **${casinoId}**!\n\n${EMOJIS.VERIFIED} **Utilizador verificado** - apenas precisa de fornecer o endereço LTC.`)],
             components: [ComponentFactory.finishButtons()]
           });
         } else {
@@ -734,7 +781,7 @@ module.exports = {
       const ticketState = client.ticketStates.get(interaction.channel.id);
       ticketState.casino = choice;
       
-      // NOVO: Verificar se o usuário tem cargo de verificação para este casino
+      // Verificar se o usuário tem cargo de verificação para este casino
       const isVerified = isUserVerifiedForCasino(interaction.member, choice);
       
       if (isVerified && ticketState.isVerified) {
@@ -744,7 +791,7 @@ module.exports = {
         await client.saveTicketState(interaction.channel.id, ticketState);
         
         await interaction.channel.send({
-          embeds: [EmbedFactory.verifiedUserLtcRequest()],
+          embeds: [EmbedFactory.success(`Casino **${choice}** selecionado!\n\n${EMOJIS.VERIFIED} **Utilizador verificado** - apenas precisa de fornecer o endereço LTC.`)],
           components: [ComponentFactory.finishButtons()]
         });
       } else {
@@ -757,7 +804,7 @@ module.exports = {
       }
     }
 
-    // Next Step Button
+    // Next Step Button - AUTOMÁTICO AGORA
     if (interaction.isButton() && interaction.customId === 'proof_next') {
       try { await interaction.deferUpdate(); } catch {}
       
@@ -811,7 +858,7 @@ module.exports = {
       // Update submission with message info
       await client.db.updateSubmission(submissionId, null, modChannel.id, 'pending');
       
-      // Send mod buttons to the ticket itself
+      // Send mod buttons to the ticket itself (APENAS VISÍVEL PARA MODS)
       const modButtons = ComponentFactory.modButtons(submissionId);
       await interaction.channel.send({
         embeds: [EmbedFactory.info('Solicitação enviada para aprovação! Aguarde a análise da equipe.')],
@@ -927,6 +974,13 @@ module.exports = {
           }
         }
 
+        // Delete approval message
+        try {
+          await interaction.message.delete();
+        } catch (error) {
+          console.error('Error deleting approval message:', error);
+        }
+
         return interaction.reply({
           embeds: [EmbedFactory.success(`Giveaway marcado como pago! Mensagem enviada ao ticket #${approval.ticketNumber}.\n\n${EMOJIS.VERIFIED} Utilizador agora está verificado para **${approval.casino}**!`)],
           flags: 64
@@ -984,8 +1038,17 @@ module.exports = {
       const ticketState = client.ticketStates.get(interaction.channel.id);
       const staffChannel = await interaction.guild.channels.fetch(CHANNELS.STAFF);
       
+      const embed = EmbedFactory.supportRequest(
+        'Suporte solicitado',
+        ticketState?.ticketNumber || 'N/A',
+        interaction.user.tag,
+        interaction.channel.id
+      );
+      const components = ComponentFactory.supportCompletionButton(`general_${interaction.channel.id}`);
+      
       await staffChannel.send({
-        embeds: [EmbedFactory.warning(`${EMOJIS.SHIELD} Suporte solicitado em ${interaction.channel}\nTicket: #${ticketState?.ticketNumber || 'N/A'}\nUsuário: ${interaction.user.tag}`)]
+        embeds: [embed],
+        components: [components]
       });
       
       // Log support request
@@ -1019,10 +1082,17 @@ function askChecklist(channel, ticketState) {
   }
 
   const stepIndex = ticketState.step ?? 0;
+  
+  // NOVO: Para BCGame, modificar o primeiro passo para incluir ID
+  let checklist = [...casino.checklist];
+  if (ticketState.casino === 'BCGame' && stepIndex === 0) {
+    checklist[0] = "📧 Envie **screenshot** do email de registro no BC.Game **e** o **ID da BCGame em texto**";
+  }
+  
   const embed = EmbedFactory.checklist(
     stepIndex + 1,
-    casino.checklist.length,
-    casino.checklist[stepIndex],
+    checklist.length,
+    checklist[stepIndex],
     casino.images?.[stepIndex]
   );
 

@@ -147,50 +147,6 @@ class EmbedFactory {
       .setFooter({ text: 'Confirmação Obrigatória +18' });
   }
 
-  // NOVO: Confirmação para usuários verificados
-  static verifiedUserConfirmation(casino, verifications) {
-    const verificationList = verifications.map(v => 
-      `${EMOJIS.VERIFIED} **${v.label}** - Verificado`
-    ).join('\n');
-
-    return new EmbedBuilder()
-      .setColor(COLORS.SUCCESS)
-      .setTitle(`${EMOJIS.VERIFIED} Utilizador Verificado`)
-      .setDescription([
-        `**Detectámos que já é um utilizador verificado!**`,
-        '',
-        `🎯 **Casino selecionado:** ${casino}`,
-        `${EMOJIS.STAR} **Status:** Verificado`,
-        '',
-        `**As suas verificações:**`,
-        verificationList,
-        '',
-        `${EMOJIS.INFO} **Como utilizador verificado, apenas precisa de:**`,
-        `• Confirmar que tem +18 anos`,
-        `• Fornecer o endereço LTC para pagamento`,
-        '',
-        '**Digite exatamente:** `Sim, eu confirmo`'
-      ].join('\n'))
-      .setTimestamp()
-      .setFooter({ text: 'Utilizador Verificado • Processo Simplificado' });
-  }
-
-  static verifiedUserLtcRequest() {
-    return new EmbedBuilder()
-      .setColor(COLORS.SUCCESS)
-      .setTitle(`${EMOJIS.VERIFIED} Endereço LTC`)
-      .setDescription([
-        '**Como utilizador verificado, apenas precisa de fornecer:**',
-        '',
-        `💰 **Endereço LTC** para receber o pagamento`,
-        '',
-        `${EMOJIS.INFO} Digite o seu endereço LTC abaixo`,
-        `${EMOJIS.SHIELD} Verifique cuidadosamente o endereço antes de enviar`
-      ].join('\n'))
-      .setTimestamp()
-      .setFooter({ text: 'Processo Simplificado para Verificados' });
-  }
-
   // === WEBSITE EMBEDS ===
   static websiteTypeSelection() {
     return new EmbedBuilder()
@@ -235,7 +191,7 @@ class EmbedFactory {
         `📱 **Digite o seu nickname da Twitch**`,
         `📸 **Envie uma captura de ecrã** que comprove a sua identidade`,
         '',
-        `${EMOJIS.INFO} Iremos verificar os redeems disponíveis para o seu nickname`
+        `${EMOJIS.INFO} Pode enviar em mensagens separadas`
       ].join('\n'))
       .setTimestamp()
       .setFooter({ text: 'Sistema de Redeems' });
@@ -459,26 +415,33 @@ class EmbedFactory {
   }
 
   // === APPROVAL EMBEDS ===
-  static approvalFinal(casino, prize, userTag, ticketNumber, ltcAddress) {
+  static approvalFinal(casino, prize, userTag, ticketNumber, ltcAddress, bcGameId = null) {
+    const description = [
+      '**Casino**',
+      casino || 'N/A',
+      '',
+      '**Prenda**',
+      prize || 'N/A',
+      '',
+      '**Utilizador**',
+      userTag,
+      '',
+      '**Ticket**',
+      `ticket-${ticketNumber}`,
+      '',
+      '**Endereço LTC**',
+      ltcAddress || 'N/A'
+    ];
+
+    // NOVO: Para BCGame, mostrar ID e status de verificação
+    if (casino === 'BCGame' && bcGameId) {
+      description.splice(6, 0, '', '**ID BCGame**', bcGameId);
+    }
+
     return new EmbedBuilder()
       .setColor(COLORS.SUCCESS)
       .setTitle(`${EMOJIS.GIFT} Giveaway Aprovado`)
-      .setDescription([
-        '**Casino**',
-        casino || 'N/A',
-        '',
-        '**Prenda**',
-        prize || 'N/A',
-        '',
-        '**Utilizador**',
-        userTag,
-        '',
-        '**Ticket**',
-        `ticket-${ticketNumber}`,
-        '',
-        '**Endereço LTC**',
-        ltcAddress || 'N/A'
-      ].join('\n'))
+      .setDescription(description.join('\n'))
       .setTimestamp()
       .setFooter({ text: 'Sistema de Aprovações' });
   }
@@ -529,6 +492,24 @@ class EmbedFactory {
       ].join('\n'))
       .setTimestamp()
       .setFooter({ text: 'Sistema de Revisões' });
+  }
+
+  // NOVO: Support request with completion button
+  static supportRequest(reason, ticketNumber, userTag, channelId) {
+    return new EmbedBuilder()
+      .setColor(COLORS.WARNING)
+      .setTitle(`${EMOJIS.SHIELD} Solicitação de Suporte`)
+      .setDescription([
+        `**Suporte solicitado no ticket #${ticketNumber}**`,
+        '',
+        `👤 **Usuário:** ${userTag}`,
+        `📍 **Canal:** <#${channelId}>`,
+        `📝 **Motivo:** ${reason || 'Suporte geral'}`,
+        '',
+        `${EMOJIS.CLOCK} Aguardando atendimento`
+      ].join('\n'))
+      .setTimestamp()
+      .setFooter({ text: 'Sistema de Suporte' });
   }
 
   // === STATISTICS EMBED ===

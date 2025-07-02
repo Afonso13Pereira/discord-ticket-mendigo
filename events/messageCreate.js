@@ -22,7 +22,7 @@ const VIP_CHECKLISTS = {
   ]
 };
 
-// NOVO: Função para verificar se o usuário tem cargo de verificação para um casino
+// Função para verificar se o usuário tem cargo de verificação para um casino
 function isUserVerifiedForCasino(member, casino) {
   const casinoData = CASINOS[casino];
   if (!casinoData || !casinoData.cargoafiliado) return false;
@@ -47,43 +47,23 @@ module.exports = {
         // Log confirmation
         await client.db.logAction(message.channel.id, message.author.id, 'age_confirmed', null);
 
-        // NOVO: Se o usuário é verificado, mostrar processo simplificado
-        if (ticketState.isVerified) {
-          const typeButtons = ComponentFactory.giveawayTypeButtons();
-          const components = [typeButtons];
+        // Create giveaway type buttons
+        const typeButtons = ComponentFactory.giveawayTypeButtons();
+        const components = [typeButtons];
 
-          await refreshExpired();
-          await refreshPromotions();
-          
-          const promoButtons = ComponentFactory.promoButtons(promos);
-          components.push(...promoButtons);
+        await refreshExpired();
+        await refreshPromotions();
+        
+        const promoButtons = ComponentFactory.promoButtons(promos);
+        components.push(...promoButtons);
 
-          return message.channel.send({
-            embeds: [EmbedFactory.giveaway(
-              'Tipo de Giveaway',
-              `${EMOJIS.VERIFIED} **Utilizador Verificado!** Escolha o tipo de giveaway:\n\n${EMOJIS.GIFT} **Tipos Disponíveis:**\n• Telegram - Prêmios do bot\n• GTB - Giveaway tradicional\n• Promoções especiais em destaque\n\n${EMOJIS.INFO} Como utilizador verificado, o processo será simplificado!`
-            )],
-            components: components
-          });
-        } else {
-          // Usuário não verificado - processo normal
-          const typeButtons = ComponentFactory.giveawayTypeButtons();
-          const components = [typeButtons];
-
-          await refreshExpired();
-          await refreshPromotions();
-          
-          const promoButtons = ComponentFactory.promoButtons(promos);
-          components.push(...promoButtons);
-
-          return message.channel.send({
-            embeds: [EmbedFactory.giveaway(
-              'Tipo de Giveaway',
-              `${EMOJIS.STAR} **Parabéns!** Escolha o tipo de giveaway:\n\n${EMOJIS.GIFT} **Tipos Disponíveis:**\n• Telegram - Prêmios do bot\n• GTB - Giveaway tradicional\n• Promoções especiais em destaque`
-            )],
-            components: components
-          });
-        }
+        return message.channel.send({
+          embeds: [EmbedFactory.giveaway(
+            'Tipo de Giveaway',
+            `${EMOJIS.STAR} **Parabéns!** Escolha o tipo de giveaway:\n\n${EMOJIS.GIFT} **Tipos Disponíveis:**\n• Telegram - Prêmios do bot\n• GTB - Giveaway tradicional\n• Promoções especiais em destaque`
+          )],
+          components: components
+        });
       }
       
       return message.reply({
@@ -91,7 +71,7 @@ module.exports = {
       });
     }
 
-    // NOVO: LTC Address for verified users
+    // LTC Address for verified users
     if (ticketState.awaitLtcOnly) {
       const ltcAddress = message.content.trim();
       
@@ -114,42 +94,63 @@ module.exports = {
       });
     }
 
-    // Website Twitch Nick Input
+    // Website Twitch Nick Input (pode ser em mensagens separadas)
     if (ticketState.awaitTwitchNick) {
       const hasImage = message.attachments.size > 0;
       const twitchNick = message.content.trim();
       
-      if (!hasImage || !twitchNick || twitchNick.length < 3) {
+      // Aceitar imagem ou texto separadamente
+      if (hasImage) {
+        ticketState.twitchProofImage = true;
+        await client.saveTicketState(message.channel.id, ticketState);
+        
+        if (!ticketState.twitchNick) {
+          return message.reply({
+            embeds: [EmbedFactory.info('Imagem recebida! Agora envie o seu **nickname da Twitch**.')]
+          });
+        }
+      }
+      
+      if (twitchNick && twitchNick.length >= 3) {
+        ticketState.twitchNick = twitchNick;
+        await client.saveTicketState(message.channel.id, ticketState);
+        
+        if (!ticketState.twitchProofImage) {
+          return message.reply({
+            embeds: [EmbedFactory.info('Nickname recebido! Agora envie uma **captura de ecrã** como prova.')]
+          });
+        }
+      }
+      
+      // Se tem ambos, processar
+      if (ticketState.twitchNick && ticketState.twitchProofImage) {
+        ticketState.awaitTwitchNick = false;
+        await client.saveTicketState(message.channel.id, ticketState);
+        
+        // Log twitch nick provided
+        await client.db.logAction(message.channel.id, message.author.id, 'twitch_nick_provided', ticketState.twitchNick);
+        
+        // Get user redeems from database
+        const redeems = await client.db.getUserRedeems(ticketState.twitchNick);
+        
+        if (redeems.length === 0) {
+          return message.reply({
+            embeds: [EmbedFactory.websiteNoRedeems(ticketState.twitchNick)],
+            components: [ComponentFactory.createButtonRow(ComponentFactory.supportButton(), ComponentFactory.closeTicketButton())]
+          });
+        }
+        
+        // Show available redeems
+        const embed = EmbedFactory.websiteRedeemList(ticketState.twitchNick, redeems);
+        const components = ComponentFactory.redeemSelectButtons(redeems);
+        
         return message.reply({
-          embeds: [EmbedFactory.error('Por favor, envie o **nickname da Twitch** e uma **captura de ecrã** como prova')]
+          embeds: [embed],
+          components: [components]
         });
       }
       
-      ticketState.twitchNick = twitchNick;
-      ticketState.awaitTwitchNick = false;
-      await client.saveTicketState(message.channel.id, ticketState);
-      
-      // Log twitch nick provided
-      await client.db.logAction(message.channel.id, message.author.id, 'twitch_nick_provided', twitchNick);
-      
-      // Get user redeems from database
-      const redeems = await client.db.getUserRedeems(twitchNick);
-      
-      if (redeems.length === 0) {
-        return message.reply({
-          embeds: [EmbedFactory.websiteNoRedeems(twitchNick)],
-          components: [ComponentFactory.createButtonRow(ComponentFactory.supportButton())]
-        });
-      }
-      
-      // Show available redeems
-      const embed = EmbedFactory.websiteRedeemList(twitchNick, redeems);
-      const components = ComponentFactory.redeemSelectButtons(redeems);
-      
-      return message.reply({
-        embeds: [embed],
-        components: [components]
-      });
+      return; // Aguardar mais input
     }
 
     // Description for Dúvidas, Outros, and Website Bug
@@ -188,7 +189,12 @@ module.exports = {
       }
       
       const embed = EmbedFactory.warning(notificationText);
-      await staffChannel.send({ embeds: [embed] });
+      const components = ComponentFactory.supportCompletionButton(`description_${message.channel.id}`);
+      
+      await staffChannel.send({ 
+        embeds: [embed],
+        components: [components]
+      });
 
       return message.reply({
         embeds: [EmbedFactory.success('Descrição recebida! A nossa equipa foi notificada e irá ajudá-lo em breve.')]
@@ -246,11 +252,14 @@ module.exports = {
       // Log step completion
       await client.db.logAction(message.channel.id, message.author.id, 'vip_step_completed', `${ticketState.vipType} Step ${stepIndex + 1}`);
 
+      // AUTOMÁTICO: Avançar para próximo passo
       if (stepIndex + 1 < checklist.length) {
-        return message.reply({
-          embeds: [EmbedFactory.success('Prova recebida! Clique em **Próximo Passo** para continuar.')],
-          components: [ComponentFactory.stepButtons()]
-        });
+        ticketState.step++;
+        ticketState.awaitProof = true;
+        await client.saveTicketState(message.channel.id, ticketState);
+        
+        // Mostrar próximo passo automaticamente
+        return askVipChecklist(message.channel, ticketState);
       }
       
       // VIP checklist completed
@@ -332,7 +341,7 @@ module.exports = {
 
         ticketState.casino = casinoId;
         
-        // NOVO: Verificar se o usuário tem cargo de verificação para este casino
+        // Verificar se o usuário tem cargo de verificação para este casino
         const member = await message.guild.members.fetch(message.author.id);
         const isVerified = isUserVerifiedForCasino(member, casinoId);
         
@@ -343,7 +352,7 @@ module.exports = {
           await client.saveTicketState(message.channel.id, ticketState);
           
           await message.reply({
-            embeds: [EmbedFactory.verifiedUserLtcRequest()],
+            embeds: [EmbedFactory.success(`Código validado! Casino obrigatório: **${casinoId}**\n\n${EMOJIS.VERIFIED} **Utilizador verificado** - apenas precisa de fornecer o endereço LTC.`)],
             components: [ComponentFactory.finishButtons()]
           });
         } else {
@@ -365,7 +374,34 @@ module.exports = {
       const casino = CASINOS[ticketState.casino];
       const stepIndex = ticketState.step;
 
-      if (stepIndex < 3) {
+      // NOVO: Para BCGame no primeiro passo, aceitar ID em texto
+      if (ticketState.casino === 'BCGame' && stepIndex === 0) {
+        if (message.attachments.size > 0) {
+          ticketState.step4HasImg = true;
+        }
+        if (message.content && message.content.trim().length >= 5) {
+          ticketState.step4HasAddr = true;
+          ticketState.bcGameId = message.content.trim();
+        }
+        
+        await client.saveTicketState(message.channel.id, ticketState);
+        
+        if (!ticketState.step4HasImg || !ticketState.step4HasAddr) {
+          const missing = [];
+          if (!ticketState.step4HasImg) missing.push('**screenshot do email**');
+          if (!ticketState.step4HasAddr) missing.push('**ID da BCGame em texto**');
+          
+          return message.reply({
+            embeds: [EmbedFactory.error(`Ainda falta: ${missing.join(' e ')}`)]
+          });
+        }
+        
+        // Reset flags
+        ticketState.step4HasImg = false;
+        ticketState.step4HasAddr = false;
+        ticketState.awaitProof = false;
+        await client.saveTicketState(message.channel.id, ticketState);
+      } else if (stepIndex < 3) {
         if (message.attachments.size === 0) {
           return message.reply({
             embeds: [EmbedFactory.error('Este passo requer o envio de uma **imagem**')]
@@ -401,11 +437,14 @@ module.exports = {
         // Log step completion
         await client.db.logAction(message.channel.id, message.author.id, 'step_completed', `Step ${stepIndex + 1}`);
 
+        // AUTOMÁTICO: Avançar para próximo passo
         if (stepIndex + 1 < casino.checklist.length) {
-          return message.reply({
-            embeds: [EmbedFactory.success('Prova recebida! Clique em **Próximo Passo** para continuar.')],
-            components: [ComponentFactory.stepButtons()]
-          });
+          ticketState.step++;
+          ticketState.awaitProof = true;
+          await client.saveTicketState(message.channel.id, ticketState);
+          
+          // Mostrar próximo passo automaticamente
+          return askChecklist(message.channel, ticketState);
         }
         
         // Log checklist completion
@@ -447,11 +486,48 @@ function askChecklist(channel, ticketState) {
   }
 
   const stepIndex = ticketState.step ?? 0;
+  
+  // Para BCGame, modificar o primeiro passo para incluir ID
+  let checklist = [...casino.checklist];
+  if (ticketState.casino === 'BCGame' && stepIndex === 0) {
+    checklist[0] = "📧 Envie **screenshot** do email de registro no BC.Game **e** o **ID da BCGame em texto**";
+  }
+  
   const embed = EmbedFactory.checklist(
     stepIndex + 1,
-    casino.checklist.length,
-    casino.checklist[stepIndex],
+    checklist.length,
+    checklist[stepIndex],
     casino.images?.[stepIndex]
+  );
+
+  channel.send({
+    embeds: [embed],
+    components: [ComponentFactory.stepButtons()]
+  });
+}
+
+function askVipChecklist(channel, ticketState) {
+  const checklist = VIP_CHECKLISTS[ticketState.vipType];
+  if (!checklist) {
+    return channel.send({
+      embeds: [EmbedFactory.error('Tipo VIP não configurado no sistema')]
+    });
+  }
+
+  const stepIndex = ticketState.step ?? 0;
+  
+  if (stepIndex >= checklist.length) {
+    return channel.send({
+      embeds: [EmbedFactory.success('Checklist VIP concluído! Clique em **Finalizar** para enviar para aprovação.')],
+      components: [ComponentFactory.finishButtons()]
+    });
+  }
+
+  const embed = EmbedFactory.vipChecklist(
+    stepIndex + 1,
+    checklist.length,
+    checklist[stepIndex],
+    ticketState.vipType
   );
 
   channel.send({
