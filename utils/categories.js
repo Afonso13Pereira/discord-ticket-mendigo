@@ -17,7 +17,7 @@ async function initDatabase() {
             try {
               cats = await db.getCategories();
               initialized = true;
-              console.log(`✅ Loaded ${Object.keys(cats).length} categories from database`);
+              console.log(`✅ Loaded ${Object.keys(cats).length} categories from database:`, Object.keys(cats));
               resolve();
             } catch (error) {
               console.error('Error loading categories:', error);
@@ -44,6 +44,7 @@ async function create(name, color, emoji) {
   await db.saveCategory(id, category);
   
   console.log(`✅ Created category: ${name} (ID: ${id})`);
+  console.log(`📋 Current categories in memory:`, Object.keys(cats));
   return id;
 }
 
@@ -70,15 +71,34 @@ async function ensureInitialized() {
 async function refreshCategories() {
   if (db && db.connected) {
     try {
-      cats = await db.getCategories();
-      console.log(`🔄 Refreshed ${Object.keys(cats).length} categories from database`);
+      const freshCats = await db.getCategories();
+      cats = freshCats;
+      console.log(`🔄 Refreshed ${Object.keys(cats).length} categories from database:`, Object.keys(cats));
+      
+      // Log active categories
+      const activeCats = Object.entries(cats).filter(([id, cat]) => cat.active);
+      console.log(`📋 Active categories:`, activeCats.map(([id, cat]) => `${cat.name} (${id})`));
+      
+      return cats;
     } catch (error) {
       console.error('Error refreshing categories:', error);
+      return cats;
     }
   }
+  return cats;
+}
+
+// Force refresh function for debugging
+async function forceRefresh() {
+  if (db && db.connected) {
+    cats = await db.getCategories();
+    console.log(`🔄 FORCE refreshed categories:`, Object.keys(cats));
+    return cats;
+  }
+  return cats;
 }
 
 // Initialize on module load
 initDatabase();
 
-module.exports = { cats, create, close, list, refreshCategories, ensureInitialized };
+module.exports = { cats, create, close, list, refreshCategories, ensureInitialized, forceRefresh };
