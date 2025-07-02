@@ -22,6 +22,14 @@ const VIP_CHECKLISTS = {
   ]
 };
 
+// NOVO: Função para verificar se o usuário tem cargo de verificação para um casino
+function isUserVerifiedForCasino(member, casino) {
+  const casinoData = CASINOS[casino];
+  if (!casinoData || !casinoData.cargoafiliado) return false;
+  
+  return member.roles.cache.has(casinoData.cargoafiliado);
+}
+
 module.exports = {
   name: 'messageCreate',
   async execute(message, client) {
@@ -39,7 +47,7 @@ module.exports = {
         // Log confirmation
         await client.db.logAction(message.channel.id, message.author.id, 'age_confirmed', null);
 
-        // NOVO: Se o usuário é verificado, pular para seleção de casino
+        // NOVO: Se o usuário é verificado, mostrar processo simplificado
         if (ticketState.isVerified) {
           const typeButtons = ComponentFactory.giveawayTypeButtons();
           const components = [typeButtons];
@@ -324,8 +332,9 @@ module.exports = {
 
         ticketState.casino = casinoId;
         
-        // NOVO: Verificar se o usuário já é verificado para este casino
-        const isVerified = await client.db.isUserVerifiedForCasino(message.author.id, casinoId);
+        // NOVO: Verificar se o usuário tem cargo de verificação para este casino
+        const member = await message.guild.members.fetch(message.author.id);
+        const isVerified = isUserVerifiedForCasino(member, casinoId);
         
         if (isVerified && ticketState.isVerified) {
           // Usuário verificado - pular checklist e pedir apenas LTC

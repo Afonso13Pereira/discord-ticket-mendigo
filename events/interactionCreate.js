@@ -43,6 +43,31 @@ const CATEGORY_PREFIXES = {
   'Outros': 'O'
 };
 
+// NOVO: Função para verificar se o usuário tem cargo de verificação para um casino
+function isUserVerifiedForCasino(member, casino) {
+  const casinoData = CASINOS[casino];
+  if (!casinoData || !casinoData.cargoafiliado) return false;
+  
+  return member.roles.cache.has(casinoData.cargoafiliado);
+}
+
+// NOVO: Função para obter todos os casinos para os quais o usuário está verificado
+function getUserVerifiedCasinos(member) {
+  const verifiedCasinos = [];
+  
+  for (const [casinoId, casinoData] of Object.entries(CASINOS)) {
+    if (casinoData.cargoafiliado && member.roles.cache.has(casinoData.cargoafiliado)) {
+      verifiedCasinos.push({
+        casino: casinoId,
+        label: casinoData.label,
+        roleId: casinoData.cargoafiliado
+      });
+    }
+  }
+  
+  return verifiedCasinos;
+}
+
 module.exports = {
   name: 'interactionCreate',
   async execute(interaction, client) {
@@ -514,10 +539,10 @@ module.exports = {
 
       // Handle different category types
       if (category.name === 'Giveaways') {
-        // NOVO: Verificar se o usuário já é verificado para algum casino
-        const userVerifications = await client.db.getUserVerifications(interaction.user.id);
+        // NOVO: Verificar se o usuário tem cargos de verificação
+        const verifiedCasinos = getUserVerifiedCasinos(interaction.member);
         
-        if (userVerifications.length > 0) {
+        if (verifiedCasinos.length > 0) {
           // Usuário já é verificado - mostrar opção simplificada
           const currentState = client.ticketStates.get(ticketChannel.id);
           currentState.awaitConfirm = true;
@@ -525,7 +550,7 @@ module.exports = {
           await client.saveTicketState(ticketChannel.id, currentState);
           
           await ticketChannel.send({
-            embeds: [EmbedFactory.verifiedUserConfirmation('Giveaway', userVerifications)],
+            embeds: [EmbedFactory.verifiedUserConfirmation('Giveaway', verifiedCasinos)],
             components: [supportRow]
           });
         } else {
@@ -654,8 +679,8 @@ module.exports = {
 
         ticketState.casino = casinoId;
         
-        // NOVO: Verificar se o usuário já é verificado para este casino
-        const isVerified = await client.db.isUserVerifiedForCasino(interaction.user.id, casinoId);
+        // NOVO: Verificar se o usuário tem cargo de verificação para este casino
+        const isVerified = isUserVerifiedForCasino(interaction.member, casinoId);
         
         if (isVerified && ticketState.isVerified) {
           // Usuário verificado - pular checklist e pedir apenas LTC
@@ -709,8 +734,8 @@ module.exports = {
       const ticketState = client.ticketStates.get(interaction.channel.id);
       ticketState.casino = choice;
       
-      // NOVO: Verificar se o usuário já é verificado para este casino
-      const isVerified = await client.db.isUserVerifiedForCasino(interaction.user.id, choice);
+      // NOVO: Verificar se o usuário tem cargo de verificação para este casino
+      const isVerified = isUserVerifiedForCasino(interaction.member, choice);
       
       if (isVerified && ticketState.isVerified) {
         // Usuário verificado - pular checklist e pedir apenas LTC
@@ -885,7 +910,7 @@ module.exports = {
         // Update approval status
         await client.db.updateApproval(approvalId, null, null, 'paid');
 
-        // NOVO: Adicionar verificação de casino para o usuário
+        // NOVO: Adicionar cargo de verificação para o usuário
         if (approval.casino && CASINOS[approval.casino]) {
           const casino = CASINOS[approval.casino];
           const roleId = casino.cargoafiliado;
@@ -895,22 +920,10 @@ module.exports = {
             const member = await interaction.guild.members.fetch(approval.userId);
             if (member && roleId) {
               await member.roles.add(roleId);
-              console.log(`✅ Added role ${roleId} to user ${approval.userTag} for casino ${approval.casino}`);
+              console.log(`✅ Added verification role ${roleId} to user ${approval.userTag} for casino ${approval.casino}`);
             }
-            
-            // Salvar verificação na base de dados
-            await client.db.addCasinoVerification(
-              approval.userId,
-              approval.userTag,
-              approval.casino,
-              approval.ticketNumber,
-              approvalId,
-              roleId
-            );
-            
-            console.log(`✅ User ${approval.userTag} is now verified for ${approval.casino}`);
           } catch (error) {
-            console.error('Error adding casino verification:', error);
+            console.error('Error adding verification role:', error);
           }
         }
 

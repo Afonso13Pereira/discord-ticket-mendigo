@@ -150,7 +150,7 @@ class EmbedFactory {
   // NOVO: Confirmação para usuários verificados
   static verifiedUserConfirmation(casino, verifications) {
     const verificationList = verifications.map(v => 
-      `${EMOJIS.VERIFIED} **${v.casino}** - Verificado em ${new Date(v.verifiedAt).toLocaleDateString('pt-PT')}`
+      `${EMOJIS.VERIFIED} **${v.label}** - Verificado`
     ).join('\n');
 
     return new EmbedBuilder()
@@ -557,8 +557,7 @@ class EmbedFactory {
         `🔍 **Em Revisão:** ${stats.approvals.review}`,
         `📊 **Total:** ${stats.approvals.total}`,
         '',
-        `📋 **Transcripts Criados (30 dias):** ${stats.transcriptsCreated}`,
-        `${EMOJIS.VERIFIED} **Utilizadores Verificados:** ${stats.verifications?.total || 0}`
+        `📋 **Transcripts Criados (30 dias):** ${stats.transcriptsCreated}`
       ].join('\n'))
       .addFields(
         {
@@ -575,18 +574,8 @@ class EmbedFactory {
             : 'Nenhum contador encontrado',
           inline: true
         }
-      );
-
-    // Add verification statistics if available
-    if (stats.verifications && stats.verifications.byCasino.length > 0) {
-      embed.addFields({
-        name: `${EMOJIS.VERIFIED} Verificações por Casino`,
-        value: stats.verifications.byCasino.map(v => `**${v.casino}:** ${v.count}`).join('\n'),
-        inline: true
-      });
-    }
-
-    embed.setTimestamp()
+      )
+      .setTimestamp()
       .setFooter({ text: 'Estatísticas atualizadas automaticamente' });
 
     return embed;
