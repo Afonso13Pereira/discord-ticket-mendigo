@@ -8,7 +8,7 @@ const {
 
 const CASINOS = require('./casinos');
 const { promos, create: createPromo, refreshExpired, refreshPromotions } = require('../utils/promotions');
-const { cats, create: createCat, refreshCategories } = require('../utils/categories');
+const { cats, create: createCat, refreshCategories, ensureInitialized } = require('../utils/categories');
 const EmbedFactory = require('../utils/embeds');
 const ComponentFactory = require('../utils/components');
 const TranscriptManager = require('../utils/transcripts');
@@ -355,8 +355,12 @@ module.exports = {
     if (interaction.isButton() && interaction.customId.startsWith('category_')) {
       const categoryId = interaction.customId.slice(9);
       
-      // Refresh categories to ensure we have the latest data
+      // CORREÇÃO CRÍTICA: Refresh categories to ensure we have the latest data
+      await ensureInitialized();
       await refreshCategories();
+      
+      console.log(`🎫 Creating ticket for category: ${categoryId}`);
+      console.log(`🎫 Available categories:`, Object.keys(cats));
       
       const category = cats[categoryId] || { name: categoryId, color: 'grey', emoji: null };
 

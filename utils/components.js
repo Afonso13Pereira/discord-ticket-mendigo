@@ -135,7 +135,9 @@ class ComponentFactory {
     const rows = [];
     let currentRow = new ActionRowBuilder();
 
-    console.log(`🔧 Building category buttons with ${staticCats.length} static and ${Object.keys(dynamicCats).length} dynamic categories`);
+    console.log(`🔧 Building category buttons with ${staticCats.length} static categories`);
+    console.log(`🔧 Dynamic categories received:`, Object.keys(dynamicCats));
+    console.log(`🔧 Dynamic categories data:`, dynamicCats);
 
     // Add static categories
     for (const cat of staticCats) {
@@ -155,8 +157,13 @@ class ComponentFactory {
       console.log(`➕ Added static category: ${cat.label} (${cat.id})`);
     }
 
-    // Add dynamic categories (CORREÇÃO: Verificar se estão ativos)
-    for (const [id, cat] of Object.entries(dynamicCats)) {
+    // CORREÇÃO CRÍTICA: Add dynamic categories (verificar se estão ativos)
+    const dynamicEntries = Object.entries(dynamicCats);
+    console.log(`🔧 Processing ${dynamicEntries.length} dynamic category entries`);
+    
+    for (const [id, cat] of dynamicEntries) {
+      console.log(`🔍 Checking dynamic category: ${cat.name} (${id}) - active: ${cat.active}`);
+      
       if (!cat.active) {
         console.log(`⏭️ Skipping inactive category: ${cat.name} (${id})`);
         continue;
@@ -182,7 +189,7 @@ class ComponentFactory {
       rows.push(currentRow);
     }
 
-    console.log(`✅ Created ${rows.length} button rows with total categories`);
+    console.log(`✅ Created ${rows.length} button rows with ${staticCats.length} static + ${dynamicEntries.filter(([id, cat]) => cat.active).length} active dynamic categories`);
     return rows;
   }
 

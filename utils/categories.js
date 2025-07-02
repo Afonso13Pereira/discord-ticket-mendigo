@@ -69,22 +69,28 @@ async function list() {
 }
 
 async function ensureInitialized() {
-  if (!initialized) {
-    console.log('🔄 Categories not initialized, initializing...');
+  if (!initialized || !db || !db.connected) {
+    console.log('🔄 Categories not initialized or DB not connected, initializing...');
     await initDatabase();
   }
 }
 
 async function refreshCategories() {
+  await ensureInitialized();
+  
   if (db && db.connected) {
     try {
       const freshCats = await db.getCategories();
-      cats = freshCats;
+      
+      // CORREÇÃO CRÍTICA: Garantir que realmente atualizamos a variável global
+      Object.keys(cats).forEach(key => delete cats[key]); // Clear existing
+      Object.assign(cats, freshCats); // Assign fresh data
+      
       console.log(`🔄 Refreshed ${Object.keys(cats).length} categories from database:`, Object.keys(cats));
       
       // Log active categories
       const activeCats = Object.entries(cats).filter(([id, cat]) => cat.active);
-      console.log(`📋 Active categories:`, activeCats.map(([id, cat]) => `${cat.name} (${id})`));
+      console.log(`📋 Active categories after refresh:`, activeCats.map(([id, cat]) => `${cat.name} (${id})`));
       
       return cats;
     } catch (error) {
@@ -98,14 +104,28 @@ async function refreshCategories() {
 // Force refresh function for debugging
 async function forceRefresh() {
   if (db && db.connected) {
-    cats = await db.getCategories();
+    const freshCats = await db.getCategories();
+    
+    // Clear and reassign
+    Object.keys(cats).forEach(key => delete cats[key]);
+    Object.assign(cats, freshCats);
+    
     console.log(`🔄 FORCE refreshed categories:`, Object.keys(cats));
     return cats;
   }
   return cats;
 }
 
+// Get categories directly from database (for debugging)
+async function getCategoriesFromDB() {
+  await ensureInitialized();
+  if (db && db.connected) {
+    return await db.getCategories();
+  }
+  return {};
+}
+
 // Initialize on module load
 initDatabase();
 
-module.exports = { cats, create, close, list, refreshCategories, ensureInitialized, forceRefresh };
+module.exports = { cats, create, close, list, refreshCategories, ensureInitialized, forceRefresh, getCategoriesFromDB };

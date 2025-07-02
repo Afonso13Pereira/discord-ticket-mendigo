@@ -2,7 +2,7 @@ const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const EmbedFactory = require('../utils/embeds');
 const ComponentFactory = require('../utils/components');
 const { CHANNELS, EMOJIS } = require('../config/constants');
-const { cats, refreshCategories } = require('../utils/categories');
+const { cats, refreshCategories, ensureInitialized } = require('../utils/categories');
 
 const STATIC_CATEGORIES = [
   { id: 'Giveaways', label: 'Giveaways', emoji: EMOJIS.GIFT, color: 'blue' },
@@ -45,11 +45,18 @@ async function updateTicketMessage(guild, client) {
       return;
     }
 
-    // CORREÇÃO: Force refresh categories from database before creating buttons
+    // CORREÇÃO CRÍTICA: Garantir inicialização e refresh completo
+    await ensureInitialized();
     await refreshCategories();
     
+    // Wait a bit for the refresh to complete
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
     console.log(`📋 Creating ticket message with categories:`, Object.keys(cats));
-    console.log(`📋 Active categories:`, Object.entries(cats).filter(([id, cat]) => cat.active).map(([id, cat]) => `${cat.name} (${id})`));
+    console.log(`📋 All categories:`, cats);
+    
+    const activeCats = Object.entries(cats).filter(([id, cat]) => cat.active);
+    console.log(`📋 Active categories:`, activeCats.map(([id, cat]) => `${cat.name} (${id})`));
     
     const embed = EmbedFactory.ticket(
       'Sistema de Suporte',
@@ -64,6 +71,7 @@ async function updateTicketMessage(guild, client) {
       ].join('\n')
     );
 
+    // CORREÇÃO: Passar as categorias atualizadas diretamente
     const components = ComponentFactory.categoryButtons(STATIC_CATEGORIES, cats);
     console.log(`📋 Created ${components.length} component rows for ticket message`);
 
