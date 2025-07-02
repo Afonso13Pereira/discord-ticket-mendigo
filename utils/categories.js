@@ -15,15 +15,27 @@ async function initDatabase() {
         const checkConnection = async () => {
           if (db.connected) {
             try {
-              cats = await db.getCategories();
+              const freshCats = await db.getCategories();
+              
+              // CORREÇÃO CRÍTICA: Limpar completamente e recarregar
+              Object.keys(cats).forEach(key => delete cats[key]);
+              Object.assign(cats, freshCats);
+              
               initialized = true;
               console.log(`✅ Loaded ${Object.keys(cats).length} categories from database:`, Object.keys(cats));
+              
+              // Log each category for debugging
+              Object.entries(cats).forEach(([id, cat]) => {
+                console.log(`  📋 Category: ${cat.name} (${id}) - active: ${cat.active}`);
+              });
+              
               resolve();
             } catch (error) {
               console.error('Error loading categories:', error);
               setTimeout(checkConnection, 1000);
             }
           } else {
+            console.log('⏳ Waiting for database connection...');
             setTimeout(checkConnection, 500);
           }
         };
@@ -40,11 +52,18 @@ async function create(name, color, emoji) {
   const id = randomUUID().slice(0, 8);
   const category = { name, color, emoji, active: true, created: Date.now() };
   
-  cats[id] = category;
+  // Save to database first
   await db.saveCategory(id, category);
+  
+  // Then update memory
+  cats[id] = category;
   
   console.log(`✅ Created category: ${name} (ID: ${id})`);
   console.log(`📋 Current categories in memory:`, Object.keys(cats));
+  
+  // Force refresh to ensure consistency
+  await refreshCategories();
+  
   return id;
 }
 
@@ -54,12 +73,14 @@ async function close(id) {
     cats[id].active = false;
     await db.saveCategory(id, cats[id]);
     console.log(`✅ Closed category: ${cats[id].name} (ID: ${id})`);
+    
+    // Force refresh to ensure consistency
+    await refreshCategories();
   }
 }
 
 async function list() {
   await ensureInitialized();
-  // CORREÇÃO: Garantir que temos as categorias mais recentes
   await refreshCategories();
   
   console.log(`📋 list() called. Categories in memory:`, Object.keys(cats));
@@ -80,13 +101,16 @@ async function refreshCategories() {
   
   if (db && db.connected) {
     try {
+      console.log('🔄 Refreshing categories from database...');
       const freshCats = await db.getCategories();
       
-      // CORREÇÃO CRÍTICA: Garantir que realmente atualizamos a variável global
-      Object.keys(cats).forEach(key => delete cats[key]); // Clear existing
-      Object.assign(cats, freshCats); // Assign fresh data
+      console.log(`🔍 Database returned ${Object.keys(freshCats).length} categories:`, Object.keys(freshCats));
       
-      console.log(`🔄 Refreshed ${Object.keys(cats).length} categories from database:`, Object.keys(cats));
+      // CORREÇÃO CRÍTICA: Limpar completamente e recarregar
+      Object.keys(cats).forEach(key => delete cats[key]);
+      Object.assign(cats, freshCats);
+      
+      console.log(`✅ Refreshed ${Object.keys(cats).length} categories in memory:`, Object.keys(cats));
       
       // Log active categories
       const activeCats = Object.entries(cats).filter(([id, cat]) => cat.active);
@@ -94,33 +118,52 @@ async function refreshCategories() {
       
       return cats;
     } catch (error) {
-      console.error('Error refreshing categories:', error);
+      console.error('❌ Error refreshing categories:', error);
       return cats;
     }
+  } else {
+    console.log('❌ Database not connected, cannot refresh categories');
+    return cats;
   }
-  return cats;
 }
 
 // Force refresh function for debugging
 async function forceRefresh() {
+  console.log('🔄 FORCE REFRESH: Starting...');
+  
   if (db && db.connected) {
-    const freshCats = await db.getCategories();
-    
-    // Clear and reassign
-    Object.keys(cats).forEach(key => delete cats[key]);
-    Object.assign(cats, freshCats);
-    
-    console.log(`🔄 FORCE refreshed categories:`, Object.keys(cats));
+    try {
+      const freshCats = await db.getCategories();
+      console.log(`🔍 FORCE REFRESH: Database has ${Object.keys(freshCats).length} categories`);
+      
+      // Clear and reassign
+      Object.keys(cats).forEach(key => delete cats[key]);
+      Object.assign(cats, freshCats);
+      
+      console.log(`✅ FORCE REFRESH: Memory now has ${Object.keys(cats).length} categories:`, Object.keys(cats));
+      return cats;
+    } catch (error) {
+      console.error('❌ FORCE REFRESH: Error:', error);
+      return cats;
+    }
+  } else {
+    console.log('❌ FORCE REFRESH: Database not connected');
     return cats;
   }
-  return cats;
 }
 
 // Get categories directly from database (for debugging)
 async function getCategoriesFromDB() {
   await ensureInitialized();
   if (db && db.connected) {
-    return await db.getCategories();
+    try {
+      const dbCats = await db.getCategories();
+      console.log(`🔍 Direct DB query returned ${Object.keys(dbCats).length} categories:`, Object.keys(dbCats));
+      return dbCats;
+    } catch (error) {
+      console.error('❌ Error getting categories from DB:', error);
+      return {};
+    }
   }
   return {};
 }
