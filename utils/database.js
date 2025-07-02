@@ -17,10 +17,10 @@ const TicketStateSchema = new mongoose.Schema({
   awaitProof: { type: Boolean, default: false },
   awaitDescription: { type: Boolean, default: false },
   awaitTwitchNick: { type: Boolean, default: false },
-  awaitLtcOnly: { type: Boolean, default: false }, // NOVO: Para usuários verificados
-  websiteType: { type: String, default: null }, // 'bug' or 'redeem'
+  awaitLtcOnly: { type: Boolean, default: false },
+  websiteType: { type: String, default: null },
   twitchNick: { type: String, default: null },
-  twitchProofImage: { type: Boolean, default: false }, // NOVO: Para aceitar em mensagens separadas
+  twitchProofImage: { type: Boolean, default: false },
   selectedRedeem: { type: String, default: null },
   bcGameId: { type: String, default: null }, // NOVO: Para BCGame ID
   prize: { type: String, default: null },
@@ -93,7 +93,8 @@ const SubmissionSchema = new mongoose.Schema({
   casino: { type: String, default: null },
   prize: { type: String, default: null },
   ltcAddress: { type: String, default: null },
-  status: { type: String, default: 'pending' }, // pending, approved, rejected
+  bcGameId: { type: String, default: null }, // NOVO: Para BCGame ID
+  status: { type: String, default: 'pending' },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -108,11 +109,11 @@ const ApprovalSchema = new mongoose.Schema({
   casino: { type: String, required: true },
   prize: { type: String, required: true },
   ltcAddress: { type: String, required: true },
-  status: { type: String, default: 'pending' }, // pending, paid, review
+  bcGameId: { type: String, default: null }, // NOVO: Para BCGame ID
+  status: { type: String, default: 'pending' },
   createdAt: { type: Date, default: Date.now }
 });
 
-// Schema para Redeems
 const RedeemSchema = new mongoose.Schema({
   itemName: { type: String, required: true },
   itemId: { type: String, required: true },
@@ -401,7 +402,7 @@ class DatabaseManager {
   }
 
   // === SUBMISSIONS ===
-  async saveSubmission(ticketChannelId, ticketNumber, userId, userTag, gwType, casino = null, prize = null, ltcAddress = null) {
+  async saveSubmission(ticketChannelId, ticketNumber, userId, userTag, gwType, casino = null, prize = null, ltcAddress = null, bcGameId = null) {
     if (!this.connected) return null;
     
     try {
@@ -416,7 +417,8 @@ class DatabaseManager {
         gwType,
         casino,
         prize,
-        ltcAddress
+        ltcAddress,
+        bcGameId
       });
       
       await submission.save();
@@ -446,6 +448,7 @@ class DatabaseManager {
         casino: doc.casino,
         prize: doc.prize,
         ltcAddress: doc.ltcAddress,
+        bcGameId: doc.bcGameId,
         status: doc.status,
         createdAt: doc.createdAt
       };
@@ -474,7 +477,7 @@ class DatabaseManager {
   }
 
   // === APPROVALS ===
-  async saveApproval(ticketChannelId, ticketNumber, userId, userTag, casino, prize, ltcAddress) {
+  async saveApproval(ticketChannelId, ticketNumber, userId, userTag, casino, prize, ltcAddress, bcGameId = null) {
     if (!this.connected) return null;
     
     try {
@@ -488,7 +491,8 @@ class DatabaseManager {
         userTag,
         casino,
         prize,
-        ltcAddress
+        ltcAddress,
+        bcGameId
       });
       
       await approval.save();
@@ -517,6 +521,7 @@ class DatabaseManager {
         casino: doc.casino,
         prize: doc.prize,
         ltcAddress: doc.ltcAddress,
+        bcGameId: doc.bcGameId,
         status: doc.status,
         createdAt: doc.createdAt
       };

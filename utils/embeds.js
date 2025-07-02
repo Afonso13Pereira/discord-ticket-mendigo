@@ -415,7 +415,7 @@ class EmbedFactory {
   }
 
   // === APPROVAL EMBEDS ===
-  static approvalFinal(casino, prize, userTag, ticketNumber, ltcAddress, bcGameId = null) {
+  static approvalFinal(casino, prize, userTag, ticketNumber, ltcAddress, bcGameId = null, isVerified = false) {
     const description = [
       '**Casino**',
       casino || 'N/A',
@@ -423,19 +423,28 @@ class EmbedFactory {
       '**Prenda**',
       prize || 'N/A',
       '',
-      '**Utilizador**',
-      userTag,
+      '**Utilizador**'
+    ];
+
+    // NOVO: Para BCGame verificado, mostrar status especial
+    if (casino === 'BCGame' && isVerified) {
+      description.push(`${userTag} (${EMOJIS.VERIFIED} **BCGame Afiliado Verificado**)`);
+    } else {
+      description.push(userTag);
+    }
+
+    description.push(
       '',
       '**Ticket**',
       `ticket-${ticketNumber}`,
       '',
       '**Endereço LTC**',
       ltcAddress || 'N/A'
-    ];
+    );
 
-    // NOVO: Para BCGame, mostrar ID e status de verificação
-    if (casino === 'BCGame' && bcGameId) {
-      description.splice(6, 0, '', '**ID BCGame**', bcGameId);
+    // NOVO: Para BCGame, mostrar ID se não for verificado
+    if (casino === 'BCGame' && bcGameId && !isVerified) {
+      description.splice(-3, 0, '', '**ID BCGame**', bcGameId);
     }
 
     return new EmbedBuilder()

@@ -143,6 +143,10 @@ module.exports = {
           });
         }
 
+        // NOVO: Verificar se o usuário tem cargo de verificação para este casino
+        const member = await interaction.guild.members.fetch(submission.userId);
+        const isVerified = isUserVerifiedForCasino(member, submission.casino);
+
         // NOVO: Para BCGame, obter o ID do usuário
         let bcGameId = null;
         if (submission.casino === 'BCGame') {
@@ -170,7 +174,8 @@ module.exports = {
           submission.userTag,
           submission.ticketNumber,
           submission.ltcAddress,
-          bcGameId
+          bcGameId,
+          isVerified
         );
         const components = ComponentFactory.approvalButtons(approvalId);
 
@@ -843,7 +848,8 @@ module.exports = {
         ticketState.gwType || ticketState.vipType || 'unknown',
         ticketState.casino || ticketState.vipCasino,
         ticketState.prize,
-        ticketState.ltcAddress
+        ticketState.ltcAddress,
+        ticketState.bcGameId
       );
 
       // Send to mod channel
@@ -859,7 +865,7 @@ module.exports = {
       // Update submission with message info
       await client.db.updateSubmission(submissionId, null, modChannel.id, 'pending');
       
-      // REVERTIDO: Send mod buttons to the ticket itself (COMO ESTAVA ANTES)
+      // Send mod buttons to the ticket itself
       const modButtons = ComponentFactory.modButtons(submissionId);
       await interaction.channel.send({
         embeds: [EmbedFactory.info('Solicitação enviada para aprovação! Aguarde a análise da equipe.')],
@@ -867,7 +873,7 @@ module.exports = {
       });
     }
 
-    // Mod Approve Button (agora no ticket)
+    // Mod Approve Button
     if (interaction.isButton() && interaction.customId.startsWith('mod_approve_')) {
       // Check if user has mod role
       if (!interaction.member.roles.cache.has(ROLES.MOD)) {
@@ -897,7 +903,7 @@ module.exports = {
       return interaction.showModal(modal);
     }
 
-    // Mod Reject Button (agora no ticket)
+    // Mod Reject Button
     if (interaction.isButton() && interaction.customId.startsWith('mod_reject_')) {
       // Check if user has mod role
       if (!interaction.member.roles.cache.has(ROLES.MOD)) {
