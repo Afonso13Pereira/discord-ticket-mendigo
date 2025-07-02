@@ -135,6 +135,8 @@ class ComponentFactory {
     const rows = [];
     let currentRow = new ActionRowBuilder();
 
+    console.log(`🔧 Building category buttons with ${staticCats.length} static and ${Object.keys(dynamicCats).length} dynamic categories`);
+
     // Add static categories
     for (const cat of staticCats) {
       if (currentRow.components.length === 5) {
@@ -150,11 +152,15 @@ class ComponentFactory {
           cat.emoji
         )
       );
+      console.log(`➕ Added static category: ${cat.label} (${cat.id})`);
     }
 
-    // Add dynamic categories
+    // Add dynamic categories (CORREÇÃO: Verificar se estão ativos)
     for (const [id, cat] of Object.entries(dynamicCats)) {
-      if (!cat.active) continue;
+      if (!cat.active) {
+        console.log(`⏭️ Skipping inactive category: ${cat.name} (${id})`);
+        continue;
+      }
 
       if (currentRow.components.length === 5) {
         rows.push(currentRow);
@@ -169,12 +175,14 @@ class ComponentFactory {
           cat.emoji
         )
       );
+      console.log(`➕ Added dynamic category: ${cat.name} (${id})`);
     }
 
     if (currentRow.components.length > 0) {
       rows.push(currentRow);
     }
 
+    console.log(`✅ Created ${rows.length} button rows with total categories`);
     return rows;
   }
 
@@ -182,8 +190,13 @@ class ComponentFactory {
     const rows = [];
     let currentRow = new ActionRowBuilder();
 
+    console.log(`🔧 Building promo buttons with ${Object.keys(promos).length} promotions`);
+
     for (const [pid, promo] of Object.entries(promos)) {
-      if (!promo.active || Date.now() > new Date(promo.end)) continue;
+      if (!promo.active || Date.now() > new Date(promo.end)) {
+        console.log(`⏭️ Skipping inactive/expired promo: ${promo.name} (${pid})`);
+        continue;
+      }
 
       if (currentRow.components.length === 5) {
         rows.push(currentRow);
@@ -198,12 +211,14 @@ class ComponentFactory {
           promo.emoji || EMOJIS.FIRE
         )
       );
+      console.log(`➕ Added active promo: ${promo.name} (${pid})`);
     }
 
     if (currentRow.components.length > 0) {
       rows.push(currentRow);
     }
 
+    console.log(`✅ Created ${rows.length} promo button rows`);
     return rows;
   }
 

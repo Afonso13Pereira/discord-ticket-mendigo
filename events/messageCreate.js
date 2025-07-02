@@ -43,9 +43,11 @@ module.exports = {
         const typeButtons = ComponentFactory.giveawayTypeButtons();
         const components = [typeButtons];
 
-        // Add promo buttons - refresh promotions first
+        // CORREÇÃO: Add promo buttons - refresh promotions first
         await refreshExpired();
         await refreshPromotions(); // CORREÇÃO: Refresh promotions from database
+        console.log(`🔄 Refreshed promotions for giveaway selection. Found ${Object.keys(promos).length} promotions`);
+        
         const promoButtons = ComponentFactory.promoButtons(promos);
         components.push(...promoButtons);
 

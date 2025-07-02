@@ -45,10 +45,11 @@ async function updateTicketMessage(guild, client) {
       return;
     }
 
-    // Refresh categories from database before creating buttons
+    // CORREÇÃO: Force refresh categories from database before creating buttons
     await refreshCategories();
     
-    console.log(`📋 Creating ticket message with ${Object.keys(cats).length} dynamic categories`);
+    console.log(`📋 Creating ticket message with categories:`, Object.keys(cats));
+    console.log(`📋 Active categories:`, Object.entries(cats).filter(([id, cat]) => cat.active).map(([id, cat]) => `${cat.name} (${id})`));
     
     const embed = EmbedFactory.ticket(
       'Sistema de Suporte',
@@ -64,6 +65,7 @@ async function updateTicketMessage(guild, client) {
     );
 
     const components = ComponentFactory.categoryButtons(STATIC_CATEGORIES, cats);
+    console.log(`📋 Created ${components.length} component rows for ticket message`);
 
     // Clear channel and send new message
     const messages = await ticketChannel.messages.fetch({ limit: 100 });

@@ -13,6 +13,7 @@ const EmbedFactory = require('../utils/embeds');
 const ComponentFactory = require('../utils/components');
 const TranscriptManager = require('../utils/transcripts');
 const { CHANNELS, ROLES, EMOJIS, VIP_TYPES, VIP_CASINOS } = require('../config/constants');
+const { updateTicketMessage } = require('../commands/atualizartickets');
 
 const CONFIRM_RX = /^sim[, ]*eu confirmo$/i;
 
@@ -70,8 +71,16 @@ module.exports = {
         // Log action
         await client.db.logAction(interaction.channel?.id || 'DM', interaction.user.id, 'promo_created', `ID: ${id}, Name: ${name}`);
         
+        // CORREÇÃO: Atualizar mensagem de tickets após criar promoção
+        try {
+          await updateTicketMessage(interaction.guild, client);
+          console.log('🔄 Ticket message updated after promotion creation');
+        } catch (error) {
+          console.error('Error updating ticket message after promotion creation:', error);
+        }
+        
         return interaction.reply({
-          embeds: [EmbedFactory.success(`Promoção **${name}** criada com sucesso!\nID: \`${id}\``)],
+          embeds: [EmbedFactory.success(`Promoção **${name}** criada com sucesso!\nID: \`${id}\`\n\n${EMOJIS.INFO} Mensagem de tickets atualizada automaticamente.`)],
           flags: 64
         });
       }
@@ -86,8 +95,16 @@ module.exports = {
         // Log action
         await client.db.logAction(interaction.channel?.id || 'DM', interaction.user.id, 'category_created', `ID: ${id}, Name: ${name}`);
         
+        // CORREÇÃO: Atualizar mensagem de tickets após criar categoria
+        try {
+          await updateTicketMessage(interaction.guild, client);
+          console.log('🔄 Ticket message updated after category creation');
+        } catch (error) {
+          console.error('Error updating ticket message after category creation:', error);
+        }
+        
         return interaction.reply({
-          embeds: [EmbedFactory.success(`Categoria **${name}** criada com sucesso!\nID: \`${id}\``)],
+          embeds: [EmbedFactory.success(`Categoria **${name}** criada com sucesso!\nID: \`${id}\`\n\n${EMOJIS.INFO} Mensagem de tickets atualizada automaticamente.`)],
           flags: 64
         });
       }
@@ -492,7 +509,7 @@ module.exports = {
       if (ticketState?.awaitConfirm) return;
 
       if (interaction.customId.startsWith('gw_promo_')) {
-        // Refresh promotions to ensure we have the latest data
+        // CORREÇÃO: Refresh promotions to ensure we have the latest data
         await refreshPromotions();
         
         const promoId = interaction.customId.split('_')[2];
