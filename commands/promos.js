@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits,
         ModalBuilder, TextInputBuilder, TextInputStyle,
         ActionRowBuilder } = require('discord.js');
-const { promos, create, close, list } = require('../utils/promotions');
+const { promos, create, close, list, refreshPromotions, ensureInitialized } = require('../utils/promotions');
 const EmbedFactory = require('../utils/embeds');
 const { EMOJIS } = require('../config/constants');
 
@@ -70,41 +70,78 @@ module.exports = {
     }
 
     if (subcommand === 'activelist') {
-      const promoList = list();
-      
-      if (!promoList.length) {
+      try {
+        // CORREÇÃO: Garantir que a base de dados está inicializada e refresh das promoções
+        await ensureInitialized();
+        await refreshPromotions();
+        
+        console.log(`🔥 Getting promotion list. Promotions in memory:`, Object.keys(promos));
+        
+        const promoList = await list();
+        
+        console.log(`🔥 Promotion list result:`, promoList.length, 'promotions');
+        promoList.forEach(([id, promo]) => {
+          console.log(`  - ${promo.name} (${id}): active=${promo.active}, expires=${promo.end}`);
+        });
+        
+        if (!promoList.length) {
+          return interaction.reply({
+            embeds: [EmbedFactory.info('Nenhuma promoção encontrada', 'Lista de Promoções')],
+            flags: 64
+          });
+        }
+
+        const description = promoList.slice(0, 15).map(([id, promo]) => {
+          const status = promo.active ? EMOJIS.SUCCESS : EMOJIS.ERROR;
+          const emoji = promo.emoji || EMOJIS.FIRE;
+          const isExpired = Date.now() > new Date(promo.end);
+          const statusText = !promo.active ? 'Fechada' : isExpired ? 'Expirada' : 'Ativa';
+          return `${status} ${emoji} **${promo.name}**\n└ ID: \`${id}\` • Casino: ${promo.casino} • Status: ${statusText}\n└ Termina: <t:${Math.floor(new Date(promo.end)/1000)}:R>`;
+        }).join('\n\n');
+
+        const embed = EmbedFactory.primary(description, `${EMOJIS.FIRE} Lista de Promoções (${promoList.length})`);
+        
+        return interaction.reply({ embeds: [embed], flags: 64 });
+        
+      } catch (error) {
+        console.error('Error in promos activelist:', error);
         return interaction.reply({
-          embeds: [EmbedFactory.info('Nenhuma promoção encontrada', 'Lista de Promoções')],
+          embeds: [EmbedFactory.error('Erro ao obter lista de promoções')],
           flags: 64
         });
       }
-
-      const description = promoList.slice(0, 15).map(([id, promo]) => {
-        const status = promo.active ? EMOJIS.SUCCESS : EMOJIS.ERROR;
-        const emoji = promo.emoji || EMOJIS.FIRE;
-        return `${status} ${emoji} **${promo.name}**\n└ ID: \`${id}\` • Termina: <t:${Math.floor(new Date(promo.end)/1000)}:R>`;
-      }).join('\n\n');
-
-      const embed = EmbedFactory.primary(description, `${EMOJIS.FIRE} Lista de Promoções`);
-      
-      return interaction.reply({ embeds: [embed], flags: 64 });
     }
 
     if (subcommand === 'close') {
-      const id = interaction.options.getString('id');
-      
-      if (!promos[id]) {
+      try {
+        await ensureInitialized();
+        await refreshPromotions();
+        
+        const id = interaction.options.getString('id');
+        
+        console.log(`🔍 Looking for promotion ID: ${id}`);
+        console.log(`🔥 Available promotions:`, Object.keys(promos));
+        
+        if (!promos[id]) {
+          return interaction.reply({
+            embeds: [EmbedFactory.error(`ID de promoção inválido: \`${id}\`\n\nPromoções disponíveis: ${Object.keys(promos).join(', ')}`)],
+            flags: 64
+          });
+        }
+
+        await close(id);
         return interaction.reply({
-          embeds: [EmbedFactory.error('ID de promoção inválido')],
+          embeds: [EmbedFactory.success(`Promoção \`${promos[id].name}\` (ID: \`${id}\`) foi fechada com sucesso`)],
+          flags: 64
+        });
+        
+      } catch (error) {
+        console.error('Error closing promotion:', error);
+        return interaction.reply({
+          embeds: [EmbedFactory.error('Erro ao fechar promoção')],
           flags: 64
         });
       }
-
-      close(id);
-      return interaction.reply({
-        embeds: [EmbedFactory.success(`Promoção \`${id}\` foi fechada com sucesso`)],
-        flags: 64
-      });
     }
   }
 };

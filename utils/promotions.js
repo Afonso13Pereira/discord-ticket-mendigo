@@ -74,12 +74,20 @@ async function refreshExpired() {
 }
 
 async function list() {
+  await ensureInitialized();
+  // CORREÇÃO: Garantir que temos as promoções mais recentes
+  await refreshPromotions();
   await refreshExpired();
-  return Object.entries(promos).sort((a, b) => b[1].created - a[1].created);
+  
+  console.log(`🔥 list() called. Promotions in memory:`, Object.keys(promos));
+  const result = Object.entries(promos).sort((a, b) => b[1].created - a[1].created);
+  console.log(`🔥 list() returning ${result.length} promotions`);
+  return result;
 }
 
 async function ensureInitialized() {
   if (!initialized) {
+    console.log('🔄 Promotions not initialized, initializing...');
     await initDatabase();
   }
 }
@@ -88,7 +96,6 @@ async function refreshPromotions() {
   if (db && db.connected) {
     try {
       promos = await db.getPromotions();
-      await refreshExpired(); // Also check for expired ones
       console.log(`🔄 Refreshed ${Object.keys(promos).length} promotions from database`);
     } catch (error) {
       console.error('Error refreshing promotions:', error);

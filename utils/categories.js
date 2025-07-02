@@ -59,11 +59,18 @@ async function close(id) {
 
 async function list() {
   await ensureInitialized();
-  return Object.entries(cats).sort((a, b) => b[1].created - a[1].created);
+  // CORREÇÃO: Garantir que temos as categorias mais recentes
+  await refreshCategories();
+  
+  console.log(`📋 list() called. Categories in memory:`, Object.keys(cats));
+  const result = Object.entries(cats).sort((a, b) => b[1].created - a[1].created);
+  console.log(`📋 list() returning ${result.length} categories`);
+  return result;
 }
 
 async function ensureInitialized() {
   if (!initialized) {
+    console.log('🔄 Categories not initialized, initializing...');
     await initDatabase();
   }
 }
