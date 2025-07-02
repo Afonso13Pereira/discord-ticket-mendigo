@@ -7,8 +7,8 @@ const {
 } = require('discord.js');
 
 const CASINOS = require('./casinos');
-const { promos, create: createPromo, refreshExpired } = require('../utils/promotions');
-const { cats, create: createCat } = require('../utils/categories');
+const { promos, create: createPromo, refreshExpired, refreshPromotions } = require('../utils/promotions');
+const { cats, create: createCat, refreshCategories } = require('../utils/categories');
 const EmbedFactory = require('../utils/embeds');
 const ComponentFactory = require('../utils/components');
 const TranscriptManager = require('../utils/transcripts');
@@ -337,6 +337,10 @@ module.exports = {
     // Category Buttons (Ticket Creation)
     if (interaction.isButton() && interaction.customId.startsWith('category_')) {
       const categoryId = interaction.customId.slice(9);
+      
+      // Refresh categories to ensure we have the latest data
+      await refreshCategories();
+      
       const category = cats[categoryId] || { name: categoryId, color: 'grey', emoji: null };
 
       // Get next ticket number for this category (CORREÇÃO: sequencial por categoria)
@@ -488,6 +492,9 @@ module.exports = {
       if (ticketState?.awaitConfirm) return;
 
       if (interaction.customId.startsWith('gw_promo_')) {
+        // Refresh promotions to ensure we have the latest data
+        await refreshPromotions();
+        
         const promoId = interaction.customId.split('_')[2];
         const promo = promos[promoId];
         

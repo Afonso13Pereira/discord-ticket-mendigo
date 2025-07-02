@@ -2,7 +2,7 @@ const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const EmbedFactory = require('../utils/embeds');
 const ComponentFactory = require('../utils/components');
 const { CHANNELS, EMOJIS } = require('../config/constants');
-const { cats } = require('../utils/categories');
+const { cats, refreshCategories } = require('../utils/categories');
 
 const STATIC_CATEGORIES = [
   { id: 'Giveaways', label: 'Giveaways', emoji: EMOJIS.GIFT, color: 'blue' },
@@ -45,6 +45,11 @@ async function updateTicketMessage(guild, client) {
       return;
     }
 
+    // Refresh categories from database before creating buttons
+    await refreshCategories();
+    
+    console.log(`📋 Creating ticket message with ${Object.keys(cats).length} dynamic categories`);
+    
     const embed = EmbedFactory.ticket(
       'Sistema de Suporte',
       [

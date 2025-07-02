@@ -1,7 +1,7 @@
 // events/messageCreate.js
 require('dotenv').config();
 const CASINOS = require('./casinos');
-const { promos, refreshExpired } = require('../utils/promotions');
+const { promos, refreshExpired, refreshPromotions } = require('../utils/promotions');
 const EmbedFactory = require('../utils/embeds');
 const ComponentFactory = require('../utils/components');
 const { CHANNELS, EMOJIS } = require('../config/constants');
@@ -43,8 +43,9 @@ module.exports = {
         const typeButtons = ComponentFactory.giveawayTypeButtons();
         const components = [typeButtons];
 
-        // Add promo buttons
+        // Add promo buttons - refresh promotions first
         await refreshExpired();
+        await refreshPromotions(); // CORREÇÃO: Refresh promotions from database
         const promoButtons = ComponentFactory.promoButtons(promos);
         components.push(...promoButtons);
 
