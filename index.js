@@ -6,6 +6,7 @@ const DatabaseManager = require('./utils/database');
 const TranscriptManager = require('./utils/transcripts');
 const EmbedFactory = require('./utils/embeds');
 const { CHANNELS } = require('./config/constants');
+const { updateTicketMessage } = require('./commands/atualizartickets');
 
 const client = new Client({
   intents: [
@@ -80,6 +81,19 @@ async function updateStatistics() {
   }
 }
 
+// Update ticket message in create ticket channel
+async function updateTicketMessagePeriodically() {
+  try {
+    const guild = client.guilds.cache.first();
+    if (!guild) return;
+
+    await updateTicketMessage(guild, client);
+    console.log('🎫 Ticket message updated automatically');
+  } catch (error) {
+    console.error('Error updating ticket message:', error);
+  }
+}
+
 // Expose database functions to client
 client.saveTicketState = saveTicketState;
 client.deleteTicketState = deleteTicketState;
@@ -105,6 +119,9 @@ for (const file of fs.readdirSync(eventsPath).filter(f => f.endsWith('.js'))) {
 // Update statistics every 30 minutes
 setInterval(updateStatistics, 30 * 60 * 1000);
 
+// Update ticket message every 6 hours
+setInterval(updateTicketMessagePeriodically, 6 * 60 * 60 * 1000);
+
 // Cleanup old tickets and transcripts daily
 setInterval(async () => {
   try {
@@ -126,8 +143,9 @@ client.once('ready', () => {
   console.log(`✅ Bot online como ${client.user.tag}`);
   restoreTicketStates();
   
-  // Update statistics on startup
+  // Update statistics and ticket message on startup
   setTimeout(updateStatistics, 5000); // Wait 5 seconds for everything to load
+  setTimeout(updateTicketMessagePeriodically, 7000); // Wait 7 seconds for everything to load
 });
 
 // Graceful shutdown
