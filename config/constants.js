@@ -13,7 +13,11 @@ module.exports = {
   },
 
   ROLES: {
-    MOD: process.env.MOD_ID || '1386505412718887073'
+    MOD: process.env.MOD_ID || '1386505412718887073',
+    // NOVO: Cargos de verificação de casino
+    AFILIADO_BCGAME: process.env.AFILIADO_BCGAME_ID || '1234567890123456789',
+    AFILIADO_RIOACE: process.env.AFILIADO_RIOACE_ID || '1234567890123456789',
+    AFILIADO_STAKE: process.env.AFILIADO_STAKE_ID || '1234567890123456789'
   },
 
   COLORS: {
@@ -48,7 +52,8 @@ module.exports = {
     THUMBSUP: '👍',
     CHART: '📊',
     CLOCK: '🕐',
-    CALENDAR: '📅'
+    CALENDAR: '📅',
+    VERIFIED: '✅' // NOVO: Para usuários verificados
   },
 
   ICONS: {
@@ -74,5 +79,12 @@ module.exports = {
   VIP_CASINOS: [
     { id: 'BCGame', label: 'BC.Game', emoji: '🎲' }
     // Adicionar mais casinos VIP aqui conforme necessário
-  ]
+  ],
+
+  // NOVO: Mapeamento de casinos para cargos
+  CASINO_ROLES: {
+    'BCGame': 'AFILIADO_BCGAME',
+    'RioAce': 'AFILIADO_RIOACE',
+    'Stake': 'AFILIADO_STAKE'
+  }
 };

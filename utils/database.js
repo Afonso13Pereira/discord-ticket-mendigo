@@ -27,6 +27,7 @@ const TicketStateSchema = new mongoose.Schema({
   step4HasAddr: { type: Boolean, default: false },
   ltcAddress: { type: String, default: null },
   description: { type: String, default: null },
+  isVerified: { type: Boolean, default: false }, // NOVO: Se o usuário já é verificado no casino
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
@@ -80,8 +81,8 @@ const CategoryCounterSchema = new mongoose.Schema({
 
 const SubmissionSchema = new mongoose.Schema({
   submissionId: { type: String, required: true, unique: true },
-  messageId: { type: String, default: null }, // CORREÇÃO: Não obrigatório
-  channelId: { type: String, default: null }, // CORREÇÃO: Não obrigatório
+  messageId: { type: String, default: null },
+  channelId: { type: String, default: null },
   ticketChannelId: { type: String, required: true },
   ticketNumber: { type: Number, required: true },
   userId: { type: String, required: true },
@@ -96,8 +97,8 @@ const SubmissionSchema = new mongoose.Schema({
 
 const ApprovalSchema = new mongoose.Schema({
   approvalId: { type: String, required: true, unique: true },
-  messageId: { type: String, default: null }, // CORREÇÃO: Não obrigatório
-  channelId: { type: String, default: null }, // CORREÇÃO: Não obrigatório
+  messageId: { type: String, default: null },
+  channelId: { type: String, default: null },
   ticketChannelId: { type: String, required: true },
   ticketNumber: { type: Number, required: true },
   userId: { type: String, required: true },
@@ -120,6 +121,21 @@ const RedeemSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 });
 
+// NOVO: Schema para Verificações de Casino
+const CasinoVerificationSchema = new mongoose.Schema({
+  userId: { type: String, required: true },
+  userTag: { type: String, required: true },
+  casino: { type: String, required: true },
+  verifiedAt: { type: Date, default: Date.now },
+  ticketNumber: { type: Number, required: true },
+  approvalId: { type: String, required: true },
+  roleId: { type: String, default: null }, // ID do cargo atribuído
+  active: { type: Boolean, default: true }
+});
+
+// Índice composto para evitar duplicatas
+CasinoVerificationSchema.index({ userId: 1, casino: 1 }, { unique: true });
+
 // Add index for automatic deletion
 TranscriptSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
@@ -135,6 +151,7 @@ class DatabaseManager {
     this.Submission = null;
     this.Approval = null;
     this.Redeem = null;
+    this.CasinoVerification = null;
     this.connect();
   }
 
@@ -156,13 +173,118 @@ class DatabaseManager {
       this.CategoryCounter = mongoose.model('CategoryCounter', CategoryCounterSchema, 'DiscordBot.categoryCounters');
       this.Submission = mongoose.model('Submission', SubmissionSchema, 'DiscordBot.submissions');
       this.Approval = mongoose.model('Approval', ApprovalSchema, 'DiscordBot.approvals');
-      this.Redeem = mongoose.model('Redeem', RedeemSchema, 'reedems'); // Collection já existente
+      this.Redeem = mongoose.model('Redeem', RedeemSchema, 'reedems');
+      this.CasinoVerification = mongoose.model('CasinoVerification', CasinoVerificationSchema, 'DiscordBot.casinoVerifications');
 
       this.connected = true;
-      console.log('✅ Connected to MongoDB (mendigo/DiscordBot + reedems)');
+      console.log('✅ Connected to MongoDB (mendigo/DiscordBot + reedems + verifications)');
     } catch (error) {
       console.error('❌ MongoDB connection error:', error);
       this.connected = false;
+    }
+  }
+
+  // === CASINO VERIFICATIONS ===
+  async addCasinoVerification(userId, userTag, casino, ticketNumber, approvalId, roleId = null) {
+    if (!this.connected) return false;
+    
+    try {
+      const verification = new this.CasinoVerification({
+        userId,
+        userTag,
+        casino,
+        ticketNumber,
+        approvalId,
+        roleId
+      });
+      
+      await verification.save();
+      console.log(`✅ Added casino verification: ${userTag} -> ${casino}`);
+      return true;
+    } catch (error) {
+      if (error.code === 11000) {
+        // Duplicate key - user already verified for this casino
+        console.log(`ℹ️ User ${userTag} already verified for ${casino}`);
+        return false;
+      }
+      console.error('Error adding casino verification:', error);
+      return false;
+    }
+  }
+
+  async isUserVerifiedForCasino(userId, casino) {
+    if (!this.connected) return false;
+    
+    try {
+      const verification = await this.CasinoVerification.findOne({
+        userId,
+        casino,
+        active: true
+      });
+      
+      return !!verification;
+    } catch (error) {
+      console.error('Error checking casino verification:', error);
+      return false;
+    }
+  }
+
+  async getUserVerifications(userId) {
+    if (!this.connected) return [];
+    
+    try {
+      const verifications = await this.CasinoVerification.find({
+        userId,
+        active: true
+      });
+      
+      return verifications.map(v => ({
+        casino: v.casino,
+        verifiedAt: v.verifiedAt,
+        ticketNumber: v.ticketNumber,
+        roleId: v.roleId
+      }));
+    } catch (error) {
+      console.error('Error getting user verifications:', error);
+      return [];
+    }
+  }
+
+  async getAllVerifications() {
+    if (!this.connected) return [];
+    
+    try {
+      const verifications = await this.CasinoVerification.find({ active: true })
+        .sort({ verifiedAt: -1 });
+      
+      return verifications.map(v => ({
+        userId: v.userId,
+        userTag: v.userTag,
+        casino: v.casino,
+        verifiedAt: v.verifiedAt,
+        ticketNumber: v.ticketNumber,
+        roleId: v.roleId
+      }));
+    } catch (error) {
+      console.error('Error getting all verifications:', error);
+      return [];
+    }
+  }
+
+  async removeUserVerification(userId, casino) {
+    if (!this.connected) return false;
+    
+    try {
+      const result = await this.CasinoVerification.findOneAndUpdate(
+        { userId, casino },
+        { active: false },
+        { new: true }
+      );
+      
+      return !!result;
+    } catch (error) {
+      console.error('Error removing user verification:', error);
+      return false;
     }
   }
 
@@ -284,6 +406,7 @@ class DatabaseManager {
           step4HasAddr: state.step4HasAddr || false,
           ltcAddress: state.ltcAddress || null,
           description: state.description || null,
+          isVerified: state.isVerified || false,
           updatedAt: new Date()
         },
         { upsert: true, new: true }
@@ -324,7 +447,8 @@ class DatabaseManager {
         step4HasImg: doc.step4HasImg,
         step4HasAddr: doc.step4HasAddr,
         ltcAddress: doc.ltcAddress,
-        description: doc.description
+        description: doc.description,
+        isVerified: doc.isVerified
       };
     } catch (error) {
       console.error('Error getting ticket state:', error);
@@ -374,7 +498,8 @@ class DatabaseManager {
           step4HasImg: doc.step4HasImg,
           step4HasAddr: doc.step4HasAddr,
           ltcAddress: doc.ltcAddress,
-          description: doc.description
+          description: doc.description,
+          isVerified: doc.isVerified
         });
       });
       
@@ -402,7 +527,6 @@ class DatabaseManager {
         casino,
         prize,
         ltcAddress
-        // messageId e channelId são opcionais agora
       });
       
       await submission.save();
@@ -475,7 +599,6 @@ class DatabaseManager {
         casino,
         prize,
         ltcAddress
-        // messageId e channelId são opcionais agora
       });
       
       await approval.save();
@@ -574,6 +697,14 @@ class DatabaseManager {
       // Contadores por categoria
       const categoryCounters = await this.CategoryCounter.find({}).sort({ count: -1 });
 
+      // Verificações de casino
+      const totalVerifications = await this.CasinoVerification.countDocuments({ active: true });
+      const verificationsByCasino = await this.CasinoVerification.aggregate([
+        { $match: { active: true } },
+        { $group: { _id: '$casino', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ]);
+
       return {
         ticketsPeriod: {
           last1Day: ticketsLast1Day,
@@ -596,7 +727,11 @@ class DatabaseManager {
         },
         activeTickets,
         transcriptsCreated,
-        categoryCounters: categoryCounters.map(c => ({ category: c.category, count: c.count }))
+        categoryCounters: categoryCounters.map(c => ({ category: c.category, count: c.count })),
+        verifications: {
+          total: totalVerifications,
+          byCasino: verificationsByCasino.map(v => ({ casino: v._id, count: v.count }))
+        }
       };
     } catch (error) {
       console.error('Error getting ticket statistics:', error);
