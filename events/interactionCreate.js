@@ -71,10 +71,8 @@ module.exports = {
         // Log action
         await client.db.logAction(interaction.channel?.id || 'DM', interaction.user.id, 'promo_created', `ID: ${id}, Name: ${name}`);
         
-        // CORREÇÃO: Atualizar mensagem de tickets após criar promoção
         try {
           await updateTicketMessage(interaction.guild, client);
-          console.log('🔄 Ticket message updated after promotion creation');
         } catch (error) {
           console.error('Error updating ticket message after promotion creation:', error);
         }
@@ -95,10 +93,8 @@ module.exports = {
         // Log action
         await client.db.logAction(interaction.channel?.id || 'DM', interaction.user.id, 'category_created', `ID: ${id}, Name: ${name}`);
         
-        // CORREÇÃO: Atualizar mensagem de tickets após criar categoria
         try {
           await updateTicketMessage(interaction.guild, client);
-          console.log('🔄 Ticket message updated after category creation');
         } catch (error) {
           console.error('Error updating ticket message after category creation:', error);
         }
@@ -457,13 +453,12 @@ module.exports = {
     if (interaction.isButton() && interaction.customId.startsWith('category_')) {
       const categoryId = interaction.customId.slice(9);
       
-      // CORREÇÃO CRÍTICA: Refresh categories to ensure we have the latest data
       await ensureInitialized();
       await refreshCategories();
       
       const category = cats[categoryId] || { name: categoryId, color: 'grey', emoji: null };
 
-      // Get next ticket number for this category (CORREÇÃO: sequencial por categoria)
+      // Get next ticket number for this category
       const ticketNumber = await client.db.getNextTicketNumberForCategory(category.name);
 
       // Generate ticket name with category prefix
@@ -519,14 +514,31 @@ module.exports = {
 
       // Handle different category types
       if (category.name === 'Giveaways') {
-        const currentState = client.ticketStates.get(ticketChannel.id);
-        currentState.awaitConfirm = true;
-        await client.saveTicketState(ticketChannel.id, currentState);
+        // NOVO: Verificar se o usuário já é verificado para algum casino
+        const userVerifications = await client.db.getUserVerifications(interaction.user.id);
         
-        await ticketChannel.send({
-          embeds: [EmbedFactory.confirmation()],
-          components: [supportRow]
-        });
+        if (userVerifications.length > 0) {
+          // Usuário já é verificado - mostrar opção simplificada
+          const currentState = client.ticketStates.get(ticketChannel.id);
+          currentState.awaitConfirm = true;
+          currentState.isVerified = true;
+          await client.saveTicketState(ticketChannel.id, currentState);
+          
+          await ticketChannel.send({
+            embeds: [EmbedFactory.verifiedUserConfirmation('Giveaway', userVerifications)],
+            components: [supportRow]
+          });
+        } else {
+          // Usuário não verificado - processo normal
+          const currentState = client.ticketStates.get(ticketChannel.id);
+          currentState.awaitConfirm = true;
+          await client.saveTicketState(ticketChannel.id, currentState);
+          
+          await ticketChannel.send({
+            embeds: [EmbedFactory.confirmation()],
+            components: [supportRow]
+          });
+        }
       } else if (category.name === 'VIPS') {
         await ticketChannel.send({
           embeds: [EmbedFactory.vipCasinoSelection()],
@@ -608,7 +620,6 @@ module.exports = {
       if (ticketState?.awaitConfirm) return;
 
       if (interaction.customId.startsWith('gw_promo_')) {
-        // CORREÇÃO: Refresh promotions to ensure we have the latest data
         await refreshPromotions();
         
         const promoId = interaction.customId.split('_')[2];
@@ -642,14 +653,31 @@ module.exports = {
         }
 
         ticketState.casino = casinoId;
-        ticketState.step = 0;
-        ticketState.awaitProof = true;
-        await client.saveTicketState(interaction.channel.id, ticketState);
         
-        await interaction.channel.send({
-          embeds: [EmbedFactory.success(`Promoção **${promo.name}** selecionada para **${casinoId}**`)]
-        });
-        return askChecklist(interaction.channel, ticketState);
+        // NOVO: Verificar se o usuário já é verificado para este casino
+        const isVerified = await client.db.isUserVerifiedForCasino(interaction.user.id, casinoId);
+        
+        if (isVerified && ticketState.isVerified) {
+          // Usuário verificado - pular checklist e pedir apenas LTC
+          ticketState.awaitProof = false;
+          ticketState.awaitLtcOnly = true;
+          await client.saveTicketState(interaction.channel.id, ticketState);
+          
+          await interaction.channel.send({
+            embeds: [EmbedFactory.verifiedUserLtcRequest()],
+            components: [ComponentFactory.finishButtons()]
+          });
+        } else {
+          // Usuário não verificado - processo normal
+          ticketState.step = 0;
+          ticketState.awaitProof = true;
+          await client.saveTicketState(interaction.channel.id, ticketState);
+          
+          await interaction.channel.send({
+            embeds: [EmbedFactory.success(`Promoção **${promo.name}** selecionada para **${casinoId}**`)]
+          });
+          return askChecklist(interaction.channel, ticketState);
+        }
       }
 
       // Handle fixed giveaway types
@@ -680,11 +708,28 @@ module.exports = {
 
       const ticketState = client.ticketStates.get(interaction.channel.id);
       ticketState.casino = choice;
-      ticketState.step = 0;
-      ticketState.awaitProof = true;
-      await client.saveTicketState(interaction.channel.id, ticketState);
       
-      return askChecklist(interaction.channel, ticketState);
+      // NOVO: Verificar se o usuário já é verificado para este casino
+      const isVerified = await client.db.isUserVerifiedForCasino(interaction.user.id, choice);
+      
+      if (isVerified && ticketState.isVerified) {
+        // Usuário verificado - pular checklist e pedir apenas LTC
+        ticketState.awaitProof = false;
+        ticketState.awaitLtcOnly = true;
+        await client.saveTicketState(interaction.channel.id, ticketState);
+        
+        await interaction.channel.send({
+          embeds: [EmbedFactory.verifiedUserLtcRequest()],
+          components: [ComponentFactory.finishButtons()]
+        });
+      } else {
+        // Usuário não verificado - processo normal
+        ticketState.step = 0;
+        ticketState.awaitProof = true;
+        await client.saveTicketState(interaction.channel.id, ticketState);
+        
+        return askChecklist(interaction.channel, ticketState);
+      }
     }
 
     // Next Step Button
@@ -741,7 +786,7 @@ module.exports = {
       // Update submission with message info
       await client.db.updateSubmission(submissionId, null, modChannel.id, 'pending');
       
-      // Send mod buttons to the ticket itself (CORREÇÃO AQUI!)
+      // Send mod buttons to the ticket itself
       const modButtons = ComponentFactory.modButtons(submissionId);
       await interaction.channel.send({
         embeds: [EmbedFactory.info('Solicitação enviada para aprovação! Aguarde a análise da equipe.')],
@@ -840,8 +885,37 @@ module.exports = {
         // Update approval status
         await client.db.updateApproval(approvalId, null, null, 'paid');
 
+        // NOVO: Adicionar verificação de casino para o usuário
+        if (approval.casino && CASINOS[approval.casino]) {
+          const casino = CASINOS[approval.casino];
+          const roleId = casino.cargoafiliado;
+          
+          try {
+            // Adicionar cargo ao usuário
+            const member = await interaction.guild.members.fetch(approval.userId);
+            if (member && roleId) {
+              await member.roles.add(roleId);
+              console.log(`✅ Added role ${roleId} to user ${approval.userTag} for casino ${approval.casino}`);
+            }
+            
+            // Salvar verificação na base de dados
+            await client.db.addCasinoVerification(
+              approval.userId,
+              approval.userTag,
+              approval.casino,
+              approval.ticketNumber,
+              approvalId,
+              roleId
+            );
+            
+            console.log(`✅ User ${approval.userTag} is now verified for ${approval.casino}`);
+          } catch (error) {
+            console.error('Error adding casino verification:', error);
+          }
+        }
+
         return interaction.reply({
-          embeds: [EmbedFactory.success(`Giveaway marcado como pago! Mensagem enviada ao ticket #${approval.ticketNumber}.`)],
+          embeds: [EmbedFactory.success(`Giveaway marcado como pago! Mensagem enviada ao ticket #${approval.ticketNumber}.\n\n${EMOJIS.VERIFIED} Utilizador agora está verificado para **${approval.casino}**!`)],
           flags: 64
         });
       }
@@ -939,7 +1013,6 @@ function askChecklist(channel, ticketState) {
     casino.images?.[stepIndex]
   );
 
-  // CORREÇÃO: Usar stepButtons() que inclui suporte
   channel.send({
     embeds: [embed],
     components: [ComponentFactory.stepButtons()]
@@ -959,7 +1032,7 @@ function askVipChecklist(channel, ticketState) {
   if (stepIndex >= checklist.length) {
     return channel.send({
       embeds: [EmbedFactory.success('Checklist VIP concluído! Clique em **Finalizar** para enviar para aprovação.')],
-      components: [ComponentFactory.finishButtons()] // CORREÇÃO: Usar finishButtons() que inclui suporte
+      components: [ComponentFactory.finishButtons()]
     });
   }
 
@@ -970,7 +1043,6 @@ function askVipChecklist(channel, ticketState) {
     ticketState.vipType
   );
 
-  // CORREÇÃO: Usar stepButtons() que inclui suporte
   channel.send({
     embeds: [embed],
     components: [ComponentFactory.stepButtons()]

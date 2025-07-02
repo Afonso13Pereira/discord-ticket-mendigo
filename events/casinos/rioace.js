@@ -1,6 +1,7 @@
 // events/casinos/rioace.js
 module.exports = {
   id: 'RioAce',
+  cargoafiliado: '1390070534995927070',
   label: 'RioAce',
   emoji: '🎰',
   default: false,

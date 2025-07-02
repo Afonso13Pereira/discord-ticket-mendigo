@@ -1,6 +1,7 @@
 // events/casinos/bcgame.js
 module.exports = {
   id: 'BCGame',
+  cargoafiliado: '1390070910995927070',
   label: 'BC.Game',
   emoji: '🎲',
   default: false,

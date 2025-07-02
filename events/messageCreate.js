@@ -39,28 +39,70 @@ module.exports = {
         // Log confirmation
         await client.db.logAction(message.channel.id, message.author.id, 'age_confirmed', null);
 
-        // Create giveaway type buttons
-        const typeButtons = ComponentFactory.giveawayTypeButtons();
-        const components = [typeButtons];
+        // NOVO: Se o usuário é verificado, pular para seleção de casino
+        if (ticketState.isVerified) {
+          const typeButtons = ComponentFactory.giveawayTypeButtons();
+          const components = [typeButtons];
 
-        // CORREÇÃO: Add promo buttons - refresh promotions first
-        await refreshExpired();
-        await refreshPromotions(); // CORREÇÃO: Refresh promotions from database
-        
-        const promoButtons = ComponentFactory.promoButtons(promos);
-        components.push(...promoButtons);
+          await refreshExpired();
+          await refreshPromotions();
+          
+          const promoButtons = ComponentFactory.promoButtons(promos);
+          components.push(...promoButtons);
 
-        return message.channel.send({
-          embeds: [EmbedFactory.giveaway(
-            'Tipo de Giveaway',
-            `${EMOJIS.STAR} **Parabéns!** Escolha o tipo de giveaway:\n\n${EMOJIS.GIFT} **Tipos Disponíveis:**\n• Telegram - Prêmios do bot\n• GTB - Giveaway tradicional\n• Promoções especiais em destaque`
-          )],
-          components: components
-        });
+          return message.channel.send({
+            embeds: [EmbedFactory.giveaway(
+              'Tipo de Giveaway',
+              `${EMOJIS.VERIFIED} **Utilizador Verificado!** Escolha o tipo de giveaway:\n\n${EMOJIS.GIFT} **Tipos Disponíveis:**\n• Telegram - Prêmios do bot\n• GTB - Giveaway tradicional\n• Promoções especiais em destaque\n\n${EMOJIS.INFO} Como utilizador verificado, o processo será simplificado!`
+            )],
+            components: components
+          });
+        } else {
+          // Usuário não verificado - processo normal
+          const typeButtons = ComponentFactory.giveawayTypeButtons();
+          const components = [typeButtons];
+
+          await refreshExpired();
+          await refreshPromotions();
+          
+          const promoButtons = ComponentFactory.promoButtons(promos);
+          components.push(...promoButtons);
+
+          return message.channel.send({
+            embeds: [EmbedFactory.giveaway(
+              'Tipo de Giveaway',
+              `${EMOJIS.STAR} **Parabéns!** Escolha o tipo de giveaway:\n\n${EMOJIS.GIFT} **Tipos Disponíveis:**\n• Telegram - Prêmios do bot\n• GTB - Giveaway tradicional\n• Promoções especiais em destaque`
+            )],
+            components: components
+          });
+        }
       }
       
       return message.reply({
         embeds: [EmbedFactory.error('Digite exatamente **"Sim, eu confirmo"** para prosseguir')]
+      });
+    }
+
+    // NOVO: LTC Address for verified users
+    if (ticketState.awaitLtcOnly) {
+      const ltcAddress = message.content.trim();
+      
+      if (ltcAddress.length < 25) {
+        return message.reply({
+          embeds: [EmbedFactory.error('Por favor, forneça um endereço LTC válido (mínimo 25 caracteres)')]
+        });
+      }
+      
+      ticketState.ltcAddress = ltcAddress;
+      ticketState.awaitLtcOnly = false;
+      await client.saveTicketState(message.channel.id, ticketState);
+      
+      // Log LTC address
+      await client.db.logAction(message.channel.id, message.author.id, 'ltc_address_provided', ltcAddress.substring(0, 10) + '...');
+      
+      return message.reply({
+        embeds: [EmbedFactory.success('Endereço LTC recebido! Clique em **Finalizar** para completar.')],
+        components: [ComponentFactory.finishButtons()]
       });
     }
 
@@ -199,7 +241,7 @@ module.exports = {
       if (stepIndex + 1 < checklist.length) {
         return message.reply({
           embeds: [EmbedFactory.success('Prova recebida! Clique em **Próximo Passo** para continuar.')],
-          components: [ComponentFactory.stepButtons()] // CORREÇÃO: Usar stepButtons() que inclui suporte
+          components: [ComponentFactory.stepButtons()]
         });
       }
       
@@ -208,7 +250,7 @@ module.exports = {
       
       return message.reply({
         embeds: [EmbedFactory.success('Checklist VIP concluído com sucesso! Clique em **Finalizar** para completar.')],
-        components: [ComponentFactory.finishButtons()] // CORREÇÃO: Usar finishButtons() que inclui suporte
+        components: [ComponentFactory.finishButtons()]
       });
     }
 
@@ -281,14 +323,31 @@ module.exports = {
         }
 
         ticketState.casino = casinoId;
-        ticketState.step = 0;
-        ticketState.awaitProof = true;
-        await client.saveTicketState(message.channel.id, ticketState);
         
-        await message.reply({
-          embeds: [EmbedFactory.success(`Código validado! Casino obrigatório: **${casinoId}**`)]
-        });
-        return askChecklist(message.channel, ticketState);
+        // NOVO: Verificar se o usuário já é verificado para este casino
+        const isVerified = await client.db.isUserVerifiedForCasino(message.author.id, casinoId);
+        
+        if (isVerified && ticketState.isVerified) {
+          // Usuário verificado - pular checklist e pedir apenas LTC
+          ticketState.awaitProof = false;
+          ticketState.awaitLtcOnly = true;
+          await client.saveTicketState(message.channel.id, ticketState);
+          
+          await message.reply({
+            embeds: [EmbedFactory.verifiedUserLtcRequest()],
+            components: [ComponentFactory.finishButtons()]
+          });
+        } else {
+          // Usuário não verificado - processo normal
+          ticketState.step = 0;
+          ticketState.awaitProof = true;
+          await client.saveTicketState(message.channel.id, ticketState);
+          
+          await message.reply({
+            embeds: [EmbedFactory.success(`Código validado! Casino obrigatório: **${casinoId}**`)]
+          });
+          return askChecklist(message.channel, ticketState);
+        }
       }
     }
 
@@ -336,7 +395,7 @@ module.exports = {
         if (stepIndex + 1 < casino.checklist.length) {
           return message.reply({
             embeds: [EmbedFactory.success('Prova recebida! Clique em **Próximo Passo** para continuar.')],
-            components: [ComponentFactory.stepButtons()] // CORREÇÃO: Usar stepButtons() que inclui suporte
+            components: [ComponentFactory.stepButtons()]
           });
         }
         
@@ -345,7 +404,7 @@ module.exports = {
         
         return message.reply({
           embeds: [EmbedFactory.success('Checklist concluído com sucesso! Clique em **Finalizar** para completar.')],
-          components: [ComponentFactory.finishButtons()] // CORREÇÃO: Usar finishButtons() que inclui suporte
+          components: [ComponentFactory.finishButtons()]
         });
       }
     }
@@ -386,7 +445,6 @@ function askChecklist(channel, ticketState) {
     casino.images?.[stepIndex]
   );
 
-  // CORREÇÃO: Usar stepButtons() que inclui suporte
   channel.send({
     embeds: [embed],
     components: [ComponentFactory.stepButtons()]

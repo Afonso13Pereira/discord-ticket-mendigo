@@ -1,6 +1,7 @@
 // events/casinos/stake.js
 module.exports = {
   id: 'Stake',
+  cargoafiliado: '1390070534995927070',
   label: 'Stake.com',
   emoji: '🃏',
   default: false,

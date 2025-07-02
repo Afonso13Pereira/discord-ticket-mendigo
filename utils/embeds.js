@@ -147,80 +147,48 @@ class EmbedFactory {
       .setFooter({ text: 'Confirmação Obrigatória +18' });
   }
 
-  static vipCasinoSelection() {
+  // NOVO: Confirmação para usuários verificados
+  static verifiedUserConfirmation(casino, verifications) {
+    const verificationList = verifications.map(v => 
+      `${EMOJIS.VERIFIED} **${v.casino}** - Verificado em ${new Date(v.verifiedAt).toLocaleDateString('pt-PT')}`
+    ).join('\n');
+
     return new EmbedBuilder()
-      .setColor(COLORS.PURPLE)
-      .setTitle(`${EMOJIS.VIP} Seleção de Casino VIP`)
+      .setColor(COLORS.SUCCESS)
+      .setTitle(`${EMOJIS.VERIFIED} Utilizador Verificado`)
       .setDescription([
-        '**Escolha o casino onde deseja reclamar o VIP:**',
+        `**Detectámos que já é um utilizador verificado!**`,
         '',
-        `${EMOJIS.DIAMOND} Casinos VIP disponíveis`,
-        `${EMOJIS.SHIELD} Suporte especializado`,
-        `${EMOJIS.STAR} Benefícios exclusivos`
+        `🎯 **Casino selecionado:** ${casino}`,
+        `${EMOJIS.STAR} **Status:** Verificado`,
+        '',
+        `**As suas verificações:**`,
+        verificationList,
+        '',
+        `${EMOJIS.INFO} **Como utilizador verificado, apenas precisa de:**`,
+        `• Confirmar que tem +18 anos`,
+        `• Fornecer o endereço LTC para pagamento`,
+        '',
+        '**Digite exatamente:** `Sim, eu confirmo`'
       ].join('\n'))
       .setTimestamp()
-      .setFooter({ text: 'Sistema VIP' });
+      .setFooter({ text: 'Utilizador Verificado • Processo Simplificado' });
   }
 
-  static vipTypeSelection() {
+  static verifiedUserLtcRequest() {
     return new EmbedBuilder()
-      .setColor(COLORS.PURPLE)
-      .setTitle(`${EMOJIS.VIP} Tipo de VIP`)
+      .setColor(COLORS.SUCCESS)
+      .setTitle(`${EMOJIS.VERIFIED} Endereço LTC`)
       .setDescription([
-        '**Escolha o tipo de VIP que deseja reclamar:**',
+        '**Como utilizador verificado, apenas precisa de fornecer:**',
         '',
-        `${EMOJIS.STAR} **Semanal** - VIP por uma semana`,
-        `${EMOJIS.CROWN} **Leaderboard** - VIP por posição no ranking`,
+        `💰 **Endereço LTC** para receber o pagamento`,
         '',
-        `${EMOJIS.INFO} Cada tipo tem requisitos diferentes`
+        `${EMOJIS.INFO} Digite o seu endereço LTC abaixo`,
+        `${EMOJIS.SHIELD} Verifique cuidadosamente o endereço antes de enviar`
       ].join('\n'))
       .setTimestamp()
-      .setFooter({ text: 'Sistema VIP' });
-  }
-
-  static vipChecklist(step, total, description, type) {
-    const embed = new EmbedBuilder()
-      .setColor(COLORS.PURPLE)
-      .setTitle(`${EMOJIS.VIP} VIP ${type.toUpperCase()} - Passo ${step}/${total}`)
-      .setDescription(`**${description}**`)
-      .setTimestamp()
-      .setFooter({ text: `Progresso VIP: ${step}/${total} passos concluídos` });
-    
-    return embed;
-  }
-
-  static questionDescription() {
-    return new EmbedBuilder()
-      .setColor(COLORS.INFO)
-      .setTitle(`${EMOJIS.QUESTION} Descreva a sua Dúvida`)
-      .setDescription([
-        '**Por favor, descreva o seu problema da melhor forma possível:**',
-        '',
-        `${EMOJIS.INFO} Seja específico e detalhado`,
-        `${EMOJIS.STAR} Inclua capturas de ecrã se necessário`,
-        `${EMOJIS.SHIELD} A nossa equipa irá ajudá-lo`,
-        '',
-        '**Digite a sua dúvida abaixo:**'
-      ].join('\n'))
-      .setTimestamp()
-      .setFooter({ text: 'Sistema de Dúvidas' });
-  }
-
-  static otherHelp() {
-    return new EmbedBuilder()
-      .setColor(COLORS.SECONDARY)
-      .setTitle(`${EMOJIS.INFO} Como Podemos Ajudar?`)
-      .setDescription([
-        '**Em que podemos ajudá-lo hoje?**',
-        '',
-        `${EMOJIS.STAR} Descreva o que precisa`,
-        `${EMOJIS.SHIELD} A nossa equipa está aqui para ajudar`,
-        `${EMOJIS.DIAMOND} Suporte personalizado`,
-        '',
-        '**Digite a sua solicitação abaixo:**'
-      ].join('\n'))
-      .setTimestamp()
-      .setFooter({ text: 'Suporte Geral' });
+      .setFooter({ text: 'Processo Simplificado para Verificados' });
   }
 
   // === WEBSITE EMBEDS ===
@@ -325,6 +293,82 @@ class EmbedFactory {
       ].join('\n'))
       .setTimestamp()
       .setFooter({ text: 'Redeem em Processamento' });
+  }
+
+  static vipCasinoSelection() {
+    return new EmbedBuilder()
+      .setColor(COLORS.PURPLE)
+      .setTitle(`${EMOJIS.VIP} Seleção de Casino VIP`)
+      .setDescription([
+        '**Escolha o casino onde deseja reclamar o VIP:**',
+        '',
+        `${EMOJIS.DIAMOND} Casinos VIP disponíveis`,
+        `${EMOJIS.SHIELD} Suporte especializado`,
+        `${EMOJIS.STAR} Benefícios exclusivos`
+      ].join('\n'))
+      .setTimestamp()
+      .setFooter({ text: 'Sistema VIP' });
+  }
+
+  static vipTypeSelection() {
+    return new EmbedBuilder()
+      .setColor(COLORS.PURPLE)
+      .setTitle(`${EMOJIS.VIP} Tipo de VIP`)
+      .setDescription([
+        '**Escolha o tipo de VIP que deseja reclamar:**',
+        '',
+        `${EMOJIS.STAR} **Semanal** - VIP por uma semana`,
+        `${EMOJIS.CROWN} **Leaderboard** - VIP por posição no ranking`,
+        '',
+        `${EMOJIS.INFO} Cada tipo tem requisitos diferentes`
+      ].join('\n'))
+      .setTimestamp()
+      .setFooter({ text: 'Sistema VIP' });
+  }
+
+  static vipChecklist(step, total, description, type) {
+    const embed = new EmbedBuilder()
+      .setColor(COLORS.PURPLE)
+      .setTitle(`${EMOJIS.VIP} VIP ${type.toUpperCase()} - Passo ${step}/${total}`)
+      .setDescription(`**${description}**`)
+      .setTimestamp()
+      .setFooter({ text: `Progresso VIP: ${step}/${total} passos concluídos` });
+    
+    return embed;
+  }
+
+  static questionDescription() {
+    return new EmbedBuilder()
+      .setColor(COLORS.INFO)
+      .setTitle(`${EMOJIS.QUESTION} Descreva a sua Dúvida`)
+      .setDescription([
+        '**Por favor, descreva o seu problema da melhor forma possível:**',
+        '',
+        `${EMOJIS.INFO} Seja específico e detalhado`,
+        `${EMOJIS.STAR} Inclua capturas de ecrã se necessário`,
+        `${EMOJIS.SHIELD} A nossa equipa irá ajudá-lo`,
+        '',
+        '**Digite a sua dúvida abaixo:**'
+      ].join('\n'))
+      .setTimestamp()
+      .setFooter({ text: 'Sistema de Dúvidas' });
+  }
+
+  static otherHelp() {
+    return new EmbedBuilder()
+      .setColor(COLORS.SECONDARY)
+      .setTitle(`${EMOJIS.INFO} Como Podemos Ajudar?`)
+      .setDescription([
+        '**Em que podemos ajudá-lo hoje?**',
+        '',
+        `${EMOJIS.STAR} Descreva o que precisa`,
+        `${EMOJIS.SHIELD} A nossa equipa está aqui para ajudar`,
+        `${EMOJIS.DIAMOND} Suporte personalizado`,
+        '',
+        '**Digite a sua solicitação abaixo:**'
+      ].join('\n'))
+      .setTimestamp()
+      .setFooter({ text: 'Suporte Geral' });
   }
 
   static checklist(step, total, description, image = null) {
@@ -513,7 +557,8 @@ class EmbedFactory {
         `🔍 **Em Revisão:** ${stats.approvals.review}`,
         `📊 **Total:** ${stats.approvals.total}`,
         '',
-        `📋 **Transcripts Criados (30 dias):** ${stats.transcriptsCreated}`
+        `📋 **Transcripts Criados (30 dias):** ${stats.transcriptsCreated}`,
+        `${EMOJIS.VERIFIED} **Utilizadores Verificados:** ${stats.verifications?.total || 0}`
       ].join('\n'))
       .addFields(
         {
@@ -530,8 +575,18 @@ class EmbedFactory {
             : 'Nenhum contador encontrado',
           inline: true
         }
-      )
-      .setTimestamp()
+      );
+
+    // Add verification statistics if available
+    if (stats.verifications && stats.verifications.byCasino.length > 0) {
+      embed.addFields({
+        name: `${EMOJIS.VERIFIED} Verificações por Casino`,
+        value: stats.verifications.byCasino.map(v => `**${v.casino}:** ${v.count}`).join('\n'),
+        inline: true
+      });
+    }
+
+    embed.setTimestamp()
       .setFooter({ text: 'Estatísticas atualizadas automaticamente' });
 
     return embed;
