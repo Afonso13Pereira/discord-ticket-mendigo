@@ -322,8 +322,6 @@ module.exports = {
       // Check if casino is "Todos" or specific
       if (/todos/i.test(logsCasino)) {
         // Casino is "Todos" - user can choose any casino
-        ticketState.step = 0;
-        ticketState.awaitProof = true;
         await client.saveTicketState(message.channel.id, ticketState);
         
         await message.reply({
@@ -341,7 +339,7 @@ module.exports = {
 
         ticketState.casino = casinoId;
         
-        // Verificar se o usuário tem cargo de verificação para este casino
+        // NOVO: Verificar se o usuário tem cargo de verificação para este casino
         const member = await message.guild.members.fetch(message.author.id);
         const isVerified = isUserVerifiedForCasino(member, casinoId);
         
@@ -487,7 +485,7 @@ function askChecklist(channel, ticketState) {
 
   const stepIndex = ticketState.step ?? 0;
   
-  // Para BCGame, modificar o primeiro passo para incluir ID
+  // NOVO: Para BCGame, modificar o primeiro passo para incluir ID
   let checklist = [...casino.checklist];
   if (ticketState.casino === 'BCGame' && stepIndex === 0) {
     checklist[0] = "📧 Envie **screenshot** do email de registro no BC.Game **e** o **ID da BCGame em texto**";

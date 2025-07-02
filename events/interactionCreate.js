@@ -190,6 +190,24 @@ module.exports = {
         // Update submission status
         await client.db.updateSubmission(submissionId, null, null, 'approved');
 
+        // NOVO: Apagar mensagem de submissão pendente
+        try {
+          const modChannel = await interaction.guild.channels.fetch(CHANNELS.MOD);
+          const messages = await modChannel.messages.fetch({ limit: 50 });
+          const submissionMessage = messages.find(m => 
+            m.embeds.length > 0 && 
+            m.embeds[0].description && 
+            m.embeds[0].description.includes(`#${submission.ticketNumber}`)
+          );
+          
+          if (submissionMessage) {
+            await submissionMessage.delete();
+            console.log(`🗑️ Deleted submission message for ticket #${submission.ticketNumber}`);
+          }
+        } catch (error) {
+          console.error('Error deleting submission message:', error);
+        }
+
         return interaction.reply({
           embeds: [EmbedFactory.success(`Giveaway aprovado com prémio de **${prize}** e enviado para aprovações finais!`)],
           flags: 64
@@ -221,6 +239,24 @@ module.exports = {
 
         // Update submission status
         await client.db.updateSubmission(submissionId, null, null, 'rejected');
+
+        // NOVO: Apagar mensagem de submissão pendente
+        try {
+          const modChannel = await interaction.guild.channels.fetch(CHANNELS.MOD);
+          const messages = await modChannel.messages.fetch({ limit: 50 });
+          const submissionMessage = messages.find(m => 
+            m.embeds.length > 0 && 
+            m.embeds[0].description && 
+            m.embeds[0].description.includes(`#${submission.ticketNumber}`)
+          );
+          
+          if (submissionMessage) {
+            await submissionMessage.delete();
+            console.log(`🗑️ Deleted submission message for ticket #${submission.ticketNumber}`);
+          }
+        } catch (error) {
+          console.error('Error deleting submission message:', error);
+        }
 
         return interaction.reply({
           embeds: [EmbedFactory.success(`Giveaway rejeitado. Motivo enviado ao usuário.`)],
@@ -713,8 +749,6 @@ module.exports = {
 
         if (/todos/i.test(promo.casino) || promo.casino.includes(',')) {
           ticketState.casino = null;
-          ticketState.step = 0;
-          ticketState.awaitProof = true;
           await client.saveTicketState(interaction.channel.id, ticketState);
           
           await interaction.channel.send({
@@ -732,7 +766,7 @@ module.exports = {
 
         ticketState.casino = casinoId;
         
-        // Verificar se o usuário tem cargo de verificação para este casino
+        // NOVO: Verificar se o usuário tem cargo de verificação para este casino
         const isVerified = isUserVerifiedForCasino(interaction.member, casinoId);
         
         if (isVerified && ticketState.isVerified) {
@@ -769,7 +803,15 @@ module.exports = {
           embeds: [EmbedFactory.info('📱 Envie o **código** + **print** da mensagem do bot Telegram')]
         });
       }
-      return askCasino(interaction.channel);
+      
+      // NOVO: Para GTB e outros tipos, verificar se o usuário está verificado
+      if (ticketState.isVerified) {
+        // Usuário verificado - pedir para escolher casino e depois apenas LTC
+        return askCasino(interaction.channel);
+      } else {
+        // Usuário não verificado - processo normal
+        return askCasino(interaction.channel);
+      }
     }
 
     // Casino Selection
@@ -787,7 +829,7 @@ module.exports = {
       const ticketState = client.ticketStates.get(interaction.channel.id);
       ticketState.casino = choice;
       
-      // Verificar se o usuário tem cargo de verificação para este casino
+      // NOVO: Verificar se o usuário tem cargo de verificação para este casino
       const isVerified = isUserVerifiedForCasino(interaction.member, choice);
       
       if (isVerified && ticketState.isVerified) {
