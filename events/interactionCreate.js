@@ -770,13 +770,13 @@ module.exports = {
         const isVerified = isUserVerifiedForCasino(interaction.member, casinoId);
         
         if (isVerified && ticketState.isVerified) {
-          // Usuário verificado - pular checklist e pedir apenas LTC
+          // Usuário verificado - pular checklist mas SEMPRE pedir depósito + LTC
           ticketState.awaitProof = false;
           ticketState.awaitLtcOnly = true;
           await client.saveTicketState(interaction.channel.id, ticketState);
           
           await interaction.channel.send({
-            embeds: [EmbedFactory.success(`Promoção **${promo.name}** selecionada para **${casinoId}**!\n\n${EMOJIS.VERIFIED} **Utilizador verificado** - apenas precisa de fornecer o endereço LTC.`)],
+            embeds: [EmbedFactory.success(`Promoção **${promo.name}** selecionada para **${casinoId}**!\n\n${EMOJIS.VERIFIED} **Utilizador verificado** - envie **imagem do depósito com QR visível** + **endereço LTC em texto**.`)],
             components: [ComponentFactory.finishButtons()]
           });
         } else {
@@ -805,13 +805,7 @@ module.exports = {
       }
       
       // NOVO: Para GTB e outros tipos, verificar se o usuário está verificado
-      if (ticketState.isVerified) {
-        // Usuário verificado - pedir para escolher casino e depois apenas LTC
-        return askCasino(interaction.channel);
-      } else {
-        // Usuário não verificado - processo normal
-        return askCasino(interaction.channel);
-      }
+      return askCasino(interaction.channel);
     }
 
     // Casino Selection
@@ -833,13 +827,13 @@ module.exports = {
       const isVerified = isUserVerifiedForCasino(interaction.member, choice);
       
       if (isVerified && ticketState.isVerified) {
-        // Usuário verificado - pular checklist e pedir apenas LTC
+        // Usuário verificado - pular checklist mas SEMPRE pedir depósito + LTC
         ticketState.awaitProof = false;
         ticketState.awaitLtcOnly = true;
         await client.saveTicketState(interaction.channel.id, ticketState);
         
         await interaction.channel.send({
-          embeds: [EmbedFactory.success(`Casino **${choice}** selecionado!\n\n${EMOJIS.VERIFIED} **Utilizador verificado** - apenas precisa de fornecer o endereço LTC.`)],
+          embeds: [EmbedFactory.success(`Casino **${choice}** selecionado!\n\n${EMOJIS.VERIFIED} **Utilizador verificado** - envie **imagem do depósito com QR visível** + **endereço LTC em texto**.`)],
           components: [ComponentFactory.finishButtons()]
         });
       } else {

@@ -71,25 +71,43 @@ module.exports = {
       });
     }
 
-    // LTC Address for verified users
+    // NOVO: LTC + Depósito para usuários verificados (OBRIGATÓRIO)
     if (ticketState.awaitLtcOnly) {
-      const ltcAddress = message.content.trim();
+      // Aceitar imagem e texto em mensagens separadas
+      if (message.attachments.size > 0) {
+        ticketState.step4HasImg = true;
+        await client.saveTicketState(message.channel.id, ticketState);
+      }
       
-      if (ltcAddress.length < 25) {
+      const ltcAddress = message.content.trim();
+      if (ltcAddress.length >= 25) {
+        ticketState.step4HasAddr = true;
+        ticketState.ltcAddress = ltcAddress;
+        await client.saveTicketState(message.channel.id, ticketState);
+      }
+      
+      // Verificar se tem ambos
+      if (!ticketState.step4HasImg || !ticketState.step4HasAddr) {
+        const missing = [];
+        if (!ticketState.step4HasImg) missing.push('**imagem do depósito com QR visível**');
+        if (!ticketState.step4HasAddr) missing.push('**endereço LTC em texto**');
+        
         return message.reply({
-          embeds: [EmbedFactory.error('Por favor, forneça um endereço LTC válido (mínimo 25 caracteres)')]
+          embeds: [EmbedFactory.error(`Ainda falta: ${missing.join(' e ')}`)]
         });
       }
       
-      ticketState.ltcAddress = ltcAddress;
+      // Tem ambos - finalizar
       ticketState.awaitLtcOnly = false;
+      ticketState.step4HasImg = false;
+      ticketState.step4HasAddr = false;
       await client.saveTicketState(message.channel.id, ticketState);
       
       // Log LTC address
-      await client.db.logAction(message.channel.id, message.author.id, 'ltc_address_provided', ltcAddress.substring(0, 10) + '...');
+      await client.db.logAction(message.channel.id, message.author.id, 'ltc_deposit_provided', ltcAddress.substring(0, 10) + '...');
       
       return message.reply({
-        embeds: [EmbedFactory.success('Endereço LTC recebido! Clique em **Finalizar** para completar.')],
+        embeds: [EmbedFactory.success('Depósito e endereço LTC recebidos! Clique em **Finalizar** para completar.')],
         components: [ComponentFactory.finishButtons()]
       });
     }
@@ -344,13 +362,13 @@ module.exports = {
         const isVerified = isUserVerifiedForCasino(member, casinoId);
         
         if (isVerified && ticketState.isVerified) {
-          // Usuário verificado - pular checklist e pedir apenas LTC
+          // Usuário verificado - pular checklist mas SEMPRE pedir depósito + LTC
           ticketState.awaitProof = false;
           ticketState.awaitLtcOnly = true;
           await client.saveTicketState(message.channel.id, ticketState);
           
           await message.reply({
-            embeds: [EmbedFactory.success(`Código validado! Casino obrigatório: **${casinoId}**\n\n${EMOJIS.VERIFIED} **Utilizador verificado** - apenas precisa de fornecer o endereço LTC.`)],
+            embeds: [EmbedFactory.success(`Código validado! Casino obrigatório: **${casinoId}**\n\n${EMOJIS.VERIFIED} **Utilizador verificado** - envie **imagem do depósito com QR visível** + **endereço LTC em texto**.`)],
             components: [ComponentFactory.finishButtons()]
           });
         } else {
