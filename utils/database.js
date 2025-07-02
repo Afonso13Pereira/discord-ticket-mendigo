@@ -16,6 +16,10 @@ const TicketStateSchema = new mongoose.Schema({
   awaitConfirm: { type: Boolean, default: false },
   awaitProof: { type: Boolean, default: false },
   awaitDescription: { type: Boolean, default: false },
+  awaitTwitchNick: { type: Boolean, default: false },
+  websiteType: { type: String, default: null }, // 'bug' or 'redeem'
+  twitchNick: { type: String, default: null },
+  selectedRedeem: { type: String, default: null },
   prize: { type: String, default: null },
   telegramCode: { type: String, default: null },
   telegramHasImg: { type: Boolean, default: false },
@@ -105,6 +109,17 @@ const ApprovalSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
+// NOVO: Schema para Redeems
+const RedeemSchema = new mongoose.Schema({
+  itemName: { type: String, required: true },
+  itemId: { type: String, required: true },
+  twitchName: { type: String, required: true },
+  twitchId: { type: Number, required: true },
+  redeemed: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
 // Add index for automatic deletion
 TranscriptSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
@@ -119,6 +134,7 @@ class DatabaseManager {
     this.CategoryCounter = null;
     this.Submission = null;
     this.Approval = null;
+    this.Redeem = null;
     this.connect();
   }
 
@@ -140,12 +156,80 @@ class DatabaseManager {
       this.CategoryCounter = mongoose.model('CategoryCounter', CategoryCounterSchema, 'DiscordBot.categoryCounters');
       this.Submission = mongoose.model('Submission', SubmissionSchema, 'DiscordBot.submissions');
       this.Approval = mongoose.model('Approval', ApprovalSchema, 'DiscordBot.approvals');
+      this.Redeem = mongoose.model('Redeem', RedeemSchema, 'reedems'); // Collection já existente
 
       this.connected = true;
-      console.log('✅ Connected to MongoDB (mendigo/DiscordBot)');
+      console.log('✅ Connected to MongoDB (mendigo/DiscordBot + reedems)');
     } catch (error) {
       console.error('❌ MongoDB connection error:', error);
       this.connected = false;
+    }
+  }
+
+  // === REDEEMS ===
+  async getUserRedeems(twitchName) {
+    if (!this.connected) return [];
+    
+    try {
+      const redeems = await this.Redeem.find({ 
+        twitchName: { $regex: new RegExp(`^${twitchName}$`, 'i') },
+        redeemed: false 
+      });
+      
+      return redeems.map(redeem => ({
+        id: redeem._id.toString(),
+        itemName: redeem.itemName,
+        itemId: redeem.itemId,
+        twitchName: redeem.twitchName,
+        twitchId: redeem.twitchId,
+        redeemed: redeem.redeemed,
+        createdAt: redeem.createdAt
+      }));
+    } catch (error) {
+      console.error('Error getting user redeems:', error);
+      return [];
+    }
+  }
+
+  async markRedeemAsCompleted(redeemId) {
+    if (!this.connected) return false;
+    
+    try {
+      const result = await this.Redeem.findByIdAndUpdate(
+        redeemId,
+        { 
+          redeemed: true,
+          updatedAt: new Date()
+        },
+        { new: true }
+      );
+      
+      return !!result;
+    } catch (error) {
+      console.error('Error marking redeem as completed:', error);
+      return false;
+    }
+  }
+
+  async getRedeemById(redeemId) {
+    if (!this.connected) return null;
+    
+    try {
+      const redeem = await this.Redeem.findById(redeemId);
+      if (!redeem) return null;
+      
+      return {
+        id: redeem._id.toString(),
+        itemName: redeem.itemName,
+        itemId: redeem.itemId,
+        twitchName: redeem.twitchName,
+        twitchId: redeem.twitchId,
+        redeemed: redeem.redeemed,
+        createdAt: redeem.createdAt
+      };
+    } catch (error) {
+      console.error('Error getting redeem by ID:', error);
+      return null;
     }
   }
 
@@ -189,6 +273,10 @@ class DatabaseManager {
           awaitConfirm: state.awaitConfirm || false,
           awaitProof: state.awaitProof || false,
           awaitDescription: state.awaitDescription || false,
+          awaitTwitchNick: state.awaitTwitchNick || false,
+          websiteType: state.websiteType || null,
+          twitchNick: state.twitchNick || null,
+          selectedRedeem: state.selectedRedeem || null,
           prize: state.prize || null,
           telegramCode: state.telegramCode || null,
           telegramHasImg: state.telegramHasImg || false,
@@ -226,6 +314,10 @@ class DatabaseManager {
         awaitConfirm: doc.awaitConfirm,
         awaitProof: doc.awaitProof,
         awaitDescription: doc.awaitDescription,
+        awaitTwitchNick: doc.awaitTwitchNick,
+        websiteType: doc.websiteType,
+        twitchNick: doc.twitchNick,
+        selectedRedeem: doc.selectedRedeem,
         prize: doc.prize,
         telegramCode: doc.telegramCode,
         telegramHasImg: doc.telegramHasImg,
@@ -272,6 +364,10 @@ class DatabaseManager {
           awaitConfirm: doc.awaitConfirm,
           awaitProof: doc.awaitProof,
           awaitDescription: doc.awaitDescription,
+          awaitTwitchNick: doc.awaitTwitchNick,
+          websiteType: doc.websiteType,
+          twitchNick: doc.twitchNick,
+          selectedRedeem: doc.selectedRedeem,
           prize: doc.prize,
           telegramCode: doc.telegramCode,
           telegramHasImg: doc.telegramHasImg,

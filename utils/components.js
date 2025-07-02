@@ -47,6 +47,44 @@ class ComponentFactory {
     return this.createButton('support_ticket', 'Falar com Suporte', ButtonStyle.Danger, EMOJIS.SHIELD);
   }
 
+  // === WEBSITE BUTTONS ===
+  static websiteTypeButtons() {
+    return this.createButtonRow(
+      this.createButton('website_bug', 'Reportar Bug', ButtonStyle.Danger, '🐛'),
+      this.createButton('website_redeem', 'Resgatar Redeem', ButtonStyle.Success, '🎁'),
+      this.supportButton()
+    );
+  }
+
+  static redeemSelectButtons(redeems) {
+    const buttons = [];
+    const maxButtons = Math.min(redeems.length, 5); // Máximo 5 botões por row
+    
+    for (let i = 0; i < maxButtons; i++) {
+      buttons.push(
+        this.createButton(
+          `select_redeem_${redeems[i].id}`,
+          `${i + 1}. ${redeems[i].itemName.substring(0, 20)}${redeems[i].itemName.length > 20 ? '...' : ''}`,
+          ButtonStyle.Primary,
+          '🎁'
+        )
+      );
+    }
+    
+    // Add support button
+    buttons.push(this.supportButton());
+    
+    return this.createButtonRow(...buttons);
+  }
+
+  static markRedeemCompleteButton(redeemId) {
+    return this.createButtonRow(
+      this.createButton(`mark_redeem_complete_${redeemId}`, 'Marcar Redeem como Concluído', ButtonStyle.Success, '✅'),
+      this.createButton('close_with_transcript', 'Fechar com Transcript', ButtonStyle.Secondary, '📋'),
+      this.createButton('close_delete_ticket', 'Eliminar Ticket', ButtonStyle.Danger, '🗑️')
+    );
+  }
+
   // === STEP BUTTONS WITH SUPPORT ===
   static stepButtons() {
     return this.createButtonRow(
@@ -135,8 +173,6 @@ class ComponentFactory {
     const rows = [];
     let currentRow = new ActionRowBuilder();
 
-    console.log(`🔧 Building category buttons with ${staticCats.length} static categories`);
-
     // Add static categories
     for (const cat of staticCats) {
       if (currentRow.components.length === 5) {
@@ -154,9 +190,8 @@ class ComponentFactory {
       );
     }
 
-    // CORREÇÃO CRÍTICA: Add dynamic categories (verificar se estão ativos)
+    // Add dynamic categories (verificar se estão ativos)
     const dynamicEntries = Object.entries(dynamicCats);
-    console.log(`🔧 Processing ${dynamicEntries.length} dynamic category entries`);
     
     for (const [id, cat] of dynamicEntries) {
       if (!cat.active) {
@@ -182,15 +217,12 @@ class ComponentFactory {
       rows.push(currentRow);
     }
 
-    console.log(`✅ Created ${rows.length} button rows with ${staticCats.length} static + ${dynamicEntries.filter(([id, cat]) => cat.active).length} active dynamic categories`);
     return rows;
   }
 
   static promoButtons(promos) {
     const rows = [];
     let currentRow = new ActionRowBuilder();
-
-    console.log(`🔧 Building promo buttons with ${Object.keys(promos).length} promotions`);
 
     for (const [pid, promo] of Object.entries(promos)) {
       if (!promo.active || Date.now() > new Date(promo.end)) {
@@ -216,7 +248,6 @@ class ComponentFactory {
       rows.push(currentRow);
     }
 
-    console.log(`✅ Created ${rows.length} promo button rows`);
     return rows;
   }
 

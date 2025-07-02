@@ -46,7 +46,6 @@ module.exports = {
         // CORREÇÃO: Add promo buttons - refresh promotions first
         await refreshExpired();
         await refreshPromotions(); // CORREÇÃO: Refresh promotions from database
-        console.log(`🔄 Refreshed promotions for giveaway selection. Found ${Object.keys(promos).length} promotions`);
         
         const promoButtons = ComponentFactory.promoButtons(promos);
         components.push(...promoButtons);
@@ -65,7 +64,45 @@ module.exports = {
       });
     }
 
-    // Description for Dúvidas and Outros
+    // Website Twitch Nick Input
+    if (ticketState.awaitTwitchNick) {
+      const hasImage = message.attachments.size > 0;
+      const twitchNick = message.content.trim();
+      
+      if (!hasImage || !twitchNick || twitchNick.length < 3) {
+        return message.reply({
+          embeds: [EmbedFactory.error('Por favor, envie o **nickname da Twitch** e uma **captura de ecrã** como prova')]
+        });
+      }
+      
+      ticketState.twitchNick = twitchNick;
+      ticketState.awaitTwitchNick = false;
+      await client.saveTicketState(message.channel.id, ticketState);
+      
+      // Log twitch nick provided
+      await client.db.logAction(message.channel.id, message.author.id, 'twitch_nick_provided', twitchNick);
+      
+      // Get user redeems from database
+      const redeems = await client.db.getUserRedeems(twitchNick);
+      
+      if (redeems.length === 0) {
+        return message.reply({
+          embeds: [EmbedFactory.websiteNoRedeems(twitchNick)],
+          components: [ComponentFactory.createButtonRow(ComponentFactory.supportButton())]
+        });
+      }
+      
+      // Show available redeems
+      const embed = EmbedFactory.websiteRedeemList(twitchNick, redeems);
+      const components = ComponentFactory.redeemSelectButtons(redeems);
+      
+      return message.reply({
+        embeds: [embed],
+        components: [components]
+      });
+    }
+
+    // Description for Dúvidas, Outros, and Website Bug
     if (ticketState.awaitDescription) {
       if (message.content.trim().length < 10) {
         return message.reply({
@@ -82,25 +119,29 @@ module.exports = {
 
       // Notify staff
       const staffChannel = await message.guild.channels.fetch(CHANNELS.STAFF);
-      const embed = EmbedFactory.warning(
-        `**Novo ticket de ${ticketState.category}**\n\n` +
-        `🎫 **Ticket:** #${ticketState.ticketNumber}\n` +
-        `👤 **Usuário:** ${ticketState.ownerTag}\n` +
-        `📂 **Categoria:** ${ticketState.category}\n` +
-        `📝 **Descrição:** ${ticketState.description}\n\n` +
-        `📍 **Canal:** ${message.channel}`
-      );
       
+      let notificationText = '';
+      if (ticketState.category === 'Website' && ticketState.websiteType === 'bug') {
+        notificationText = `**Novo bug reportado no website**\n\n` +
+          `🎫 **Ticket:** #${ticketState.ticketNumber}\n` +
+          `👤 **Usuário:** ${ticketState.ownerTag}\n` +
+          `🐛 **Tipo:** Bug Report\n` +
+          `📝 **Descrição:** ${ticketState.description}\n\n` +
+          `📍 **Canal:** ${message.channel}`;
+      } else {
+        notificationText = `**Novo ticket de ${ticketState.category}**\n\n` +
+          `🎫 **Ticket:** #${ticketState.ticketNumber}\n` +
+          `👤 **Usuário:** ${ticketState.ownerTag}\n` +
+          `📂 **Categoria:** ${ticketState.category}\n` +
+          `📝 **Descrição:** ${ticketState.description}\n\n` +
+          `📍 **Canal:** ${message.channel}`;
+      }
+      
+      const embed = EmbedFactory.warning(notificationText);
       await staffChannel.send({ embeds: [embed] });
 
-      // If it's Website category, also notify website support
-      if (ticketState.category === 'Website') {
-        // Here you would integrate with your website notification system
-        console.log(`Website support notification: Ticket #${ticketState.ticketNumber} - ${ticketState.description}`);
-      }
-
       return message.reply({
-        embeds: [EmbedFactory.success('Descrição recebida! A nossa equipe foi notificada e irá ajudá-lo em breve.')]
+        embeds: [EmbedFactory.success('Descrição recebida! A nossa equipa foi notificada e irá ajudá-lo em breve.')]
       });
     }
 

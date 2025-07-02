@@ -222,6 +222,108 @@ module.exports = {
       }
     }
 
+    // Website Type Buttons
+    if (interaction.isButton() && (interaction.customId === 'website_bug' || interaction.customId === 'website_redeem')) {
+      try { await interaction.deferUpdate(); } catch {}
+      
+      const ticketState = client.ticketStates.get(interaction.channel.id);
+      
+      if (interaction.customId === 'website_bug') {
+        ticketState.websiteType = 'bug';
+        ticketState.awaitDescription = true;
+        await client.saveTicketState(interaction.channel.id, ticketState);
+        
+        await interaction.channel.send({
+          embeds: [EmbedFactory.websiteBugReport()],
+          components: [ComponentFactory.createButtonRow(ComponentFactory.supportButton())]
+        });
+      }
+      
+      if (interaction.customId === 'website_redeem') {
+        ticketState.websiteType = 'redeem';
+        ticketState.awaitTwitchNick = true;
+        await client.saveTicketState(interaction.channel.id, ticketState);
+        
+        await interaction.channel.send({
+          embeds: [EmbedFactory.websiteRedeemNick()],
+          components: [ComponentFactory.createButtonRow(ComponentFactory.supportButton())]
+        });
+      }
+    }
+
+    // Redeem Selection Buttons
+    if (interaction.isButton() && interaction.customId.startsWith('select_redeem_')) {
+      try { await interaction.deferUpdate(); } catch {}
+      
+      const redeemId = interaction.customId.split('_')[2];
+      const ticketState = client.ticketStates.get(interaction.channel.id);
+      
+      // Get redeem details
+      const redeem = await client.db.getRedeemById(redeemId);
+      if (!redeem) {
+        return interaction.followUp({
+          embeds: [EmbedFactory.error('Redeem não encontrado')],
+          flags: 64
+        });
+      }
+      
+      ticketState.selectedRedeem = redeemId;
+      await client.saveTicketState(interaction.channel.id, ticketState);
+      
+      // Log redeem selection
+      await client.db.logAction(interaction.channel.id, interaction.user.id, 'redeem_selected', `Item: ${redeem.itemName}, ID: ${redeemId}`);
+      
+      // Notify staff
+      const staffChannel = await interaction.guild.channels.fetch(CHANNELS.STAFF);
+      const embed = EmbedFactory.warning(
+        `**Novo pedido de redeem**\n\n` +
+        `🎫 **Ticket:** #${ticketState.ticketNumber}\n` +
+        `👤 **Usuário:** ${ticketState.ownerTag}\n` +
+        `🎁 **Item:** ${redeem.itemName}\n` +
+        `📱 **Twitch:** ${redeem.twitchName}\n` +
+        `📅 **Data do Redeem:** ${new Date(redeem.createdAt).toLocaleDateString('pt-PT')}\n\n` +
+        `📍 **Canal:** ${interaction.channel}`
+      );
+      
+      await staffChannel.send({ embeds: [embed] });
+      
+      await interaction.channel.send({
+        embeds: [EmbedFactory.websiteRedeemSelected(redeem)],
+        components: [ComponentFactory.markRedeemCompleteButton(redeemId)]
+      });
+    }
+
+    // Mark Redeem Complete Button
+    if (interaction.isButton() && interaction.customId.startsWith('mark_redeem_complete_')) {
+      // Check if user has mod role
+      if (!interaction.member.roles.cache.has(ROLES.MOD)) {
+        return interaction.reply({
+          embeds: [EmbedFactory.error('Você não tem permissão para usar este botão')],
+          flags: 64
+        });
+      }
+
+      const redeemId = interaction.customId.split('_')[3];
+      
+      // Mark redeem as completed in database
+      const success = await client.db.markRedeemAsCompleted(redeemId);
+      
+      if (success) {
+        // Log completion
+        await client.db.logAction(interaction.channel.id, interaction.user.id, 'redeem_completed', `Redeem ID: ${redeemId}`);
+        
+        return interaction.reply({
+          embeds: [EmbedFactory.success('Redeem marcado como concluído! O usuário foi notificado.')],
+          flags: 64
+        });
+      } else {
+        return interaction.reply({
+          embeds: [EmbedFactory.error('Erro ao marcar redeem como concluído')],
+          flags: 64
+        });
+      }
+    }
+
     // Close Ticket Buttons
     if (interaction.isButton() && (interaction.customId === 'close_with_transcript' || interaction.customId === 'close_delete_ticket')) {
       try { await interaction.deferReply({ flags: 64 }); } catch {}
@@ -359,9 +461,6 @@ module.exports = {
       await ensureInitialized();
       await refreshCategories();
       
-      console.log(`🎫 Creating ticket for category: ${categoryId}`);
-      console.log(`🎫 Available categories:`, Object.keys(cats));
-      
       const category = cats[categoryId] || { name: categoryId, color: 'grey', emoji: null };
 
       // Get next ticket number for this category (CORREÇÃO: sequencial por categoria)
@@ -443,13 +542,9 @@ module.exports = {
           components: [supportRow]
         });
       } else if (category.name === 'Website') {
-        const currentState = client.ticketStates.get(ticketChannel.id);
-        currentState.awaitDescription = true;
-        await client.saveTicketState(ticketChannel.id, currentState);
-        
         await ticketChannel.send({
-          embeds: [EmbedFactory.questionDescription()],
-          components: [supportRow]
+          embeds: [EmbedFactory.websiteTypeSelection()],
+          components: [ComponentFactory.websiteTypeButtons()]
         });
       } else if (category.name === 'Outros') {
         const currentState = client.ticketStates.get(ticketChannel.id);

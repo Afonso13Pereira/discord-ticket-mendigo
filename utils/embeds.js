@@ -223,6 +223,110 @@ class EmbedFactory {
       .setFooter({ text: 'Suporte Geral' });
   }
 
+  // === WEBSITE EMBEDS ===
+  static websiteTypeSelection() {
+    return new EmbedBuilder()
+      .setColor(COLORS.INFO)
+      .setTitle(`🌐 Suporte do Website`)
+      .setDescription([
+        '**Como podemos ajudá-lo com o website?**',
+        '',
+        `🐛 **Reportar Bug** - Relatar um problema no site`,
+        `🎁 **Resgatar Redeem** - Reclamar itens que resgatou`,
+        '',
+        `${EMOJIS.INFO} Escolha uma opção abaixo`
+      ].join('\n'))
+      .setTimestamp()
+      .setFooter({ text: 'Suporte do Website' });
+  }
+
+  static websiteBugReport() {
+    return new EmbedBuilder()
+      .setColor(COLORS.WARNING)
+      .setTitle(`🐛 Reportar Bug`)
+      .setDescription([
+        '**Descreva o bug que encontrou:**',
+        '',
+        `${EMOJIS.INFO} Seja específico sobre o problema`,
+        `${EMOJIS.STAR} Inclua passos para reproduzir o bug`,
+        `${EMOJIS.SHIELD} Adicione capturas de ecrã se possível`,
+        '',
+        '**Digite a descrição do bug abaixo:**'
+      ].join('\n'))
+      .setTimestamp()
+      .setFooter({ text: 'Reportar Bug' });
+  }
+
+  static websiteRedeemNick() {
+    return new EmbedBuilder()
+      .setColor(COLORS.SUCCESS)
+      .setTitle(`🎁 Resgatar Redeem`)
+      .setDescription([
+        '**Para verificar os seus redeems disponíveis:**',
+        '',
+        `📱 **Digite o seu nickname da Twitch**`,
+        `📸 **Envie uma captura de ecrã** que comprove a sua identidade`,
+        '',
+        `${EMOJIS.INFO} Iremos verificar os redeems disponíveis para o seu nickname`
+      ].join('\n'))
+      .setTimestamp()
+      .setFooter({ text: 'Sistema de Redeems' });
+  }
+
+  static websiteNoRedeems(twitchNick) {
+    return new EmbedBuilder()
+      .setColor(COLORS.WARNING)
+      .setTitle(`${EMOJIS.WARNING} Nenhum Redeem Disponível`)
+      .setDescription([
+        `**Não foram encontrados redeems para: ${twitchNick}**`,
+        '',
+        `${EMOJIS.INFO} Possíveis motivos:`,
+        `• Nickname incorreto`,
+        `• Todos os redeems já foram resgatados`,
+        `• Nenhum redeem foi feito com este nickname`,
+        '',
+        `${EMOJIS.SHIELD} Entre em contacto com o suporte se acha que isto é um erro`
+      ].join('\n'))
+      .setTimestamp()
+      .setFooter({ text: 'Sistema de Redeems' });
+  }
+
+  static websiteRedeemList(twitchNick, redeems) {
+    const redeemList = redeems.map((redeem, index) => 
+      `${index + 1}. **${redeem.itemName}** (${new Date(redeem.createdAt).toLocaleDateString('pt-PT')})`
+    ).join('\n');
+
+    return new EmbedBuilder()
+      .setColor(COLORS.SUCCESS)
+      .setTitle(`🎁 Redeems Disponíveis para ${twitchNick}`)
+      .setDescription([
+        `**Encontrados ${redeems.length} redeem(s) disponível(is):**`,
+        '',
+        redeemList,
+        '',
+        `${EMOJIS.INFO} Escolha o número do item que deseja resgatar`
+      ].join('\n'))
+      .setTimestamp()
+      .setFooter({ text: 'Sistema de Redeems' });
+  }
+
+  static websiteRedeemSelected(redeem) {
+    return new EmbedBuilder()
+      .setColor(COLORS.SUCCESS)
+      .setTitle(`✅ Redeem Selecionado`)
+      .setDescription([
+        `**Item:** ${redeem.itemName}`,
+        `**Nickname:** ${redeem.twitchName}`,
+        `**Data do Redeem:** ${new Date(redeem.createdAt).toLocaleDateString('pt-PT')}`,
+        '',
+        `${EMOJIS.SHIELD} **A nossa equipa irá processar o seu pedido**`,
+        `${EMOJIS.CLOCK} Aguarde enquanto verificamos os detalhes`,
+        `${EMOJIS.DIAMOND} Será contactado em breve`
+      ].join('\n'))
+      .setTimestamp()
+      .setFooter({ text: 'Redeem em Processamento' });
+  }
+
   static checklist(step, total, description, image = null) {
     const embed = new EmbedBuilder()
       .setColor(COLORS.INFO)
