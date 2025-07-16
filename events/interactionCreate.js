@@ -14,6 +14,7 @@ const ComponentFactory = require('../utils/components');
 const TranscriptManager = require('../utils/transcripts');
 const { CHANNELS, ROLES, EMOJIS, VIP_TYPES, VIP_CASINOS } = require('../config/constants');
 const { updateTicketMessage } = require('../commands/atualizartickets');
+const MESSAGES = require('../config/messages');
 
 const CONFIRM_RX = /^sim[, ]*eu confirmo$/i;
 
@@ -71,6 +72,9 @@ function getUserVerifiedCasinos(member) {
 module.exports = {
   name: 'interactionCreate',
   async execute(interaction, client) {
+    // Note: Error handling is now managed by ErrorHandler class in index.js
+    // This function is called safely through errorHandler.safeExecuteInteraction()
+    
     await refreshExpired();
 
     // Initialize transcript manager
@@ -79,7 +83,10 @@ module.exports = {
     // Slash Commands
     if (interaction.isChatInputCommand()) {
       const command = client.commands.get(interaction.commandName);
-      if (command) return command.execute(interaction, client);
+      if (command) {
+        // Command execution is handled by ErrorHandler
+        return command.execute(interaction, client);
+      }
     }
 
     // Modal Submissions
@@ -103,7 +110,9 @@ module.exports = {
         }
         
         return interaction.reply({
-          embeds: [EmbedFactory.success(`Promoção **${name}** criada com sucesso!\nID: \`${id}\`\n\n${EMOJIS.INFO} Mensagem de tickets atualizada automaticamente.`)],
+          embeds: [EmbedFactory.success(MESSAGES.COMMANDS.PROMO_CREATED
+            .replace('{name}', name)
+            .replace('{id}', id))],
           flags: 64
         });
       }
@@ -125,7 +134,9 @@ module.exports = {
         }
         
         return interaction.reply({
-          embeds: [EmbedFactory.success(`Categoria **${name}** criada com sucesso!\nID: \`${id}\`\n\n${EMOJIS.INFO} Mensagem de tickets atualizada automaticamente.`)],
+          embeds: [EmbedFactory.success(MESSAGES.COMMANDS.CATEGORY_CREATED
+            .replace('{name}', name)
+            .replace('{id}', id))],
           flags: 64
         });
       }
@@ -209,7 +220,7 @@ module.exports = {
         }
 
         return interaction.reply({
-          embeds: [EmbedFactory.success(`Giveaway aprovado com prémio de **${prize}** e enviado para aprovações finais!`)],
+          embeds: [EmbedFactory.success(MESSAGES.GIVEAWAYS.APPROVED.replace('{prize}', prize))],
           flags: 64
         });
       }
@@ -259,7 +270,7 @@ module.exports = {
         }
 
         return interaction.reply({
-          embeds: [EmbedFactory.success(`Giveaway rejeitado. Motivo enviado ao usuário.`)],
+          embeds: [EmbedFactory.success(MESSAGES.GIVEAWAYS.REJECTED)],
           flags: 64
         });
       }
@@ -299,7 +310,7 @@ module.exports = {
         }
 
         return interaction.reply({
-          embeds: [EmbedFactory.success(`Solicitação de revisão enviada para o suporte humano.`)],
+          embeds: [EmbedFactory.success(MESSAGES.APPROVALS.REVIEW_SENT)],
           flags: 64
         });
       }
@@ -396,12 +407,12 @@ module.exports = {
         await client.db.logAction(interaction.channel.id, interaction.user.id, 'redeem_completed', `Redeem ID: ${redeemId}`);
         
         return interaction.reply({
-          embeds: [EmbedFactory.success('Redeem marcado como concluído! O usuário foi notificado.')],
+          embeds: [EmbedFactory.success(MESSAGES.WEBSITE.REDEEM_COMPLETED)],
           flags: 64
         });
       } else {
         return interaction.reply({
-          embeds: [EmbedFactory.error('Erro ao marcar redeem como concluído')],
+          embeds: [EmbedFactory.error(MESSAGES.WEBSITE.REDEEM_ERROR)],
           flags: 64
         });
       }
@@ -458,7 +469,7 @@ module.exports = {
           await client.deleteTicketState(interaction.channel.id);
           
           await interaction.editReply({
-            embeds: [EmbedFactory.success(`Transcript criado com ID: \`${transcriptId}\`\nCanal será eliminado em 10 segundos...`)]
+            embeds: [EmbedFactory.success(MESSAGES.TICKETS.CLOSING_WITH_TRANSCRIPT.replace('{id}', transcriptId))]
           });
 
           // Delete channel after 10 seconds
@@ -473,7 +484,7 @@ module.exports = {
         } catch (error) {
           console.error('Error creating transcript:', error);
           await interaction.editReply({
-            embeds: [EmbedFactory.error('Erro ao criar transcript. Tente novamente.')]
+            embeds: [EmbedFactory.error(MESSAGES.ERRORS.OPERATION_FAILED)]
           });
         }
       }
@@ -486,7 +497,7 @@ module.exports = {
         await client.deleteTicketState(interaction.channel.id);
         
         await interaction.editReply({
-          embeds: [EmbedFactory.warning('Ticket será eliminado em 5 segundos...')]
+          embeds: [EmbedFactory.warning(MESSAGES.TICKETS.CLOSING_WITHOUT_TRANSCRIPT)]
         });
 
         // Delete channel after 5 seconds
@@ -557,14 +568,14 @@ module.exports = {
         }
 
         return interaction.reply({
-          embeds: [EmbedFactory.success('Situação de código duplicado resolvida! Ambos os tickets foram reativados.')],
+          embeds: [EmbedFactory.success(MESSAGES.DUPLICATE_CODES.SITUATION_RESOLVED)],
           flags: 64
         });
 
       } catch (error) {
         console.error('Error resolving duplicate code situation:', error);
         return interaction.reply({
-          embeds: [EmbedFactory.error('Erro ao resolver situação de código duplicado')],
+          embeds: [EmbedFactory.error(MESSAGES.DUPLICATE_CODES.RESOLUTION_ERROR)],
           flags: 64
         });
       }
@@ -575,7 +586,7 @@ module.exports = {
       // Check if user has mod role
       if (!interaction.member.roles.cache.has(ROLES.MOD)) {
         return interaction.reply({
-          embeds: [EmbedFactory.error('Você não tem permissão para usar este botão')],
+          embeds: [EmbedFactory.error(MESSAGES.PERMISSIONS.NO_PERMISSION)],
           flags: 64
         });
       }
@@ -588,7 +599,7 @@ module.exports = {
       }
 
       return interaction.reply({
-        embeds: [EmbedFactory.success('Suporte marcado como concluído!')],
+        embeds: [EmbedFactory.success(MESSAGES.SUPPORT.COMPLETED)],
         flags: 64
       });
     }
@@ -602,7 +613,7 @@ module.exports = {
         
         if (!transcript) {
           return interaction.reply({
-            embeds: [EmbedFactory.error('Transcript não encontrado ou expirado')],
+            embeds: [EmbedFactory.error(MESSAGES.TRANSCRIPTS.NOT_FOUND)],
             flags: 64
           });
         }
@@ -620,7 +631,7 @@ module.exports = {
         
         if (!transcript) {
           return interaction.reply({
-            embeds: [EmbedFactory.error('Transcript não encontrado ou expirado')],
+            embeds: [EmbedFactory.error(MESSAGES.TRANSCRIPTS.NOT_FOUND)],
             flags: 64
           });
         }
@@ -632,7 +643,7 @@ module.exports = {
         });
 
         return interaction.reply({
-          embeds: [EmbedFactory.success(`Download do transcript **${transcript.channelName}**`)],
+          embeds: [EmbedFactory.success(MESSAGES.TRANSCRIPTS.DOWNLOAD_SUCCESS.replace('{channel}', transcript.channelName))],
           files: [attachment],
           flags: 64
         });
@@ -754,7 +765,9 @@ module.exports = {
       }
 
       return interaction.reply({
-        embeds: [EmbedFactory.success(`Ticket #${ticketNumber} criado com sucesso: ${ticketChannel}`)],
+        embeds: [EmbedFactory.success(MESSAGES.TICKETS.CREATED_SUCCESS
+          .replace('{number}', ticketNumber)
+          .replace('{channel}', ticketChannel))],
         flags: 64
       });
     }
@@ -788,7 +801,9 @@ module.exports = {
       await client.saveTicketState(interaction.channel.id, ticketState);
       
       await interaction.channel.send({
-        embeds: [EmbedFactory.success(`Tipo VIP **${vipType.toUpperCase()}** selecionado para **${ticketState.vipCasino}**!`)]
+        embeds: [EmbedFactory.success(MESSAGES.VIP.TYPE_SELECTED
+          .replace('{type}', vipType.toUpperCase())
+          .replace('{casino}', ticketState.vipCasino))]
       });
       
       return askVipChecklist(interaction.channel, ticketState);
@@ -809,7 +824,7 @@ module.exports = {
         
         if (!promo || !promo.active || Date.now() > new Date(promo.end)) {
           return interaction.channel.send({
-            embeds: [EmbedFactory.error('Esta promoção já terminou ou não está disponível')]
+            embeds: [EmbedFactory.error(MESSAGES.GIVEAWAYS.PROMO_EXPIRED)]
           });
         }
 
@@ -820,7 +835,7 @@ module.exports = {
           await client.saveTicketState(interaction.channel.id, ticketState);
           
           await interaction.channel.send({
-            embeds: [EmbedFactory.success(`Promoção **${promo.name}** selecionada! Agora escolha o casino.`)]
+            embeds: [EmbedFactory.success(MESSAGES.GIVEAWAYS.PROMO_CHOOSE_CASINO.replace('{name}', promo.name))]
           });
           return askCasino(interaction.channel);
         }
@@ -828,7 +843,7 @@ module.exports = {
         const casinoId = findCasinoId(promo.casino);
         if (!casinoId) {
           return interaction.channel.send({
-            embeds: [EmbedFactory.error(`Casino **${promo.casino}** não está configurado`)]
+            embeds: [EmbedFactory.error(MESSAGES.GIVEAWAYS.CASINO_NOT_CONFIGURED.replace('{casino}', promo.casino))]
           });
         }
 
@@ -844,7 +859,7 @@ module.exports = {
           await client.saveTicketState(interaction.channel.id, ticketState);
           
           await interaction.channel.send({
-            embeds: [EmbedFactory.success(`Promoção **${promo.name}** selecionada para **${casinoId}**!\n\n${EMOJIS.VERIFIED} **Utilizador verificado** - envie **imagem do depósito com QR visível** + **endereço LTC em texto**.`)],
+            embeds: [EmbedFactory.success(`${MESSAGES.GIVEAWAYS.PROMO_SELECTED_CASINO.replace('{name}', promo.name).replace('{casino}', casinoId)}\n\n${MESSAGES.GIVEAWAYS.VERIFIED_USER_SKIP}`)],
             components: [ComponentFactory.finishButtons()]
           });
         } else {
@@ -854,7 +869,7 @@ module.exports = {
           await client.saveTicketState(interaction.channel.id, ticketState);
           
           await interaction.channel.send({
-            embeds: [EmbedFactory.success(`Promoção **${promo.name}** selecionada para **${casinoId}**`)]
+            embeds: [EmbedFactory.success(MESSAGES.GIVEAWAYS.PROMO_SELECTED_CASINO.replace('{name}', promo.name).replace('{casino}', casinoId))]
           });
           return askChecklist(interaction.channel, ticketState);
         }
@@ -868,7 +883,7 @@ module.exports = {
 
       if (type === 'telegram') {
         return interaction.channel.send({
-          embeds: [EmbedFactory.info('📱 Envie o **código** + **print** da mensagem do bot Telegram')]
+          embeds: [EmbedFactory.info(MESSAGES.GIVEAWAYS.TELEGRAM_INSTRUCTIONS)]
         });
       }
       
@@ -883,7 +898,7 @@ module.exports = {
       const choice = interaction.values[0];
       if (choice === 'none') {
         return interaction.followUp({
-          embeds: [EmbedFactory.warning('Por favor, selecione um casino válido')],
+          embeds: [EmbedFactory.warning(MESSAGES.GIVEAWAYS.CASINO_INVALID_SELECTION)],
           flags: 64
         });
       }
@@ -901,7 +916,7 @@ module.exports = {
         await client.saveTicketState(interaction.channel.id, ticketState);
         
         await interaction.channel.send({
-          embeds: [EmbedFactory.success(`Casino **${choice}** selecionado!\n\n${EMOJIS.VERIFIED} **Utilizador verificado** - envie **imagem do depósito com QR visível** + **endereço LTC em texto**.`)],
+          embeds: [EmbedFactory.success(`${MESSAGES.GIVEAWAYS.CASINO_SELECTED.replace('{casino}', choice)}\n\n${MESSAGES.GIVEAWAYS.VERIFIED_USER_SKIP}`)],
           components: [ComponentFactory.finishButtons()]
         });
       } else {
@@ -921,7 +936,7 @@ module.exports = {
       const ticketState = client.ticketStates.get(interaction.channel.id);
       if (!ticketState || ticketState.awaitProof) {
         return interaction.followUp({
-          embeds: [EmbedFactory.error('Ainda é necessário enviar a prova antes de continuar')],
+          embeds: [EmbedFactory.error(MESSAGES.CHECKLIST.IMAGE_REQUIRED)],
           flags: 64
         });
       }
@@ -972,7 +987,7 @@ module.exports = {
       // Send mod buttons to the ticket itself
       const modButtons = ComponentFactory.modButtons(submissionId);
       await interaction.channel.send({
-        embeds: [EmbedFactory.info('Solicitação enviada para aprovação! Aguarde a análise da equipe.')],
+        embeds: [EmbedFactory.info(MESSAGES.GIVEAWAYS.SUBMISSION_SENT)],
         components: [modButtons]
       });
     }
@@ -982,7 +997,7 @@ module.exports = {
       // Check if user has mod role
       if (!interaction.member.roles.cache.has(ROLES.MOD)) {
         return interaction.reply({
-          embeds: [EmbedFactory.error('Você não tem permissão para usar este botão')],
+          embeds: [EmbedFactory.error(MESSAGES.PERMISSIONS.NO_PERMISSION)],
           flags: 64
         });
       }
@@ -992,14 +1007,14 @@ module.exports = {
       // Show prize modal
       const modal = new ModalBuilder()
         .setCustomId(`prize_modal_${submissionId}`)
-        .setTitle('💰 Definir Valor da Prenda')
+        .setTitle(`💰 ${MESSAGES.LABELS.PRIZE_VALUE}`)
         .addComponents(
           new ActionRowBuilder().addComponents(
             new TextInputBuilder()
               .setCustomId('prize_value')
-              .setLabel('Valor da Prenda')
+              .setLabel(MESSAGES.LABELS.PRIZE_VALUE)
               .setStyle(TextInputStyle.Short)
-              .setPlaceholder('Ex: 30')
+              .setPlaceholder(MESSAGES.PLACEHOLDERS.PRIZE_VALUE)
               .setRequired(true)
           )
         );
@@ -1012,7 +1027,7 @@ module.exports = {
       // Check if user has mod role
       if (!interaction.member.roles.cache.has(ROLES.MOD)) {
         return interaction.reply({
-          embeds: [EmbedFactory.error('Você não tem permissão para usar este botão')],
+          embeds: [EmbedFactory.error(MESSAGES.PERMISSIONS.NO_PERMISSION)],
           flags: 64
         });
       }
@@ -1022,14 +1037,14 @@ module.exports = {
       // Show rejection modal
       const modal = new ModalBuilder()
         .setCustomId(`reject_modal_${submissionId}`)
-        .setTitle('❌ Motivo da Rejeição')
+        .setTitle(`❌ ${MESSAGES.LABELS.REJECT_REASON}`)
         .addComponents(
           new ActionRowBuilder().addComponents(
             new TextInputBuilder()
               .setCustomId('reject_reason')
-              .setLabel('Motivo da Rejeição')
+              .setLabel(MESSAGES.LABELS.REJECT_REASON)
               .setStyle(TextInputStyle.Paragraph)
-              .setPlaceholder('Explique o motivo da rejeição...')
+              .setPlaceholder(MESSAGES.PLACEHOLDERS.REJECT_REASON)
               .setRequired(true)
           )
         );
@@ -1053,7 +1068,7 @@ module.exports = {
       if (action === 'goto') {
         // Redirect to ticket
         return interaction.reply({
-          content: `🎫 **Ir para Ticket #${approval.ticketNumber}:** <#${approval.ticketChannelId}>`,
+          content: `🎫 **${MESSAGES.BUTTONS.GOTO_TICKET} #${approval.ticketNumber}:** <#${approval.ticketChannelId}>`,
           flags: 64
         });
       }
@@ -1093,7 +1108,9 @@ module.exports = {
         }
 
         return interaction.reply({
-          embeds: [EmbedFactory.success(`Giveaway marcado como pago! Mensagem enviada ao ticket #${approval.ticketNumber}.\n\n${EMOJIS.VERIFIED} Utilizador agora está verificado para **${approval.casino}**!`)],
+          embeds: [EmbedFactory.success(MESSAGES.GIVEAWAYS.PAID
+            .replace('{number}', approval.ticketNumber)
+            .replace('{casino}', approval.casino))],
           flags: 64
         });
       }
@@ -1102,14 +1119,14 @@ module.exports = {
         // Show review modal
         const modal = new ModalBuilder()
           .setCustomId(`review_modal_${approvalId}`)
-          .setTitle('🔍 Motivo da Revisão')
+          .setTitle(`🔍 ${MESSAGES.LABELS.REVIEW_REASON}`)
           .addComponents(
             new ActionRowBuilder().addComponents(
               new TextInputBuilder()
                 .setCustomId('review_reason')
-                .setLabel('Motivo da Revisão')
+                .setLabel(MESSAGES.LABELS.REVIEW_REASON)
                 .setStyle(TextInputStyle.Paragraph)
-                .setPlaceholder('Explique o motivo da revisão...')
+                .setPlaceholder(MESSAGES.PLACEHOLDERS.REVIEW_REASON)
                 .setRequired(true)
             )
           );
@@ -1130,7 +1147,7 @@ module.exports = {
       await client.saveTicketState(interaction.channel.id, ticketState);
       
       await interaction.channel.send({
-        embeds: [EmbedFactory.success('Reenvio iniciado! Por favor, complete novamente o checklist.')]
+        embeds: [EmbedFactory.success(MESSAGES.CHECKLIST.RESUBMIT_STARTED)]
       });
       
       if (ticketState.vipType) {
@@ -1150,7 +1167,7 @@ module.exports = {
       const staffChannel = await interaction.guild.channels.fetch(CHANNELS.STAFF);
       
       const embed = EmbedFactory.supportRequest(
-        'Suporte solicitado',
+        MESSAGES.SUPPORT.REQUEST_TITLE,
         ticketState?.ticketNumber || 'N/A',
         interaction.user.tag,
         interaction.channel.id
@@ -1166,7 +1183,7 @@ module.exports = {
       await client.db.logAction(interaction.channel.id, interaction.user.id, 'support_requested', null);
       
       return interaction.followUp({
-        embeds: [EmbedFactory.success('Equipe de suporte foi notificada! Aguarde um momento.')],
+        embeds: [EmbedFactory.success(MESSAGES.SUPPORT.TEAM_NOTIFIED)],
         flags: 64
       });
     }
@@ -1177,8 +1194,8 @@ module.exports = {
 function askCasino(channel) {
   channel.send({
     embeds: [EmbedFactory.casino(
-      'Seleção de Casino',
-      `${EMOJIS.WARNING} **Importante:** Selecione o casino correto\n${EMOJIS.SHIELD} Sujeito a BAN se não cumprir as regras`
+      MESSAGES.GIVEAWAYS.CASINO_SELECTION_TITLE,
+      MESSAGES.GIVEAWAYS.CASINO_SELECTION_DESCRIPTION
     )],
     components: [ComponentFactory.casinoSelectMenu(CASINOS)]
   });
@@ -1188,7 +1205,7 @@ function askChecklist(channel, ticketState) {
   const casino = CASINOS[ticketState.casino];
   if (!casino) {
     return channel.send({
-      embeds: [EmbedFactory.error('Casino não configurado no sistema')]
+      embeds: [EmbedFactory.error(MESSAGES.ERRORS.CASINO_NOT_CONFIGURED)]
     });
   }
 
@@ -1197,7 +1214,7 @@ function askChecklist(channel, ticketState) {
   // NOVO: Para BCGame, modificar o primeiro passo para incluir ID
   let checklist = [...casino.checklist];
   if (ticketState.casino === 'BCGame' && stepIndex === 0) {
-    checklist[0] = "📧 Envie **screenshot** do email de registro no BC.Game **e** o **ID da BCGame em texto**";
+    checklist[0] = MESSAGES.CHECKLIST.BCGAME_STEP1;
   }
   
   const embed = EmbedFactory.checklist(
@@ -1217,7 +1234,7 @@ function askVipChecklist(channel, ticketState) {
   const checklist = VIP_CHECKLISTS[ticketState.vipType];
   if (!checklist) {
     return channel.send({
-      embeds: [EmbedFactory.error('Tipo VIP não configurado no sistema')]
+      embeds: [EmbedFactory.error(MESSAGES.VIP.TYPE_NOT_CONFIGURED)]
     });
   }
 
@@ -1225,7 +1242,7 @@ function askVipChecklist(channel, ticketState) {
   
   if (stepIndex >= checklist.length) {
     return channel.send({
-      embeds: [EmbedFactory.success('Checklist VIP concluído! Clique em **Finalizar** para enviar para aprovação.')],
+      embeds: [EmbedFactory.success(MESSAGES.VIP.COMPLETED)],
       components: [ComponentFactory.finishButtons()]
     });
   }

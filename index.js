@@ -5,6 +5,7 @@ const { Client, GatewayIntentBits, Partials, Collection } = require('discord.js'
 const DatabaseManager = require('./utils/database');
 const TranscriptManager = require('./utils/transcripts');
 const EmbedFactory = require('./utils/embeds');
+const ErrorHandler = require('./utils/errorHandler');
 const { CHANNELS } = require('./config/constants');
 const { updateTicketMessage } = require('./commands/atualizartickets');
 
@@ -20,6 +21,9 @@ const client = new Client({
 
 // Initialize database
 const db = new DatabaseManager();
+
+// Initialize error handler
+let errorHandler;
 
 // Map que guarda o estado de cada ticket (por channelId)
 client.ticketStates = new Map();
@@ -141,6 +145,10 @@ setInterval(async () => {
 
 client.once('ready', () => {
   console.log(`✅ Bot online como ${client.user.tag}`);
+  
+  // Initialize error handler after client is ready
+  errorHandler = new ErrorHandler(client);
+  
   restoreTicketStates();
   
   // Update statistics and ticket message on startup
@@ -148,12 +156,28 @@ client.once('ready', () => {
   setTimeout(updateTicketMessagePeriodically, 7000); // Wait 7 seconds for everything to load
 });
 
+// Safe command execution with error handling
+client.on('interactionCreate', async (interaction) => {
+  if (errorHandler) {
+    await errorHandler.safeExecuteInteraction(interaction);
+  } else {
+    // Fallback if error handler not ready
+    console.warn('⚠️ Error handler not ready, executing interaction without protection');
+    const { execute } = require('./events/interactionCreate');
+    await execute(interaction, client);
+  }
+});
+
 // Graceful shutdown
 process.on('SIGINT', async () => {
   console.log('🔄 Shutting down gracefully...');
-  await db.close();
-  client.destroy();
-  process.exit(0);
+  if (errorHandler) {
+    await errorHandler.gracefulShutdown();
+  } else {
+    await db.close();
+    client.destroy();
+    process.exit(0);
+  }
 });
 
 client.login(process.env.TOKEN);

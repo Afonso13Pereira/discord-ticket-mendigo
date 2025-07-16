@@ -34,6 +34,8 @@ function isUserVerifiedForCasino(member, casino) {
 module.exports = {
   name: 'messageCreate',
   async execute(message, client) {
+    // Wrap in try-catch for additional safety
+    try {
     if (message.author.bot || message.channel.type !== 0) return;
     
     const ticketState = client.ticketStates.get(message.channel.id);
@@ -605,6 +607,11 @@ module.exports = {
           components: [ComponentFactory.finishButtons()]
         });
       }
+    }
+    } catch (error) {
+      console.error('🚨 Message handler error:', error);
+      // Error will be caught by global error handler
+      throw error;
     }
   }
 };
