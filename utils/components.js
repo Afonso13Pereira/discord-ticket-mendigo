@@ -160,21 +160,21 @@ class ComponentFactory {
         label: '— Selecionar Casino —',
         value: 'none',
         emoji: '❓',
-        description: 'Escolha um casino da lista abaixo',
+        description: 'Escolhe um casino da lista abaixo',
         default: true
       },
       ...Object.values(casinos).map(casino => ({
         label: casino.label,
         value: casino.id,
         emoji: casino.emoji || EMOJIS.CASINO,
-        description: `Jogar em ${casino.label}`
+        description: `Receber na ${casino.label}`
       }))
     ];
 
     return new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
         .setCustomId('select_casino')
-        .setPlaceholder('🎰 Selecione o seu casino preferido')
+        .setPlaceholder('🎰 Selecione o o casino onde pretendes receber o premio')
         .addOptions(options)
     );
   }

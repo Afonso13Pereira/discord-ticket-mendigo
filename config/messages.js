@@ -22,30 +22,28 @@ module.exports = {
 
   // === SISTEMA DE TICKETS ===
   TICKETS: {
-    WELCOME_TITLE: 'Olá! Eu sou o seu assistente',
+    WELCOME_TITLE: 'Olá!',
     WELCOME_DESCRIPTION: [
-      '**Bem-vindo ao sistema de suporte!**',
+      '**Bem-vindo ao sistema de suporte da tenda! Sou um bot e vou-te ajudar em tudo o que conseguir**',
       '',
-      '⭐ Siga as instruções abaixo para continuar',
-      '🛡️ Todas as suas informações estão seguras',
-      '💎 Suporte disponível 24/7'
+      '⭐ Segue as instruções abaixo para continuar',
+      '🛡️ Todas as tuas informações estão seguras'
     ].join('\n'),
     
     SYSTEM_TITLE: 'Sistema de Suporte',
     SYSTEM_DESCRIPTION: [
-      '**Bem-vindo ao nosso sistema de suporte!**',
+      '**Bem-vindo ao sistema de suporte da tenda! Sou um bot e vou-te ajudar em tudo o que conseguir**',
       '',
-      '⭐ Clique no botão que melhor descreve o seu pedido',
-      '🛡️ Suporte disponível 24/7',
+      '⭐ Clica no botão que melhor descreve o teu pedido',
       '💎 Resposta rápida e profissional',
       '',
-      '*Escolha uma categoria abaixo para começar:*'
+      '*Escolhe uma categoria abaixo para começar:*'
     ].join('\n'),
 
     CREATED_SUCCESS: 'Ticket #{number} criado com sucesso: {channel}',
     CLOSE_TITLE: 'Fechar Ticket',
     CLOSE_DESCRIPTION: [
-      '**Como deseja proceder com este ticket?**',
+      '**Como desejas fechar com este ticket?**',
       '',
       '📋 **Fechar com Transcript** - Salva todas as mensagens por 2 semanas',
       '🗑️ **Eliminar Ticket** - Remove o canal permanentemente',
@@ -73,7 +71,7 @@ module.exports = {
     ].join('\n'),
     
     INVALID_RESPONSE: 'Digite exatamente **"Sim, eu confirmo"** para prosseguir',
-    SUCCESS: 'Parabéns! Escolha o tipo de giveaway:'
+    SUCCESS: 'Parabéns! Escolhe o tipo de giveaway:'
   },
 
   // === GIVEAWAYS ===
@@ -83,41 +81,41 @@ module.exports = {
       '⭐ **Parabéns!** Escolha o tipo de giveaway:',
       '',
       '🎁 **Tipos Disponíveis:**',
-      '• Telegram - Prêmios do bot',
-      '• GTB - Giveaway tradicional',
-      '• Promoções especiais em destaque'
+      '• Telegram - Giveaways do telegram',
+      '• GTB - GTB da Stream',
+      '• Outros giveaways'
     ].join('\n'),
 
-    TELEGRAM_INSTRUCTIONS: '📱 Envie o **código** + **print** da mensagem do bot Telegram',
-    TELEGRAM_CODE_VALIDATED: 'Código validado! Casino nas logs: **{casino}** - Você pode escolher qualquer casino.',
-    TELEGRAM_CODE_SPECIFIC_CASINO: 'Código validado! Casino obrigatório: **{casino}**',
-    TELEGRAM_CODE_NOT_FOUND: 'Código não encontrado nos logs do sistema',
-    TELEGRAM_CODE_EXPIRED: 'Código tem mais de 48 horas. Aguarde verificação manual',
+    TELEGRAM_INSTRUCTIONS: '📱 Envia o **código** + **print** da mensagem do bot Telegram',
+    TELEGRAM_CODE_VALIDATED: 'Código validado!',
+    TELEGRAM_CODE_SPECIFIC_CASINO: 'Código validado!',
+    TELEGRAM_CODE_NOT_FOUND: 'o Código não foi encontrado nos vencedores',
+    TELEGRAM_CODE_EXPIRED: 'O código tem mais de 48 horas. Aguarda o suporte',
     TELEGRAM_CODE_MISSING: 'Ainda falta: {missing}',
 
     CASINO_SELECTION_TITLE: 'Seleção de Casino',
     CASINO_SELECTION_DESCRIPTION: [
-      '⚠️ **Importante:** Selecione o casino correto',
-      '🛡️ Sujeito a BAN se não cumprir as regras'
+      '⚠️ **Importante:** Seleciona o casino correto',
+      '🛡️ Sujeito a perder o premio se não cumprires as regras'
     ].join('\n'),
-    CASINO_SELECTION_ALL: '⭐ **Você pode escolher qualquer casino!**\n⚠️ Selecione o casino onde deseja jogar\n🛡️ Sujeito a BAN se não cumprir as regras',
+    CASINO_SELECTION_ALL: '⭐ **Podes escolher qualquer casino!**\n⚠️ Seleciona o casino onde desejas receber o premio\n🛡️ Sujeito a BAN se não cumprires as regras',
     CASINO_SELECTED: 'Casino **{casino}** selecionado!',
-    CASINO_INVALID_SELECTION: 'Por favor, selecione um casino válido',
-    CASINO_NOT_CONFIGURED: 'Casino **{casino}** não está configurado no sistema',
+    CASINO_INVALID_SELECTION: 'Por favor, seleciona um casino válido',
+    CASINO_NOT_CONFIGURED: 'Entra em contacto com o suporte',
 
     PROMO_SELECTED: 'Promoção **{name}** selecionada!',
     PROMO_SELECTED_CASINO: 'Promoção **{name}** selecionada para **{casino}**!',
     PROMO_EXPIRED: 'Esta promoção já terminou ou não está disponível',
-    PROMO_CHOOSE_CASINO: 'Promoção **{name}** selecionada! Agora escolha o casino.',
+    PROMO_CHOOSE_CASINO: 'Promoção **{name}** selecionada! Agora escolhe o casino.',
 
-    VERIFIED_USER_SKIP: '✅ **Utilizador verificado** - envie **imagem do depósito com QR visível** + **endereço LTC em texto**.',
+    VERIFIED_USER_SKIP: '✅ **Utilizador verificado** - envia **imagem do depósito com QR visível** + **endereço LTC em texto**.',
     VERIFIED_USER_MISSING: 'Ainda falta: {missing}',
     VERIFIED_USER_COMPLETE: 'Depósito e endereço LTC recebidos! Clique em **Finalizar** para completar.',
 
-    SUBMISSION_SENT: 'Solicitação enviada para aprovação! Aguarde a análise da equipe.',
+    SUBMISSION_SENT: 'Solicitação enviada para aprovação! Aguarda a análise da equipa.',
     APPROVED: 'Giveaway aprovado com prémio de **{prize}** e enviado para aprovações finais!',
-    REJECTED: 'Giveaway rejeitado. Motivo enviado ao usuário.',
-    PAID: 'Giveaway marcado como pago! Mensagem enviada ao ticket #{number}.\n\n✅ Utilizador agora está verificado para **{casino}**!',
+    REJECTED: 'Giveaway rejeitado. Motivo enviado ao User.',
+    PAID: 'Giveaway marcado como pago! Mensagem enviada ao ticket #{number}.\n\n✅ User agora está verificado para **{casino}**!',
 
     DUPLICATE_CODE_TITLE: 'Código já foi utilizado anteriormente',
     DUPLICATE_CODE_DESCRIPTION: [
@@ -125,10 +123,10 @@ module.exports = {
       '',
       'Este código foi usado no ticket #{originalTicket} por {originalUser}',
       '',
-      '⏳ **Ambos os tickets pausados para revisão manual**',
+      '⏳ **Ambos os tickets estão revisão manual**',
       '🛡️ **Suporte humano foi notificado**',
       '',
-      'Aguarde enquanto a nossa equipa verifica a situação.'
+      'Aguarda enquanto a nossa equipa verifica a situação.'
     ].join('\n')
   },
 
@@ -137,12 +135,12 @@ module.exports = {
     STEP_TITLE: 'Passo {current}/{total}',
     PROGRESS_FOOTER: 'Progresso: {current}/{total} passos concluídos',
     COMPLETED: 'Checklist concluído com sucesso! Clique em **Finalizar** para completar.',
-    RESUBMIT_STARTED: 'Reenvio iniciado! Por favor, complete novamente o checklist.',
+    RESUBMIT_STARTED: 'Reenvio iniciado! Por favor, completa novamente o checklist.',
     IMAGE_REQUIRED: 'Este passo requer o envio de uma **imagem**',
     MISSING_REQUIREMENTS: 'Ainda falta: {missing}',
 
     // BCGame específico
-    BCGAME_STEP1: '📧 Envie **screenshot** do email de registro no BC.Game **e** o **ID da BCGame em texto**',
+    BCGAME_STEP1: '📧 Envia **screenshot** do email de registro no BC.Game **e** o **ID da BCGame em texto**',
     BCGAME_MISSING_EMAIL: '**screenshot do email**',
     BCGAME_MISSING_ID: '**ID da BCGame em texto**',
 
@@ -155,19 +153,19 @@ module.exports = {
   VIP: {
     CASINO_SELECTION_TITLE: 'Seleção de Casino VIP',
     CASINO_SELECTION_DESCRIPTION: [
-      '**Escolha o casino onde deseja reclamar o VIP:**',
+      '**Escolhe o casino onde desejas reclamar o VIP:**',
       '',
       '💎 Casinos VIP disponíveis',
       '🛡️ Suporte especializado',
-      '⭐ Benefícios exclusivos'
+      '⭐ Giveaways exclusivos'
     ].join('\n'),
 
     TYPE_SELECTION_TITLE: 'Tipo de VIP',
     TYPE_SELECTION_DESCRIPTION: [
       '**Escolha o tipo de VIP que deseja reclamar:**',
       '',
-      '⭐ **Semanal** - VIP por uma semana',
-      '👑 **Leaderboard** - VIP por posição no ranking',
+      '⭐ **Semanal** - VIP semanal',
+      '👑 **Leaderboard** - VIP Leaderboard',
       '',
       'ℹ️ Cada tipo tem requisitos diferentes'
     ].join('\n'),
@@ -183,7 +181,7 @@ module.exports = {
   WEBSITE: {
     TYPE_SELECTION_TITLE: 'Suporte do Website',
     TYPE_SELECTION_DESCRIPTION: [
-      '**Como podemos ajudá-lo com o website?**',
+      '**Como podemos ajudar com o website?**',
       '',
       '🐛 **Reportar Bug** - Relatar um problema no site',
       '🎁 **Resgatar Redeem** - Reclamar itens que resgatou',
@@ -196,20 +194,20 @@ module.exports = {
       '**Descreva o bug que encontrou:**',
       '',
       'ℹ️ Seja específico sobre o problema',
-      '⭐ Inclua passos para reproduzir o bug',
-      '🛡️ Adicione capturas de ecrã se possível',
+      '⭐ Explica como aconteceu o bug',
+      '🛡️ Adiciona capturas de ecrã se possível',
       '',
-      '**Digite a descrição do bug abaixo:**'
+      '**Descreve o bug:**'
     ].join('\n'),
 
     REDEEM_NICK_TITLE: 'Resgatar Redeem',
     REDEEM_NICK_DESCRIPTION: [
       '**Para verificar os seus redeems disponíveis:**',
       '',
-      '📱 **Digite o seu nickname da Twitch**',
-      '📸 **Envie uma captura de ecrã** que comprove a sua identidade',
+      '📱 **Escreve o teu nickname da Twitch**',
+      '📸 **Envia uma captura de ecrã** que comprova o teu nick',
       '',
-      'ℹ️ Pode enviar em mensagens separadas'
+      'ℹ️ Podes enviar em mensagens separadas'
     ].join('\n'),
 
     REDEEM_NO_REDEEMS_TITLE: 'Nenhum Redeem Disponível',
@@ -221,7 +219,7 @@ module.exports = {
       '• Todos os redeems já foram resgatados',
       '• Nenhum redeem foi feito com este nickname',
       '',
-      '🛡️ Entre em contacto com o suporte se acha que isto é um erro'
+      '🛡️ Entra em contacto com o suporte se acha que isto é um erro'
     ].join('\n'),
 
     REDEEM_LIST_TITLE: 'Redeems Disponíveis para {nick}',
@@ -230,7 +228,7 @@ module.exports = {
       '',
       '{list}',
       '',
-      'ℹ️ Escolha o número do item que deseja resgatar'
+      'ℹ️ Escolhe o número do item que deseja resgatar'
     ].join('\n'),
 
     REDEEM_SELECTED_TITLE: 'Redeem Selecionado',
@@ -240,22 +238,22 @@ module.exports = {
       '**Data do Redeem:** {date}',
       '',
       '🛡️ **A nossa equipa irá processar o seu pedido**',
-      '🕐 Aguarde enquanto verificamos os detalhes',
+      '🕐 Aguarda enquanto verificamos os detalhes',
       '💎 Será contactado em breve'
     ].join('\n'),
 
-    REDEEM_COMPLETED: 'Redeem marcado como concluído! O usuário foi notificado.',
+    REDEEM_COMPLETED: 'Redeem marcado como concluído! O user foi notificado.',
     REDEEM_ERROR: 'Erro ao marcar redeem como concluído',
     REDEEM_NOT_FOUND: 'Redeem não encontrado',
 
-    NICK_IMAGE_RECEIVED: 'Imagem recebida! Agora envie o seu **nickname da Twitch**.',
-    NICK_TEXT_RECEIVED: 'Nickname recebido! Agora envie uma **captura de ecrã** como prova.',
+    NICK_IMAGE_RECEIVED: 'Imagem recebida! Agora envia o seu **nickname da Twitch**.',
+    NICK_TEXT_RECEIVED: 'Nickname recebido! Agora envia uma **captura de ecrã** como prova.',
 
     BUG_NOTIFICATION: [
       '**Novo bug reportado no website**',
       '',
       '🎫 **Ticket:** #{number}',
-      '👤 **Usuário:** {user}',
+      '👤 **User:** {user}',
       '🐛 **Tipo:** Bug Report',
       '📝 **Descrição:** {description}',
       '',
@@ -266,7 +264,7 @@ module.exports = {
       '**Novo pedido de redeem**',
       '',
       '🎫 **Ticket:** #{number}',
-      '👤 **Usuário:** {user}',
+      '👤 **User:** {user}',
       '🎁 **Item:** {item}',
       '📱 **Twitch:** {twitch}',
       '📅 **Data do Redeem:** {date}',
@@ -279,23 +277,23 @@ module.exports = {
   QUESTIONS: {
     DESCRIPTION_TITLE: 'Descreva a sua Dúvida',
     DESCRIPTION_DESCRIPTION: [
-      '**Por favor, descreva o seu problema da melhor forma possível:**',
+      '**Por favor, descreva o teu problema da melhor forma possível:**',
       '',
       'ℹ️ Seja específico e detalhado',
       '⭐ Inclua capturas de ecrã se necessário',
       '🛡️ A nossa equipa irá ajudá-lo',
       '',
-      '**Digite a sua dúvida abaixo:**'
+      '**Descreve a tua duvida:**'
     ].join('\n'),
 
-    DESCRIPTION_TOO_SHORT: 'Por favor, forneça uma descrição mais detalhada (mínimo 10 caracteres)',
+    DESCRIPTION_TOO_SHORT: 'Por favor, fornece uma descrição mais detalhada (mínimo 10 caracteres)',
     DESCRIPTION_RECEIVED: 'Descrição recebida! A nossa equipa foi notificada e irá ajudá-lo em breve.',
 
     NOTIFICATION: [
       '**Novo ticket de {category}**',
       '',
       '🎫 **Ticket:** #{number}',
-      '👤 **Usuário:** {user}',
+      '👤 **User:** {user}',
       '📂 **Categoria:** {category}',
       '📝 **Descrição:** {description}',
       '',
@@ -306,13 +304,13 @@ module.exports = {
   OTHER: {
     HELP_TITLE: 'Como Podemos Ajudar?',
     HELP_DESCRIPTION: [
-      '**Em que podemos ajudá-lo hoje?**',
+      '**Em que podemos ajudá-lo?**',
       '',
-      '⭐ Descreva o que precisa',
+      '⭐ Descreve o que precisas',
       '🛡️ A nossa equipa está aqui para ajudar',
       '💎 Suporte personalizado',
       '',
-      '**Digite a sua solicitação abaixo:**'
+      '**Descreve como podemos ajudar:**'
     ].join('\n')
   },
 
@@ -322,14 +320,14 @@ module.exports = {
     REQUEST_DESCRIPTION: [
       '**Suporte solicitado no ticket #{number}**',
       '',
-      '👤 **Usuário:** {user}',
+      '👤 **User:** {user}',
       '📍 **Canal:** <#{channel}>',
       '📝 **Motivo:** {reason}',
       '',
       '🕐 Aguardando atendimento'
     ].join('\n'),
 
-    TEAM_NOTIFIED: 'Equipe de suporte foi notificada! Aguarde um momento.',
+    TEAM_NOTIFIED: 'Equipe de suporte foi notificada! Aguarda um momento.',
     COMPLETED: 'Suporte marcado como concluído!',
     TICKET_PAUSED: '⚠️ **Ticket pausado para revisão**\n\nO código `{code}` foi usado novamente em outro ticket.\n\n🛡️ **Suporte humano foi notificado**\nAguarde enquanto a nossa equipa verifica a situação.',
     SITUATION_RESOLVED: '✅ **Situação resolvida pelo suporte**\n\nPode continuar com o seu ticket normalmente.'
@@ -341,7 +339,7 @@ module.exports = {
     READY_DESCRIPTION: [
       '**Ticket #{number} pronto para ser aprovado**',
       '',
-      '👤 **Usuário:** {user}',
+      '👤 **User:** {user}',
       '🎫 **Ticket:** #{number}',
       '',
       'ℹ️ Use o botão abaixo para ir ao ticket'
@@ -355,7 +353,7 @@ module.exports = {
       '**Prenda**',
       '{prize}',
       '',
-      '**Utilizador**',
+      '**User**',
       '{user} (✅ **{casino} Afiliado Verificado**)',
       '',
       '**Ticket**',
@@ -372,7 +370,7 @@ module.exports = {
       '**Prenda**',
       '{prize}',
       '',
-      '**Utilizador**',
+      '**User**',
       '{user}',
       '',
       '**Ticket**',
@@ -392,7 +390,7 @@ module.exports = {
       '**Prenda**',
       '{prize}',
       '',
-      '**Utilizador**',
+      '**User**',
       '{user}',
       '',
       '**Ticket**',
@@ -409,7 +407,7 @@ module.exports = {
       'Assim que conseguires confirma que recebeste!',
       'Sempre com juízo no casino!',
       '',
-      'Se não tiveres mais questões podes fechar o ticket'
+      'Se não tiveres mais questões podes fechar o ticket ❤️'
     ].join('\n'),
 
     REJECTION_TITLE: 'Giveaway Rejeitado',
@@ -418,15 +416,15 @@ module.exports = {
       '',
       '📝 **Motivo:** {reason}',
       '',
-      'ℹ️ Pode reenviar corrigindo o problema',
-      '🛡️ Entre em contacto com o suporte se tiver dúvidas'
+      'ℹ️ Podes reenviar depois de corrigires o problema',
+      '🛡️ Entra em contacto com o suporte se tiver dúvidas'
     ].join('\n'),
 
     REVIEW_TITLE: 'Solicitação de Revisão',
     REVIEW_DESCRIPTION: [
       '**Ticket #{number} precisa de revisão**',
       '',
-      '👤 **Usuário:** {user}',
+      '👤 **User:** {user}',
       '📝 **Motivo:** {reason}',
       '',
       '🛡️ Suporte humano necessário'
@@ -469,7 +467,7 @@ module.exports = {
       '',
       '📋 **ID:** `{id}`',
       '🎫 **Ticket:** #{number} ({channel})',
-      '👤 **Usuário:** {user}',
+      '👤 **User:** {user}',
       '📂 **Categoria:** {category}',
       '⏰ **Expira em:** <t:{expires}:R>',
       '🔒 **Acesso:** Apenas staff autorizado',
@@ -480,7 +478,7 @@ module.exports = {
     VIEW_TITLE: 'Transcript: Ticket #{number}',
     VIEW_DESCRIPTION: [
       '**Canal:** #{channel}',
-      '**Usuário:** {user}',
+      '**User:** {user}',
       '**Categoria:** {category}',
       '**Criado:** <t:{created}:F>',
       '**Expira:** <t:{expires}:R>',
@@ -598,7 +596,7 @@ module.exports = {
   PLACEHOLDERS: {
     PROMO_NAME: 'Ex: Flash Promo Weekend',
     PROMO_END_DATE: '2025-12-31 23:30',
-    PROMO_CASINO: 'RioAce, BCGame, ou "todos"',
+    PROMO_CASINO: 'Hexabet, BCGame, ou "todos"',
     PROMO_COLOR: 'blue',
     PROMO_EMOJI: '🔥',
     
@@ -613,7 +611,7 @@ module.exports = {
 
   // === FOOTERS ===
   FOOTERS: {
-    TICKET_SYSTEM: 'Sistema de Tickets • Suporte 24/7',
+    TICKET_SYSTEM: 'Sistema de Tickets',
     GIVEAWAY_SYSTEM: 'Sistema de Giveaways',
     VIP_SYSTEM: 'Sistema VIP',
     QUESTIONS_SYSTEM: 'Sistema de Dúvidas',
@@ -627,15 +625,15 @@ module.exports = {
     APPROVALS_SYSTEM: 'Sistema de Aprovações',
     REVIEWS_SYSTEM: 'Sistema de Revisões',
     SUPPORT_SYSTEM: 'Sistema de Suporte',
-    ANTI_FRAUD: 'Sistema Anti-Fraude',
+    ANTI_FRAUD: 'Sistema de Alerta',
     TRANSCRIPT_EXPIRES: 'Transcript • Expira em 2 semanas',
     STATS_AUTO_UPDATE: 'Estatísticas atualizadas automaticamente',
-    CONGRATULATIONS: 'Parabéns pelo seu prémio!'
+    CONGRATULATIONS: 'Parabéns pelo prémio!'
   },
 
   // === PERMISSÕES ===
   PERMISSIONS: {
-    NO_PERMISSION: 'Você não tem permissão para usar este botão',
+    NO_PERMISSION: 'Naõ tens permissão para usar o botão',
     MOD_ONLY: 'Este comando requer permissões de moderador',
     ADMIN_ONLY: 'Este comando requer permissões de administrador'
   },

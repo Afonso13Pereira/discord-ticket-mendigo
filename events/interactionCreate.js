@@ -22,15 +22,15 @@ const findCasinoId = name =>
 
 const VIP_CHECKLISTS = {
   semanal: [
-    "📱 Envie **print do perfil** com ID visível **e** o **ID em texto**",
-    "💰 Envie **prints dos depósitos**",
-    "💸 Envie **prints dos levantamentos**",
-    "🏦 Envie **prints dos cofres**",
-    "📥 Envie **print do depósito LTC** com QR visível **e** o **endereço LTC em texto**"
+    "📱 Envia **print do perfil** com ID visível **e** o **ID em texto**",
+    "💰 Envia **prints dos depósitos**",
+    "💸 Envia **prints dos levantamentos**",
+    "🏦 Envia **prints dos cofres**",
+    "📥 Envia **print do depósito LTC** com QR visível **e** o **endereço LTC em texto**"
   ],
   leaderboard: [
-    "📱 Envie **print da conta** com ID visível **e** o **ID em texto**",
-    "📥 Envie **print do depósito LTC** com QR visível **e** o **endereço LTC em texto**"
+    "📱 Envia **print da conta** com ID visível **e** o **ID em texto**",
+    "📥 Envia **print do depósito LTC** com QR visível **e** o **endereço LTC em texto**"
   ]
 };
 
