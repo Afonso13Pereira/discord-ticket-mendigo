@@ -663,5 +663,32 @@ module.exports = {
     ].join('\n'),
     CRITICAL_ERROR_ALERT: 'ERRO CRÍTICO DETECTADO',
     ERROR_RECOVERY_FOOTER: 'Sistema de Recuperação de Erros'
+  },
+
+  // === ERROS COMUNS ===
+  ERRORS: {
+    SUBMISSION_NOT_FOUND: 'Submissão não encontrada',
+    APPROVAL_NOT_FOUND: 'Aprovação não encontrada',
+    TICKET_STATE_NOT_FOUND: 'Estado do ticket não encontrado',
+    CASINO_NOT_CONFIGURED: 'Casino não configurado no sistema',
+    DATABASE_ERROR: 'Erro na base de dados',
+    CHANNEL_NOT_FOUND: 'Canal não encontrado',
+    USER_NOT_FOUND: 'Utilizador não encontrado',
+    INVALID_INPUT: 'Entrada inválida',
+    OPERATION_FAILED: 'Operação falhou',
+    TIMEOUT: 'Operação expirou',
+    NETWORK_ERROR: 'Erro de rede',
+    UNKNOWN_ERROR: 'Erro desconhecido',
+    INTERNAL_ERROR: 'Erro interno do sistema',
+    SYSTEM_ERROR_TITLE: 'Erro Interno',
+    SYSTEM_ERROR_DESCRIPTION: [
+      'Ocorreu um erro interno no sistema.',
+      '',
+      '🛡️ **A equipa técnica foi notificada**',
+      '🔄 **Tente novamente em alguns momentos**',
+      '💬 **Se persistir, contacte o suporte**'
+    ].join('\n'),
+    CRITICAL_ERROR_ALERT: 'ERRO CRÍTICO DETECTADO',
+    ERROR_RECOVERY_FOOTER: 'Sistema de Recuperação de Erros'
   }
 };
