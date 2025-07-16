@@ -502,6 +502,74 @@ module.exports = {
       return;
     }
 
+    // NOVO: Botão para resolver códigos duplicados
+    if (interaction.isButton() && interaction.customId.startsWith('duplicate_resolved_')) {
+      // Check if user has mod role
+      if (!interaction.member.roles.cache.has(ROLES.MOD)) {
+        return interaction.reply({
+          embeds: [EmbedFactory.error('Você não tem permissão para usar este botão')],
+          flags: 64
+        });
+      }
+
+      const parts = interaction.customId.split('_');
+      const currentTicketId = parts[2];
+      const originalTicketId = parts[3];
+
+      try {
+        // Reativar ambos os tickets
+        const currentTicketState = client.ticketStates.get(currentTicketId);
+        if (currentTicketState) {
+          currentTicketState.awaitingSupport = false;
+          await client.saveTicketState(currentTicketId, currentTicketState);
+        }
+
+        if (originalTicketId && originalTicketId !== 'undefined') {
+          const originalTicketState = client.ticketStates.get(originalTicketId);
+          if (originalTicketState) {
+            originalTicketState.awaitingSupport = false;
+            await client.saveTicketState(originalTicketId, originalTicketState);
+          }
+        }
+
+        // Notificar ambos os tickets
+        const currentChannel = await interaction.guild.channels.fetch(currentTicketId).catch(() => null);
+        if (currentChannel) {
+          await currentChannel.send({
+            embeds: [EmbedFactory.success('✅ **Situação resolvida pelo suporte**\n\nPode continuar com o seu ticket normalmente.')]
+          });
+        }
+
+        if (originalTicketId && originalTicketId !== 'undefined') {
+          const originalChannel = await interaction.guild.channels.fetch(originalTicketId).catch(() => null);
+          if (originalChannel) {
+            await originalChannel.send({
+              embeds: [EmbedFactory.success('✅ **Situação resolvida pelo suporte**\n\nPode continuar com o seu ticket normalmente.')]
+            });
+          }
+        }
+
+        // Delete the alert message
+        try {
+          await interaction.message.delete();
+        } catch (error) {
+          console.error('Error deleting duplicate code alert message:', error);
+        }
+
+        return interaction.reply({
+          embeds: [EmbedFactory.success('Situação de código duplicado resolvida! Ambos os tickets foram reativados.')],
+          flags: 64
+        });
+
+      } catch (error) {
+        console.error('Error resolving duplicate code situation:', error);
+        return interaction.reply({
+          embeds: [EmbedFactory.error('Erro ao resolver situação de código duplicado')],
+          flags: 64
+        });
+      }
+    }
+
     // Support Completion Button
     if (interaction.isButton() && interaction.customId.startsWith('support_complete_')) {
       // Check if user has mod role
