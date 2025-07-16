@@ -521,6 +521,30 @@ class EmbedFactory {
       .setFooter({ text: 'Sistema de Suporte' });
   }
 
+  static duplicateCodeAlert(originalTicket, currentTicket, code) {
+    return new EmbedBuilder()
+      .setColor(COLORS.DANGER)
+      .setTitle(`🚨 Código Telegram Duplicado`)
+      .setDescription([
+        `**Código \`${code}\` foi usado duas vezes!**`,
+        '',
+        `📋 **Uso Original:**`,
+        `• Ticket: #${originalTicket.ticketNumber}`,
+        `• Usuário: ${originalTicket.userTag}`,
+        `• Casino: ${originalTicket.casino || 'N/A'}`,
+        `• Data: ${new Date(originalTicket.usedAt).toLocaleString('pt-PT')}`,
+        '',
+        `🆕 **Tentativa Atual:**`,
+        `• Ticket: #${currentTicket.ticketNumber}`,
+        `• Usuário: ${currentTicket.userTag}`,
+        `• Canal: <#${currentTicket.channelId}>`,
+        '',
+        `⚠️ **Ação necessária:** Verificar se é uso legítimo ou tentativa de fraude`
+      ].join('\n'))
+      .setTimestamp()
+      .setFooter({ text: 'Sistema Anti-Fraude' });
+  }
+
   // === STATISTICS EMBED ===
   static ticketStatistics(stats) {
     const embed = new EmbedBuilder()

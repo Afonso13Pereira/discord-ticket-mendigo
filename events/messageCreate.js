@@ -312,18 +312,97 @@ module.exports = {
         });
       }
 
+      // NOVO: Verificar se o código já foi usado
+      const existingCode = await client.db.checkTelegramCode(ticketState.telegramCode);
+      if (existingCode) {
+        // Código já foi usado - marcar como tentativa duplicada
+        await client.db.markCodeAsDuplicateAttempt(
+          ticketState.telegramCode,
+          message.channel.id,
+          message.author.id,
+          message.author.tag
+        );
+
+        // Alertar suporte humano
+        const staffChannel = await message.guild.channels.fetch(CHANNELS.STAFF);
+        const embed = EmbedFactory.warning([
+          `**🚨 CÓDIGO TELEGRAM DUPLICADO DETECTADO**`,
+          '',
+          `🔴 **Código:** \`${ticketState.telegramCode}\``,
+          '',
+          `📋 **Uso Original:**`,
+          `• Ticket: #${existingCode.ticketNumber}`,
+          `• Usuário: ${existingCode.userTag}`,
+          `• Casino: ${existingCode.casino || 'N/A'}`,
+          `• Data: ${new Date(existingCode.usedAt).toLocaleString('pt-PT')}`,
+          '',
+          `🆕 **Tentativa Atual:**`,
+          `• Ticket: #${ticketState.ticketNumber}`,
+          `• Usuário: ${message.author.tag}`,
+          `• Canal: ${message.channel}`,
+          '',
+          `⚠️ **Ticket atual foi pausado para revisão manual**`
+        ].join('\n'), 'Código Telegram Duplicado');
+        
+        const components = ComponentFactory.supportCompletionButton(`duplicate_code_${message.channel.id}`);
+        
+        await staffChannel.send({ 
+          embeds: [embed],
+          components: [components]
+        });
+
+        // Log da tentativa duplicada
+        await client.db.logAction(message.channel.id, message.author.id, 'duplicate_telegram_code', `Code: ${ticketState.telegramCode}, Original ticket: #${existingCode.ticketNumber}`);
+
+        // Pausar ticket atual
+        ticketState.awaitingSupport = true;
+        await client.saveTicketState(message.channel.id, ticketState);
+
+        return message.reply({
+          embeds: [EmbedFactory.error([
+            '🚨 **Código já foi utilizado anteriormente**',
+            '',
+            `Este código foi usado no ticket #${existingCode.ticketNumber} por ${existingCode.userTag}`,
+            '',
+            '⏳ **Ticket pausado para revisão manual**',
+            '🛡️ **Suporte humano foi notificado**',
+            '',
+            'Aguarde enquanto a nossa equipa verifica a situação.'
+          ].join('\n'))],
+          components: [ComponentFactory.createButtonRow(ComponentFactory.supportButton(), ComponentFactory.closeTicketButton())]
+        });
+      }
+
       // Validate code in logs
       const logsChannel = await message.guild.channels.fetch(CHANNELS.LOGS);
       const messages = await logsChannel.messages.fetch({ limit: 100 });
       const codeMessage = messages.find(m => m.content.toLowerCase().includes(ticketState.telegramCode));
       
       if (!codeMessage) {
+        // Salvar código como usado mesmo se não encontrado nos logs (para controle)
+        await client.db.saveTelegramCode(
+          ticketState.telegramCode,
+          message.channel.id,
+          ticketState.ticketNumber,
+          message.author.id,
+          message.author.tag
+        );
+        
         return message.reply({
           embeds: [EmbedFactory.error('Código não encontrado nos logs do sistema')]
         });
       }
 
       if (Date.now() - codeMessage.createdTimestamp > 48 * 60 * 60 * 1000) {
+        // Salvar código como usado mesmo se expirado (para controle)
+        await client.db.saveTelegramCode(
+          ticketState.telegramCode,
+          message.channel.id,
+          ticketState.ticketNumber,
+          message.author.id,
+          message.author.tag
+        );
+        
         return message.reply({
           embeds: [EmbedFactory.warning('Código tem mais de 48 horas. Aguarde verificação manual')]
         });
@@ -336,6 +415,17 @@ module.exports = {
       // Extract casino from logs
       const casinoMatch = codeMessage.content.match(/casino\s*:\s*([^\n\r]+)/i);
       let logsCasino = casinoMatch ? casinoMatch[1].trim() : 'RioAce'; // default fallback
+
+      // NOVO: Salvar código como usado com sucesso
+      await client.db.saveTelegramCode(
+        ticketState.telegramCode,
+        message.channel.id,
+        ticketState.ticketNumber,
+        message.author.id,
+        message.author.tag,
+        logsCasino,
+        ticketState.prize
+      );
 
       // Check if casino is "Todos" or specific
       if (/todos/i.test(logsCasino)) {

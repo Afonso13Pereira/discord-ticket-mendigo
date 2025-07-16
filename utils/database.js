@@ -124,6 +124,18 @@ const RedeemSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 });
 
+const TelegramCodeSchema = new mongoose.Schema({
+  code: { type: String, required: true, unique: true },
+  ticketChannelId: { type: String, required: true },
+  ticketNumber: { type: Number, required: true },
+  userId: { type: String, required: true },
+  userTag: { type: String, required: true },
+  casino: { type: String, default: null },
+  prize: { type: String, default: null },
+  usedAt: { type: Date, default: Date.now },
+  status: { type: String, default: 'used' } // used, duplicate_attempt
+});
+
 // Add index for automatic deletion
 TranscriptSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
@@ -139,6 +151,7 @@ class DatabaseManager {
     this.Submission = null;
     this.Approval = null;
     this.Redeem = null;
+    this.TelegramCode = null;
     this.connect();
   }
 
@@ -161,12 +174,79 @@ class DatabaseManager {
       this.Submission = mongoose.model('Submission', SubmissionSchema, 'DiscordBot.submissions');
       this.Approval = mongoose.model('Approval', ApprovalSchema, 'DiscordBot.approvals');
       this.Redeem = mongoose.model('Redeem', RedeemSchema, 'reedems');
+      this.TelegramCode = mongoose.model('TelegramCode', TelegramCodeSchema, 'DiscordBot.telegramCodes');
 
       this.connected = true;
       console.log('✅ Connected to MongoDB (mendigo/DiscordBot + reedems)');
     } catch (error) {
       console.error('❌ MongoDB connection error:', error);
       this.connected = false;
+    }
+  }
+
+  // === TELEGRAM CODES ===
+  async checkTelegramCode(code) {
+    if (!this.connected) return null;
+    
+    try {
+      const existingCode = await this.TelegramCode.findOne({ code: code.toLowerCase() });
+      return existingCode ? {
+        code: existingCode.code,
+        ticketChannelId: existingCode.ticketChannelId,
+        ticketNumber: existingCode.ticketNumber,
+        userId: existingCode.userId,
+        userTag: existingCode.userTag,
+        casino: existingCode.casino,
+        prize: existingCode.prize,
+        usedAt: existingCode.usedAt,
+        status: existingCode.status
+      } : null;
+    } catch (error) {
+      console.error('Error checking telegram code:', error);
+      return null;
+    }
+  }
+
+  async saveTelegramCode(code, ticketChannelId, ticketNumber, userId, userTag, casino = null, prize = null) {
+    if (!this.connected) return false;
+    
+    try {
+      const telegramCode = new this.TelegramCode({
+        code: code.toLowerCase(),
+        ticketChannelId,
+        ticketNumber,
+        userId,
+        userTag,
+        casino,
+        prize
+      });
+      
+      await telegramCode.save();
+      return true;
+    } catch (error) {
+      console.error('Error saving telegram code:', error);
+      return false;
+    }
+  }
+
+  async markCodeAsDuplicateAttempt(code, attemptTicketId, attemptUserId, attemptUserTag) {
+    if (!this.connected) return false;
+    
+    try {
+      await this.TelegramCode.findOneAndUpdate(
+        { code: code.toLowerCase() },
+        { 
+          status: 'duplicate_attempt',
+          lastAttemptTicketId: attemptTicketId,
+          lastAttemptUserId: attemptUserId,
+          lastAttemptUserTag: attemptUserTag,
+          lastAttemptAt: new Date()
+        }
+      );
+      return true;
+    } catch (error) {
+      console.error('Error marking code as duplicate attempt:', error);
+      return false;
     }
   }
 
