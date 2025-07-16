@@ -323,6 +323,29 @@ module.exports = {
           message.author.tag
         );
 
+        // NOVO: Pausar AMBOS os tickets para revisão
+        const originalTicketChannel = await message.guild.channels.fetch(existingCode.ticketChannelId).catch(() => null);
+        
+        // Pausar ticket original se ainda existir
+        if (originalTicketChannel) {
+          const originalTicketState = client.ticketStates.get(existingCode.ticketChannelId);
+          if (originalTicketState) {
+            originalTicketState.awaitingSupport = true;
+            await client.saveTicketState(existingCode.ticketChannelId, originalTicketState);
+            
+            await originalTicketChannel.send({
+              embeds: [EmbedFactory.warning([
+                '⚠️ **Ticket pausado para revisão**',
+                '',
+                `O código \`${ticketState.telegramCode}\` foi usado novamente em outro ticket.`,
+                '',
+                '🛡️ **Suporte humano foi notificado**',
+                'Aguarde enquanto a nossa equipa verifica a situação.'
+              ].join('\n'))],
+              components: [ComponentFactory.createButtonRow(ComponentFactory.supportButton(), ComponentFactory.closeTicketButton())]
+            });
+          }
+        }
         // Alertar suporte humano
         const staffChannel = await message.guild.channels.fetch(CHANNELS.STAFF);
         const embed = EmbedFactory.warning([
@@ -341,10 +364,38 @@ module.exports = {
           `• Usuário: ${message.author.tag}`,
           `• Canal: ${message.channel}`,
           '',
-          `⚠️ **Ticket atual foi pausado para revisão manual**`
+          `⚠️ **AMBOS os tickets foram pausados para revisão manual**`
         ].join('\n'), 'Código Telegram Duplicado');
         
-        const components = ComponentFactory.supportCompletionButton(`duplicate_code_${message.channel.id}`);
+        // NOVO: Criar botões para ir aos dois tickets
+        const buttons = [];
+        
+        // Botão para ticket original (se ainda existir)
+        if (originalTicketChannel) {
+          buttons.push(
+            ComponentFactory.createLinkButton(
+              `https://discord.com/channels/${message.guild.id}/${existingCode.ticketChannelId}`,
+              `Ticket Original #${existingCode.ticketNumber}`,
+              '📋'
+            )
+          );
+        }
+        
+        // Botão para ticket atual
+        buttons.push(
+          ComponentFactory.createLinkButton(
+            `https://discord.com/channels/${message.guild.id}/${message.channel.id}`,
+            `Ticket Atual #${ticketState.ticketNumber}`,
+            '🆕'
+          )
+        );
+        
+        // Botão para marcar como resolvido
+        buttons.push(
+          ComponentFactory.createButton(`duplicate_resolved_${message.channel.id}_${existingCode.ticketChannelId}`, 'Marcar como Resolvido', 'Success', '✅')
+        );
+        
+        const components = ComponentFactory.createButtonRow(...buttons);
         
         await staffChannel.send({ 
           embeds: [embed],
@@ -354,7 +405,7 @@ module.exports = {
         // Log da tentativa duplicada
         await client.db.logAction(message.channel.id, message.author.id, 'duplicate_telegram_code', `Code: ${ticketState.telegramCode}, Original ticket: #${existingCode.ticketNumber}`);
 
-        // Pausar ticket atual
+        // NOVO: Pausar ticket atual
         ticketState.awaitingSupport = true;
         await client.saveTicketState(message.channel.id, ticketState);
 
@@ -364,7 +415,7 @@ module.exports = {
             '',
             `Este código foi usado no ticket #${existingCode.ticketNumber} por ${existingCode.userTag}`,
             '',
-            '⏳ **Ticket pausado para revisão manual**',
+            '⏳ **Ambos os tickets pausados para revisão manual**',
             '🛡️ **Suporte humano foi notificado**',
             '',
             'Aguarde enquanto a nossa equipa verifica a situação.'
