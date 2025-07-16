@@ -5,6 +5,7 @@ const { promos, refreshExpired, refreshPromotions } = require('../utils/promotio
 const EmbedFactory = require('../utils/embeds');
 const ComponentFactory = require('../utils/components');
 const { CHANNELS, EMOJIS } = require('../config/constants');
+const MESSAGES = require('../config/messages');
 
 const CONFIRM_RX = /^sim[, ]*eu confirmo$/i;
 
@@ -67,7 +68,7 @@ module.exports = {
       }
       
       return message.reply({
-        embeds: [EmbedFactory.error('Digite exatamente **"Sim, eu confirmo"** para prosseguir')]
+        embeds: [EmbedFactory.error(MESSAGES.CONFIRMATION.INVALID_RESPONSE)]
       });
     }
 
@@ -93,7 +94,7 @@ module.exports = {
         if (!ticketState.step4HasAddr) missing.push('**endereço LTC em texto**');
         
         return message.reply({
-          embeds: [EmbedFactory.error(`Ainda falta: ${missing.join(' e ')}`)]
+          embeds: [EmbedFactory.error(MESSAGES.GIVEAWAYS.VERIFIED_USER_MISSING.replace('{missing}', missing.join(' e ')))]
         });
       }
       
@@ -107,7 +108,7 @@ module.exports = {
       await client.db.logAction(message.channel.id, message.author.id, 'ltc_deposit_provided', ltcAddress.substring(0, 10) + '...');
       
       return message.reply({
-        embeds: [EmbedFactory.success('Depósito e endereço LTC recebidos! Clique em **Finalizar** para completar.')],
+        embeds: [EmbedFactory.success(MESSAGES.GIVEAWAYS.VERIFIED_USER_COMPLETE)],
         components: [ComponentFactory.finishButtons()]
       });
     }
@@ -124,7 +125,7 @@ module.exports = {
         
         if (!ticketState.twitchNick) {
           return message.reply({
-            embeds: [EmbedFactory.info('Imagem recebida! Agora envie o seu **nickname da Twitch**.')]
+            embeds: [EmbedFactory.info(MESSAGES.WEBSITE.NICK_IMAGE_RECEIVED)]
           });
         }
       }
@@ -135,7 +136,7 @@ module.exports = {
         
         if (!ticketState.twitchProofImage) {
           return message.reply({
-            embeds: [EmbedFactory.info('Nickname recebido! Agora envie uma **captura de ecrã** como prova.')]
+            embeds: [EmbedFactory.info(MESSAGES.WEBSITE.NICK_TEXT_RECEIVED)]
           });
         }
       }
@@ -175,7 +176,7 @@ module.exports = {
     if (ticketState.awaitDescription) {
       if (message.content.trim().length < 10) {
         return message.reply({
-          embeds: [EmbedFactory.error('Por favor, forneça uma descrição mais detalhada (mínimo 10 caracteres)')]
+          embeds: [EmbedFactory.error(MESSAGES.QUESTIONS.DESCRIPTION_TOO_SHORT)]
         });
       }
 
@@ -191,19 +192,18 @@ module.exports = {
       
       let notificationText = '';
       if (ticketState.category === 'Website' && ticketState.websiteType === 'bug') {
-        notificationText = `**Novo bug reportado no website**\n\n` +
-          `🎫 **Ticket:** #${ticketState.ticketNumber}\n` +
-          `👤 **Usuário:** ${ticketState.ownerTag}\n` +
-          `🐛 **Tipo:** Bug Report\n` +
-          `📝 **Descrição:** ${ticketState.description}\n\n` +
-          `📍 **Canal:** ${message.channel}`;
+        notificationText = MESSAGES.WEBSITE.BUG_NOTIFICATION
+          .replace('{number}', ticketState.ticketNumber)
+          .replace('{user}', ticketState.ownerTag)
+          .replace('{description}', ticketState.description)
+          .replace('{channel}', message.channel);
       } else {
-        notificationText = `**Novo ticket de ${ticketState.category}**\n\n` +
-          `🎫 **Ticket:** #${ticketState.ticketNumber}\n` +
-          `👤 **Usuário:** ${ticketState.ownerTag}\n` +
-          `📂 **Categoria:** ${ticketState.category}\n` +
-          `📝 **Descrição:** ${ticketState.description}\n\n` +
-          `📍 **Canal:** ${message.channel}`;
+        notificationText = MESSAGES.QUESTIONS.NOTIFICATION
+          .replace('{category}', ticketState.category)
+          .replace('{number}', ticketState.ticketNumber)
+          .replace('{user}', ticketState.ownerTag)
+          .replace('{description}', ticketState.description)
+          .replace('{channel}', message.channel);
       }
       
       const embed = EmbedFactory.warning(notificationText);
@@ -215,7 +215,7 @@ module.exports = {
       });
 
       return message.reply({
-        embeds: [EmbedFactory.success('Descrição recebida! A nossa equipa foi notificada e irá ajudá-lo em breve.')]
+        embeds: [EmbedFactory.success(MESSAGES.QUESTIONS.DESCRIPTION_RECEIVED)]
       });
     }
 
@@ -247,7 +247,7 @@ module.exports = {
           if (!ticketState.step4HasAddr) missing.push(stepIndex === 0 ? '**ID em texto**' : '**endereço LTC em texto**');
           
           return message.reply({
-            embeds: [EmbedFactory.error(`Ainda falta: ${missing.join(' e ')}`)]
+            embeds: [EmbedFactory.error(MESSAGES.CHECKLIST.MISSING_REQUIREMENTS.replace('{missing}', missing.join(' e ')))]
           });
         }
         
@@ -260,7 +260,7 @@ module.exports = {
         // Other steps require only images
         if (message.attachments.size === 0) {
           return message.reply({
-            embeds: [EmbedFactory.error('Este passo requer o envio de uma **imagem**')]
+            embeds: [EmbedFactory.error(MESSAGES.CHECKLIST.IMAGE_REQUIRED)]
           });
         }
         ticketState.awaitProof = false;
@@ -284,7 +284,7 @@ module.exports = {
       await client.db.logAction(message.channel.id, message.author.id, 'vip_checklist_completed', `Type: ${ticketState.vipType}, Casino: ${ticketState.vipCasino}`);
       
       return message.reply({
-        embeds: [EmbedFactory.success('Checklist VIP concluído com sucesso! Clique em **Finalizar** para completar.')],
+        embeds: [EmbedFactory.success(MESSAGES.VIP.COMPLETED)],
         components: [ComponentFactory.finishButtons()]
       });
     }
@@ -308,7 +308,7 @@ module.exports = {
         if (!ticketState.telegramHasImg) missing.push('**screenshot**');
         
         return message.reply({
-          embeds: [EmbedFactory.error(`Ainda falta: ${missing.join(' e ')}`)]
+          embeds: [EmbedFactory.error(MESSAGES.GIVEAWAYS.TELEGRAM_CODE_MISSING.replace('{missing}', missing.join(' e ')))]
         });
       }
 
@@ -410,16 +410,9 @@ module.exports = {
         await client.saveTicketState(message.channel.id, ticketState);
 
         return message.reply({
-          embeds: [EmbedFactory.error([
-            '🚨 **Código já foi utilizado anteriormente**',
-            '',
-            `Este código foi usado no ticket #${existingCode.ticketNumber} por ${existingCode.userTag}`,
-            '',
-            '⏳ **Ambos os tickets pausados para revisão manual**',
-            '🛡️ **Suporte humano foi notificado**',
-            '',
-            'Aguarde enquanto a nossa equipa verifica a situação.'
-          ].join('\n'))],
+          embeds: [EmbedFactory.error(MESSAGES.GIVEAWAYS.DUPLICATE_CODE_DESCRIPTION
+            .replace('{originalTicket}', existingCode.ticketNumber)
+            .replace('{originalUser}', existingCode.userTag))],
           components: [ComponentFactory.createButtonRow(ComponentFactory.supportButton(), ComponentFactory.closeTicketButton())]
         });
       }
@@ -440,7 +433,7 @@ module.exports = {
         );
         
         return message.reply({
-          embeds: [EmbedFactory.error('Código não encontrado nos logs do sistema')]
+          embeds: [EmbedFactory.error(MESSAGES.GIVEAWAYS.TELEGRAM_CODE_NOT_FOUND)]
         });
       }
 
@@ -455,7 +448,7 @@ module.exports = {
         );
         
         return message.reply({
-          embeds: [EmbedFactory.warning('Código tem mais de 48 horas. Aguarde verificação manual')]
+          embeds: [EmbedFactory.warning(MESSAGES.GIVEAWAYS.TELEGRAM_CODE_EXPIRED)]
         });
       }
 
@@ -484,7 +477,7 @@ module.exports = {
         await client.saveTicketState(message.channel.id, ticketState);
         
         await message.reply({
-          embeds: [EmbedFactory.success(`Código validado! Casino nas logs: **${logsCasino}** - Você pode escolher qualquer casino.`)]
+          embeds: [EmbedFactory.success(MESSAGES.GIVEAWAYS.TELEGRAM_CODE_VALIDATED.replace('{casino}', logsCasino))]
         });
         return askCasino(message.channel);
       } else {
@@ -492,7 +485,7 @@ module.exports = {
         const casinoId = findCasinoId(logsCasino);
         if (!casinoId) {
           return message.reply({
-            embeds: [EmbedFactory.error(`Casino **${logsCasino}** das logs não está configurado no sistema`)]
+            embeds: [EmbedFactory.error(MESSAGES.GIVEAWAYS.CASINO_NOT_CONFIGURED.replace('{casino}', logsCasino))]
           });
         }
 
@@ -509,7 +502,7 @@ module.exports = {
           await client.saveTicketState(message.channel.id, ticketState);
           
           await message.reply({
-            embeds: [EmbedFactory.success(`Código validado! Casino obrigatório: **${casinoId}**\n\n${EMOJIS.VERIFIED} **Utilizador verificado** - envie **imagem do depósito com QR visível** + **endereço LTC em texto**.`)],
+            embeds: [EmbedFactory.success(`${MESSAGES.GIVEAWAYS.TELEGRAM_CODE_SPECIFIC_CASINO.replace('{casino}', casinoId)}\n\n${MESSAGES.GIVEAWAYS.VERIFIED_USER_SKIP}`)],
             components: [ComponentFactory.finishButtons()]
           });
         } else {
@@ -519,7 +512,7 @@ module.exports = {
           await client.saveTicketState(message.channel.id, ticketState);
           
           await message.reply({
-            embeds: [EmbedFactory.success(`Código validado! Casino obrigatório: **${casinoId}**`)]
+            embeds: [EmbedFactory.success(MESSAGES.GIVEAWAYS.TELEGRAM_CODE_SPECIFIC_CASINO.replace('{casino}', casinoId))]
           });
           return askChecklist(message.channel, ticketState);
         }
@@ -545,11 +538,11 @@ module.exports = {
         
         if (!ticketState.step4HasImg || !ticketState.step4HasAddr) {
           const missing = [];
-          if (!ticketState.step4HasImg) missing.push('**screenshot do email**');
-          if (!ticketState.step4HasAddr) missing.push('**ID da BCGame em texto**');
+          if (!ticketState.step4HasImg) missing.push(MESSAGES.CHECKLIST.BCGAME_MISSING_EMAIL);
+          if (!ticketState.step4HasAddr) missing.push(MESSAGES.CHECKLIST.BCGAME_MISSING_ID);
           
           return message.reply({
-            embeds: [EmbedFactory.error(`Ainda falta: ${missing.join(' e ')}`)]
+            embeds: [EmbedFactory.error(MESSAGES.CHECKLIST.MISSING_REQUIREMENTS.replace('{missing}', missing.join(' e ')))]
           });
         }
         
@@ -561,7 +554,7 @@ module.exports = {
       } else if (stepIndex < 3) {
         if (message.attachments.size === 0) {
           return message.reply({
-            embeds: [EmbedFactory.error('Este passo requer o envio de uma **imagem**')]
+            embeds: [EmbedFactory.error(MESSAGES.CHECKLIST.IMAGE_REQUIRED)]
           });
         }
         ticketState.awaitProof = false;
@@ -579,11 +572,11 @@ module.exports = {
         
         if (!ticketState.step4HasImg || !ticketState.step4HasAddr) {
           const missing = [];
-          if (!ticketState.step4HasImg) missing.push('**imagem do depósito**');
-          if (!ticketState.step4HasAddr) missing.push('**endereço LTC em texto**');
+          if (!ticketState.step4HasImg) missing.push(MESSAGES.CHECKLIST.DEPOSIT_MISSING_IMAGE);
+          if (!ticketState.step4HasAddr) missing.push(MESSAGES.CHECKLIST.DEPOSIT_MISSING_ADDRESS);
           
           return message.reply({
-            embeds: [EmbedFactory.error(`Ainda falta: ${missing.join(' e ')}`)]
+            embeds: [EmbedFactory.error(MESSAGES.CHECKLIST.MISSING_REQUIREMENTS.replace('{missing}', missing.join(' e ')))]
           });
         }
         ticketState.awaitProof = false;
@@ -608,7 +601,7 @@ module.exports = {
         await client.db.logAction(message.channel.id, message.author.id, 'checklist_completed', `Casino: ${ticketState.casino}`);
         
         return message.reply({
-          embeds: [EmbedFactory.success('Checklist concluído com sucesso! Clique em **Finalizar** para completar.')],
+          embeds: [EmbedFactory.success(MESSAGES.CHECKLIST.COMPLETED)],
           components: [ComponentFactory.finishButtons()]
         });
       }
@@ -627,8 +620,8 @@ function findCasinoId(name) {
 function askCasino(channel) {
   channel.send({
     embeds: [EmbedFactory.casino(
-      'Seleção de Casino',
-      `${EMOJIS.STAR} **Você pode escolher qualquer casino!**\n${EMOJIS.WARNING} Selecione o casino onde deseja jogar\n${EMOJIS.SHIELD} Sujeito a BAN se não cumprir as regras`
+      MESSAGES.GIVEAWAYS.CASINO_SELECTION_TITLE,
+      MESSAGES.GIVEAWAYS.CASINO_SELECTION_ALL
     )],
     components: [ComponentFactory.casinoSelectMenu(CASINOS)]
   });
@@ -638,7 +631,7 @@ function askChecklist(channel, ticketState) {
   const casino = CASINOS[ticketState.casino];
   if (!casino) {
     return channel.send({
-      embeds: [EmbedFactory.error('Casino não configurado no sistema')]
+      embeds: [EmbedFactory.error(MESSAGES.ERRORS.CASINO_NOT_CONFIGURED)]
     });
   }
 
@@ -647,7 +640,7 @@ function askChecklist(channel, ticketState) {
   // NOVO: Para BCGame, modificar o primeiro passo para incluir ID
   let checklist = [...casino.checklist];
   if (ticketState.casino === 'BCGame' && stepIndex === 0) {
-    checklist[0] = "📧 Envie **screenshot** do email de registro no BC.Game **e** o **ID da BCGame em texto**";
+    checklist[0] = MESSAGES.CHECKLIST.BCGAME_STEP1;
   }
   
   const embed = EmbedFactory.checklist(
@@ -667,7 +660,7 @@ function askVipChecklist(channel, ticketState) {
   const checklist = VIP_CHECKLISTS[ticketState.vipType];
   if (!checklist) {
     return channel.send({
-      embeds: [EmbedFactory.error('Tipo VIP não configurado no sistema')]
+      embeds: [EmbedFactory.error(MESSAGES.VIP.TYPE_NOT_CONFIGURED)]
     });
   }
 
@@ -675,7 +668,7 @@ function askVipChecklist(channel, ticketState) {
   
   if (stepIndex >= checklist.length) {
     return channel.send({
-      embeds: [EmbedFactory.success('Checklist VIP concluído! Clique em **Finalizar** para enviar para aprovação.')],
+      embeds: [EmbedFactory.success(MESSAGES.VIP.COMPLETED)],
       components: [ComponentFactory.finishButtons()]
     });
   }

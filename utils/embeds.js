@@ -1,6 +1,7 @@
 // utils/embeds.js
 const { EmbedBuilder } = require('discord.js');
 const { COLORS, EMOJIS, ICONS } = require('../config/constants');
+const MESSAGES = require('../config/messages');
 
 class EmbedFactory {
   static success(description, title = null) {
@@ -115,104 +116,58 @@ class EmbedFactory {
   static welcome() {
     return new EmbedBuilder()
       .setColor(COLORS.PRIMARY)
-      .setTitle(`${EMOJIS.ROBOT} Olá! Eu sou o seu assistente`)
-      .setDescription([
-        '**Bem-vindo ao sistema de suporte!**',
-        '',
-        `${EMOJIS.STAR} Siga as instruções abaixo para continuar`,
-        `${EMOJIS.SHIELD} Todas as suas informações estão seguras`,
-        `${EMOJIS.DIAMOND} Suporte disponível 24/7`
-      ].join('\n'))
+      .setTitle(`${EMOJIS.ROBOT} ${MESSAGES.TICKETS.WELCOME_TITLE}`)
+      .setDescription(MESSAGES.TICKETS.WELCOME_DESCRIPTION)
       .setImage('https://media.giphy.com/media/3oKIPnAiaMCws8nOsE/giphy.gif')
       .setTimestamp()
-      .setFooter({ text: 'Sistema Automatizado de Suporte' });
+      .setFooter({ text: MESSAGES.FOOTERS.AUTOMATED_SUPPORT });
   }
 
   static confirmation() {
     return new EmbedBuilder()
       .setColor(COLORS.WARNING)
-      .setTitle(`${EMOJIS.WARNING} Confirmação de Elegibilidade`)
-      .setDescription([
-        '**Para continuar, confirme que:**',
-        '',
-        `${EMOJIS.SHIELD} Tenho mais de 18 anos`,
-        `${EMOJIS.GIFT} Desejo reclamar o prémio`,
-        `${EMOJIS.STAR} Assumo responsabilidade pelas minhas apostas`,
-        `${EMOJIS.WARNING} Reconheço o risco de dependência`,
-        '',
-        '**Digite exatamente:** `Sim, eu confirmo`'
-      ].join('\n'))
+      .setTitle(`${EMOJIS.WARNING} ${MESSAGES.CONFIRMATION.TITLE}`)
+      .setDescription(MESSAGES.CONFIRMATION.DESCRIPTION)
       .setThumbnail('https://media.giphy.com/media/l0HlBO7eyXzSZkJri/giphy.gif')
       .setTimestamp()
-      .setFooter({ text: 'Confirmação Obrigatória +18' });
+      .setFooter({ text: MESSAGES.FOOTERS.MANDATORY_18 });
   }
 
   // === WEBSITE EMBEDS ===
   static websiteTypeSelection() {
     return new EmbedBuilder()
       .setColor(COLORS.INFO)
-      .setTitle(`🌐 Suporte do Website`)
-      .setDescription([
-        '**Como podemos ajudá-lo com o website?**',
-        '',
-        `🐛 **Reportar Bug** - Relatar um problema no site`,
-        `🎁 **Resgatar Redeem** - Reclamar itens que resgatou`,
-        '',
-        `${EMOJIS.INFO} Escolha uma opção abaixo`
-      ].join('\n'))
+      .setTitle(`🌐 ${MESSAGES.WEBSITE.TYPE_SELECTION_TITLE}`)
+      .setDescription(MESSAGES.WEBSITE.TYPE_SELECTION_DESCRIPTION)
       .setTimestamp()
-      .setFooter({ text: 'Suporte do Website' });
+      .setFooter({ text: MESSAGES.FOOTERS.WEBSITE_SUPPORT });
   }
 
   static websiteBugReport() {
     return new EmbedBuilder()
       .setColor(COLORS.WARNING)
-      .setTitle(`🐛 Reportar Bug`)
-      .setDescription([
-        '**Descreva o bug que encontrou:**',
-        '',
-        `${EMOJIS.INFO} Seja específico sobre o problema`,
-        `${EMOJIS.STAR} Inclua passos para reproduzir o bug`,
-        `${EMOJIS.SHIELD} Adicione capturas de ecrã se possível`,
-        '',
-        '**Digite a descrição do bug abaixo:**'
-      ].join('\n'))
+      .setTitle(`🐛 ${MESSAGES.WEBSITE.BUG_REPORT_TITLE}`)
+      .setDescription(MESSAGES.WEBSITE.BUG_REPORT_DESCRIPTION)
       .setTimestamp()
-      .setFooter({ text: 'Reportar Bug' });
+      .setFooter({ text: MESSAGES.WEBSITE.BUG_REPORT_TITLE });
   }
 
   static websiteRedeemNick() {
     return new EmbedBuilder()
       .setColor(COLORS.SUCCESS)
-      .setTitle(`🎁 Resgatar Redeem`)
-      .setDescription([
-        '**Para verificar os seus redeems disponíveis:**',
-        '',
-        `📱 **Digite o seu nickname da Twitch**`,
-        `📸 **Envie uma captura de ecrã** que comprove a sua identidade`,
-        '',
-        `${EMOJIS.INFO} Pode enviar em mensagens separadas`
-      ].join('\n'))
+      .setTitle(`🎁 ${MESSAGES.WEBSITE.REDEEM_NICK_TITLE}`)
+      .setDescription(MESSAGES.WEBSITE.REDEEM_NICK_DESCRIPTION)
       .setTimestamp()
-      .setFooter({ text: 'Sistema de Redeems' });
+      .setFooter({ text: MESSAGES.FOOTERS.REDEEM_SYSTEM });
   }
 
   static websiteNoRedeems(twitchNick) {
     return new EmbedBuilder()
       .setColor(COLORS.WARNING)
-      .setTitle(`${EMOJIS.WARNING} Nenhum Redeem Disponível`)
-      .setDescription([
-        `**Não foram encontrados redeems para: ${twitchNick}**`,
-        '',
-        `${EMOJIS.INFO} Possíveis motivos:`,
-        `• Nickname incorreto`,
-        `• Todos os redeems já foram resgatados`,
-        `• Nenhum redeem foi feito com este nickname`,
-        '',
-        `${EMOJIS.SHIELD} Entre em contacto com o suporte se acha que isto é um erro`
-      ].join('\n'))
+      .setTitle(`${EMOJIS.WARNING} ${MESSAGES.WEBSITE.REDEEM_NO_REDEEMS_TITLE}`)
+      .setDescription(MESSAGES.WEBSITE.REDEEM_NO_REDEEMS_DESCRIPTION.replace('{nick}', twitchNick))
       .setTimestamp()
-      .setFooter({ text: 'Sistema de Redeems' });
+      .setFooter({ text: MESSAGES.FOOTERS.REDEEM_SYSTEM });
   }
 
   static websiteRedeemList(twitchNick, redeems) {
@@ -222,73 +177,56 @@ class EmbedFactory {
 
     return new EmbedBuilder()
       .setColor(COLORS.SUCCESS)
-      .setTitle(`🎁 Redeems Disponíveis para ${twitchNick}`)
-      .setDescription([
-        `**Encontrados ${redeems.length} redeem(s) disponível(is):**`,
-        '',
-        redeemList,
-        '',
-        `${EMOJIS.INFO} Escolha o número do item que deseja resgatar`
-      ].join('\n'))
+      .setTitle(`🎁 ${MESSAGES.WEBSITE.REDEEM_LIST_TITLE.replace('{nick}', twitchNick)}`)
+      .setDescription(MESSAGES.WEBSITE.REDEEM_LIST_DESCRIPTION
+        .replace('{count}', redeems.length)
+        .replace('{list}', redeemList))
       .setTimestamp()
-      .setFooter({ text: 'Sistema de Redeems' });
+      .setFooter({ text: MESSAGES.FOOTERS.REDEEM_SYSTEM });
   }
 
   static websiteRedeemSelected(redeem) {
     return new EmbedBuilder()
       .setColor(COLORS.SUCCESS)
-      .setTitle(`✅ Redeem Selecionado`)
-      .setDescription([
-        `**Item:** ${redeem.itemName}`,
-        `**Nickname:** ${redeem.twitchName}`,
-        `**Data do Redeem:** ${new Date(redeem.createdAt).toLocaleDateString('pt-PT')}`,
-        '',
-        `${EMOJIS.SHIELD} **A nossa equipa irá processar o seu pedido**`,
-        `${EMOJIS.CLOCK} Aguarde enquanto verificamos os detalhes`,
-        `${EMOJIS.DIAMOND} Será contactado em breve`
-      ].join('\n'))
+      .setTitle(`✅ ${MESSAGES.WEBSITE.REDEEM_SELECTED_TITLE}`)
+      .setDescription(MESSAGES.WEBSITE.REDEEM_SELECTED_DESCRIPTION
+        .replace('{item}', redeem.itemName)
+        .replace('{nick}', redeem.twitchName)
+        .replace('{date}', new Date(redeem.createdAt).toLocaleDateString('pt-PT')))
       .setTimestamp()
-      .setFooter({ text: 'Redeem em Processamento' });
+      .setFooter({ text: MESSAGES.FOOTERS.REDEEM_PROCESSING });
   }
 
   static vipCasinoSelection() {
     return new EmbedBuilder()
       .setColor(COLORS.PURPLE)
-      .setTitle(`${EMOJIS.VIP} Seleção de Casino VIP`)
-      .setDescription([
-        '**Escolha o casino onde deseja reclamar o VIP:**',
-        '',
-        `${EMOJIS.DIAMOND} Casinos VIP disponíveis`,
-        `${EMOJIS.SHIELD} Suporte especializado`,
-        `${EMOJIS.STAR} Benefícios exclusivos`
-      ].join('\n'))
+      .setTitle(`${EMOJIS.VIP} ${MESSAGES.VIP.CASINO_SELECTION_TITLE}`)
+      .setDescription(MESSAGES.VIP.CASINO_SELECTION_DESCRIPTION)
       .setTimestamp()
-      .setFooter({ text: 'Sistema VIP' });
+      .setFooter({ text: MESSAGES.FOOTERS.VIP_SYSTEM });
   }
 
   static vipTypeSelection() {
     return new EmbedBuilder()
       .setColor(COLORS.PURPLE)
-      .setTitle(`${EMOJIS.VIP} Tipo de VIP`)
-      .setDescription([
-        '**Escolha o tipo de VIP que deseja reclamar:**',
-        '',
-        `${EMOJIS.STAR} **Semanal** - VIP por uma semana`,
-        `${EMOJIS.CROWN} **Leaderboard** - VIP por posição no ranking`,
-        '',
-        `${EMOJIS.INFO} Cada tipo tem requisitos diferentes`
-      ].join('\n'))
+      .setTitle(`${EMOJIS.VIP} ${MESSAGES.VIP.TYPE_SELECTION_TITLE}`)
+      .setDescription(MESSAGES.VIP.TYPE_SELECTION_DESCRIPTION)
       .setTimestamp()
-      .setFooter({ text: 'Sistema VIP' });
+      .setFooter({ text: MESSAGES.FOOTERS.VIP_SYSTEM });
   }
 
   static vipChecklist(step, total, description, type) {
     const embed = new EmbedBuilder()
       .setColor(COLORS.PURPLE)
-      .setTitle(`${EMOJIS.VIP} VIP ${type.toUpperCase()} - Passo ${step}/${total}`)
+      .setTitle(`${EMOJIS.VIP} ${MESSAGES.VIP.CHECKLIST_TITLE
+        .replace('{type}', type.toUpperCase())
+        .replace('{current}', step)
+        .replace('{total}', total)}`)
       .setDescription(`**${description}**`)
       .setTimestamp()
-      .setFooter({ text: `Progresso VIP: ${step}/${total} passos concluídos` });
+      .setFooter({ text: MESSAGES.VIP.CHECKLIST_FOOTER
+        .replace('{current}', step)
+        .replace('{total}', total) });
     
     return embed;
   }
@@ -296,44 +234,32 @@ class EmbedFactory {
   static questionDescription() {
     return new EmbedBuilder()
       .setColor(COLORS.INFO)
-      .setTitle(`${EMOJIS.QUESTION} Descreva a sua Dúvida`)
-      .setDescription([
-        '**Por favor, descreva o seu problema da melhor forma possível:**',
-        '',
-        `${EMOJIS.INFO} Seja específico e detalhado`,
-        `${EMOJIS.STAR} Inclua capturas de ecrã se necessário`,
-        `${EMOJIS.SHIELD} A nossa equipa irá ajudá-lo`,
-        '',
-        '**Digite a sua dúvida abaixo:**'
-      ].join('\n'))
+      .setTitle(`${EMOJIS.QUESTION} ${MESSAGES.QUESTIONS.DESCRIPTION_TITLE}`)
+      .setDescription(MESSAGES.QUESTIONS.DESCRIPTION_DESCRIPTION)
       .setTimestamp()
-      .setFooter({ text: 'Sistema de Dúvidas' });
+      .setFooter({ text: MESSAGES.FOOTERS.QUESTIONS_SYSTEM });
   }
 
   static otherHelp() {
     return new EmbedBuilder()
       .setColor(COLORS.SECONDARY)
-      .setTitle(`${EMOJIS.INFO} Como Podemos Ajudar?`)
-      .setDescription([
-        '**Em que podemos ajudá-lo hoje?**',
-        '',
-        `${EMOJIS.STAR} Descreva o que precisa`,
-        `${EMOJIS.SHIELD} A nossa equipa está aqui para ajudar`,
-        `${EMOJIS.DIAMOND} Suporte personalizado`,
-        '',
-        '**Digite a sua solicitação abaixo:**'
-      ].join('\n'))
+      .setTitle(`${EMOJIS.INFO} ${MESSAGES.OTHER.HELP_TITLE}`)
+      .setDescription(MESSAGES.OTHER.HELP_DESCRIPTION)
       .setTimestamp()
-      .setFooter({ text: 'Suporte Geral' });
+      .setFooter({ text: MESSAGES.FOOTERS.AUTOMATED_SUPPORT });
   }
 
   static checklist(step, total, description, image = null) {
     const embed = new EmbedBuilder()
       .setColor(COLORS.INFO)
-      .setTitle(`${EMOJIS.LOADING} Passo ${step}/${total}`)
+      .setTitle(`${EMOJIS.LOADING} ${MESSAGES.CHECKLIST.STEP_TITLE
+        .replace('{current}', step)
+        .replace('{total}', total)}`)
       .setDescription(`**${description}**`)
       .setTimestamp()
-      .setFooter({ text: `Progresso: ${step}/${total} passos concluídos` });
+      .setFooter({ text: MESSAGES.CHECKLIST.PROGRESS_FOOTER
+        .replace('{current}', step)
+        .replace('{total}', total) });
     
     if (image) embed.setImage(image);
     return embed;
@@ -342,55 +268,38 @@ class EmbedFactory {
   static ticketClose() {
     return new EmbedBuilder()
       .setColor(COLORS.WARNING)
-      .setTitle(`${EMOJIS.WARNING} Fechar Ticket`)
-      .setDescription([
-        '**Como deseja proceder com este ticket?**',
-        '',
-        '📋 **Fechar com Transcript** - Salva todas as mensagens por 2 semanas',
-        '🗑️ **Eliminar Ticket** - Remove o canal permanentemente',
-        '',
-        `${EMOJIS.INFO} Transcripts expiram automaticamente após 2 semanas`
-      ].join('\n'))
+      .setTitle(`${EMOJIS.WARNING} ${MESSAGES.TICKETS.CLOSE_TITLE}`)
+      .setDescription(MESSAGES.TICKETS.CLOSE_DESCRIPTION)
       .setTimestamp()
-      .setFooter({ text: 'Escolha uma opção abaixo' });
+      .setFooter({ text: MESSAGES.GENERAL.PLEASE_WAIT });
   }
 
   static transcriptCreated(transcriptId, channelName, ticketNumber, ownerTag, category) {
     return new EmbedBuilder()
       .setColor(COLORS.SUCCESS)
-      .setTitle(`${EMOJIS.SUCCESS} Transcript Criado`)
-      .setDescription([
-        `**Transcript do ticket #${ticketNumber} foi salvo com sucesso!**`,
-        '',
-        `📋 **ID:** \`${transcriptId}\``,
-        `🎫 **Ticket:** #${ticketNumber} (${channelName})`,
-        `👤 **Usuário:** ${ownerTag}`,
-        `📂 **Categoria:** ${category}`,
-        `⏰ **Expira em:** <t:${Math.floor((Date.now() + 14 * 24 * 60 * 60 * 1000) / 1000)}:R>`,
-        `🔒 **Acesso:** Apenas staff autorizado`,
-        '',
-        `${EMOJIS.INFO} Use os botões abaixo para visualizar ou fazer download`
-      ].join('\n'))
+      .setTitle(`${EMOJIS.SUCCESS} ${MESSAGES.TRANSCRIPTS.CREATED_TITLE}`)
+      .setDescription(MESSAGES.TRANSCRIPTS.CREATED_DESCRIPTION
+        .replace('{id}', transcriptId)
+        .replace('{number}', ticketNumber)
+        .replace('{channel}', channelName)
+        .replace('{user}', ownerTag)
+        .replace('{category}', category)
+        .replace('{expires}', Math.floor((Date.now() + 14 * 24 * 60 * 60 * 1000) / 1000)))
       .setTimestamp()
-      .setFooter({ text: 'Transcript • Expira em 2 semanas' });
+      .setFooter({ text: MESSAGES.FOOTERS.TRANSCRIPT_EXPIRES });
   }
 
   static transcriptView(transcript) {
     const embed = new EmbedBuilder()
       .setColor(COLORS.INFO)
-      .setTitle(`📋 Transcript: Ticket #${transcript.ticketNumber}`)
-      .setDescription([
-        `**Canal:** #${transcript.channelName}`,
-        `**Usuário:** ${transcript.ownerTag}`,
-        `**Categoria:** ${transcript.category}`,
-        `**Criado:** <t:${Math.floor(transcript.createdAt.getTime() / 1000)}:F>`,
-        `**Expira:** <t:${Math.floor(transcript.expiresAt.getTime() / 1000)}:R>`,
-        '',
-        `**Prévia do conteúdo:**`,
-        '```',
-        transcript.content.substring(0, 1000) + (transcript.content.length > 1000 ? '...' : ''),
-        '```'
-      ].join('\n'))
+      .setTitle(`📋 ${MESSAGES.TRANSCRIPTS.VIEW_TITLE.replace('{number}', transcript.ticketNumber)}`)
+      .setDescription(MESSAGES.TRANSCRIPTS.VIEW_DESCRIPTION
+        .replace('{channel}', transcript.channelName)
+        .replace('{user}', transcript.ownerTag)
+        .replace('{category}', transcript.category)
+        .replace('{created}', Math.floor(transcript.createdAt.getTime() / 1000))
+        .replace('{expires}', Math.floor(transcript.expiresAt.getTime() / 1000))
+        .replace('{preview}', transcript.content.substring(0, 1000) + (transcript.content.length > 1000 ? '...' : '')))
       .setTimestamp()
       .setFooter({ text: `ID: ${transcript.transcriptId}` });
     
@@ -401,196 +310,150 @@ class EmbedFactory {
   static submissionReady(ticketNumber, userTag, channelId) {
     return new EmbedBuilder()
       .setColor(COLORS.WARNING)
-      .setTitle(`${EMOJIS.GIFT} Ticket Pronto para Aprovação`)
-      .setDescription([
-        `**Ticket #${ticketNumber} pronto para ser aprovado**`,
-        '',
-        `👤 **Usuário:** ${userTag}`,
-        `🎫 **Ticket:** #${ticketNumber}`,
-        '',
-        `${EMOJIS.INFO} Use o botão abaixo para ir ao ticket`
-      ].join('\n'))
+      .setTitle(`${EMOJIS.GIFT} ${MESSAGES.APPROVALS.READY_TITLE}`)
+      .setDescription(MESSAGES.APPROVALS.READY_DESCRIPTION
+        .replace('{number}', ticketNumber)
+        .replace('{user}', userTag))
       .setTimestamp()
-      .setFooter({ text: 'Sistema de Submissões' });
+      .setFooter({ text: MESSAGES.FOOTERS.SUBMISSIONS_SYSTEM });
   }
 
   // === APPROVAL EMBEDS ===
   static approvalFinal(casino, prize, userTag, ticketNumber, ltcAddress, bcGameId = null, isVerified = false) {
-    const description = [
-      '**Casino**',
-      casino || 'N/A',
-      '',
-      '**Prenda**',
-      prize || 'N/A',
-      '',
-      '**Utilizador**'
-    ];
+    let description;
 
     // NOVO: Para BCGame verificado, mostrar status especial
     if (casino === 'BCGame' && isVerified) {
-      description.push(`${userTag} (${EMOJIS.VERIFIED} **BCGame Afiliado Verificado**)`);
+      description = MESSAGES.APPROVALS.FINAL_DESCRIPTION_VERIFIED
+        .replace('{casino}', casino || 'N/A')
+        .replace('{prize}', prize || 'N/A')
+        .replace('{user}', userTag)
+        .replace('{number}', ticketNumber)
+        .replace('{ltc}', ltcAddress || 'N/A');
+    } else if (casino === 'BCGame' && bcGameId && !isVerified) {
+      description = MESSAGES.APPROVALS.FINAL_DESCRIPTION_WITH_ID
+        .replace('{casino}', casino || 'N/A')
+        .replace('{prize}', prize || 'N/A')
+        .replace('{user}', userTag)
+        .replace('{number}', ticketNumber)
+        .replace('{id}', bcGameId)
+        .replace('{ltc}', ltcAddress || 'N/A');
     } else {
-      description.push(userTag);
-    }
-
-    description.push(
-      '',
-      '**Ticket**',
-      `ticket-${ticketNumber}`,
-      '',
-      '**Endereço LTC**',
-      ltcAddress || 'N/A'
-    );
-
-    // NOVO: Para BCGame, mostrar ID se não for verificado
-    if (casino === 'BCGame' && bcGameId && !isVerified) {
-      description.splice(-3, 0, '', '**ID BCGame**', bcGameId);
+      description = MESSAGES.APPROVALS.FINAL_DESCRIPTION_NORMAL
+        .replace('{casino}', casino || 'N/A')
+        .replace('{prize}', prize || 'N/A')
+        .replace('{user}', userTag)
+        .replace('{number}', ticketNumber)
+        .replace('{ltc}', ltcAddress || 'N/A');
     }
 
     return new EmbedBuilder()
       .setColor(COLORS.SUCCESS)
-      .setTitle(`${EMOJIS.GIFT} Giveaway Aprovado`)
-      .setDescription(description.join('\n'))
+      .setTitle(`${EMOJIS.GIFT} ${MESSAGES.APPROVALS.FINAL_TITLE}`)
+      .setDescription(description)
       .setTimestamp()
-      .setFooter({ text: 'Sistema de Aprovações' });
+      .setFooter({ text: MESSAGES.FOOTERS.APPROVALS_SYSTEM });
   }
 
   static giveawayPaid() {
     return new EmbedBuilder()
       .setColor(COLORS.SUCCESS)
-      .setTitle(`${EMOJIS.SUCCESS} Giveaway Pago!`)
-      .setDescription([
-        '**Foi enviado <3**',
-        '',
-        'Assim que conseguires confirma que recebeste!',
-        'Sempre com juízo no casino!',
-        '',
-        'Se não tiveres mais questões podes fechar o ticket'
-      ].join('\n'))
+      .setTitle(`${EMOJIS.SUCCESS} ${MESSAGES.APPROVALS.PAID_TITLE}`)
+      .setDescription(MESSAGES.APPROVALS.PAID_DESCRIPTION)
       .setTimestamp()
-      .setFooter({ text: 'Parabéns pelo seu prémio!' });
+      .setFooter({ text: MESSAGES.FOOTERS.CONGRATULATIONS });
   }
 
   static rejectionReason(reason) {
     return new EmbedBuilder()
       .setColor(COLORS.DANGER)
-      .setTitle(`${EMOJIS.ERROR} Giveaway Rejeitado`)
-      .setDescription([
-        '**O seu giveaway foi rejeitado pelo seguinte motivo:**',
-        '',
-        `📝 **Motivo:** ${reason}`,
-        '',
-        `${EMOJIS.INFO} Pode reenviar corrigindo o problema`,
-        `${EMOJIS.SHIELD} Entre em contacto com o suporte se tiver dúvidas`
-      ].join('\n'))
+      .setTitle(`${EMOJIS.ERROR} ${MESSAGES.APPROVALS.REJECTION_TITLE}`)
+      .setDescription(MESSAGES.APPROVALS.REJECTION_DESCRIPTION.replace('{reason}', reason))
       .setTimestamp()
-      .setFooter({ text: 'Sistema de Aprovações' });
+      .setFooter({ text: MESSAGES.FOOTERS.APPROVALS_SYSTEM });
   }
 
   static reviewRequest(reason, ticketNumber, userTag) {
     return new EmbedBuilder()
       .setColor(COLORS.WARNING)
-      .setTitle(`${EMOJIS.WARNING} Solicitação de Revisão`)
-      .setDescription([
-        `**Ticket #${ticketNumber} precisa de revisão**`,
-        '',
-        `👤 **Usuário:** ${userTag}`,
-        `📝 **Motivo:** ${reason}`,
-        '',
-        `${EMOJIS.SHIELD} Suporte humano necessário`
-      ].join('\n'))
+      .setTitle(`${EMOJIS.WARNING} ${MESSAGES.APPROVALS.REVIEW_TITLE}`)
+      .setDescription(MESSAGES.APPROVALS.REVIEW_DESCRIPTION
+        .replace('{number}', ticketNumber)
+        .replace('{user}', userTag)
+        .replace('{reason}', reason))
       .setTimestamp()
-      .setFooter({ text: 'Sistema de Revisões' });
+      .setFooter({ text: MESSAGES.FOOTERS.REVIEWS_SYSTEM });
   }
 
   // NOVO: Support request with completion button
   static supportRequest(reason, ticketNumber, userTag, channelId) {
     return new EmbedBuilder()
       .setColor(COLORS.WARNING)
-      .setTitle(`${EMOJIS.SHIELD} Solicitação de Suporte`)
-      .setDescription([
-        `**Suporte solicitado no ticket #${ticketNumber}**`,
-        '',
-        `👤 **Usuário:** ${userTag}`,
-        `📍 **Canal:** <#${channelId}>`,
-        `📝 **Motivo:** ${reason || 'Suporte geral'}`,
-        '',
-        `${EMOJIS.CLOCK} Aguardando atendimento`
-      ].join('\n'))
+      .setTitle(`${EMOJIS.SHIELD} ${MESSAGES.SUPPORT.REQUEST_TITLE}`)
+      .setDescription(MESSAGES.SUPPORT.REQUEST_DESCRIPTION
+        .replace('{number}', ticketNumber)
+        .replace('{user}', userTag)
+        .replace('{channel}', channelId)
+        .replace('{reason}', reason || 'Suporte geral'))
       .setTimestamp()
-      .setFooter({ text: 'Sistema de Suporte' });
+      .setFooter({ text: MESSAGES.FOOTERS.SUPPORT_SYSTEM });
   }
 
   static duplicateCodeAlert(originalTicket, currentTicket, code) {
     return new EmbedBuilder()
       .setColor(COLORS.DANGER)
-      .setTitle(`🚨 Código Telegram Duplicado`)
-      .setDescription([
-        `**Código \`${code}\` foi usado duas vezes!**`,
-        '',
-        `📋 **Uso Original:**`,
-        `• Ticket: #${originalTicket.ticketNumber}`,
-        `• Usuário: ${originalTicket.userTag}`,
-        `• Casino: ${originalTicket.casino || 'N/A'}`,
-        `• Data: ${new Date(originalTicket.usedAt).toLocaleString('pt-PT')}`,
-        '',
-        `🆕 **Tentativa Atual:**`,
-        `• Ticket: #${currentTicket.ticketNumber}`,
-        `• Usuário: ${currentTicket.userTag}`,
-        `• Canal: <#${currentTicket.channelId}>`,
-        '',
-        `⚠️ **Ação necessária:** Verificar se é uso legítimo ou tentativa de fraude`
-      ].join('\n'))
+      .setTitle(`🚨 ${MESSAGES.DUPLICATE_CODES.ALERT_TITLE}`)
+      .setDescription(MESSAGES.DUPLICATE_CODES.ALERT_DESCRIPTION
+        .replace('{code}', code)
+        .replace('{originalTicket}', originalTicket.ticketNumber)
+        .replace('{originalUser}', originalTicket.userTag)
+        .replace('{originalCasino}', originalTicket.casino || 'N/A')
+        .replace('{originalDate}', new Date(originalTicket.usedAt).toLocaleString('pt-PT'))
+        .replace('{currentTicket}', currentTicket.ticketNumber)
+        .replace('{currentUser}', currentTicket.userTag)
+        .replace('{currentChannel}', `<#${currentTicket.channelId}>`))
       .setTimestamp()
-      .setFooter({ text: 'Sistema Anti-Fraude' });
+      .setFooter({ text: MESSAGES.FOOTERS.ANTI_FRAUD });
   }
 
   // === STATISTICS EMBED ===
   static ticketStatistics(stats) {
     const embed = new EmbedBuilder()
       .setColor(COLORS.PRIMARY)
-      .setTitle(`${EMOJIS.CHART} Estatísticas dos Tickets`)
-      .setDescription([
-        `${EMOJIS.CALENDAR} **Tickets Criados por Período:**`,
-        `${EMOJIS.CLOCK} **Último dia:** ${stats.ticketsPeriod.last1Day}`,
-        `${EMOJIS.CLOCK} **Últimos 2 dias:** ${stats.ticketsPeriod.last2Days}`,
-        `${EMOJIS.CLOCK} **Últimos 7 dias:** ${stats.ticketsPeriod.last7Days}`,
-        `${EMOJIS.CLOCK} **Últimos 30 dias:** ${stats.ticketsPeriod.last30Days}`,
-        '',
-        `${EMOJIS.TICKET} **Tickets Ativos:** ${stats.activeTickets}`,
-        '',
-        `${EMOJIS.LOADING} **Submissões:**`,
-        `⏳ **Pendentes:** ${stats.submissions.pending}`,
-        `✅ **Aprovadas:** ${stats.submissions.approved}`,
-        `❌ **Rejeitadas:** ${stats.submissions.rejected}`,
-        `📊 **Total:** ${stats.submissions.total}`,
-        '',
-        `${EMOJIS.MONEY} **Aprovações:**`,
-        `⏳ **Pendentes:** ${stats.approvals.pending}`,
-        `💰 **Pagas:** ${stats.approvals.paid}`,
-        `🔍 **Em Revisão:** ${stats.approvals.review}`,
-        `📊 **Total:** ${stats.approvals.total}`,
-        '',
-        `📋 **Transcripts Criados (30 dias):** ${stats.transcriptsCreated}`
-      ].join('\n'))
+      .setTitle(`${EMOJIS.CHART} ${MESSAGES.STATISTICS.TITLE}`)
+      .setDescription(MESSAGES.STATISTICS.DESCRIPTION
+        .replace('{last1Day}', stats.ticketsPeriod.last1Day)
+        .replace('{last2Days}', stats.ticketsPeriod.last2Days)
+        .replace('{last7Days}', stats.ticketsPeriod.last7Days)
+        .replace('{last30Days}', stats.ticketsPeriod.last30Days)
+        .replace('{activeTickets}', stats.activeTickets)
+        .replace('{submissionsPending}', stats.submissions.pending)
+        .replace('{submissionsApproved}', stats.submissions.approved)
+        .replace('{submissionsRejected}', stats.submissions.rejected)
+        .replace('{submissionsTotal}', stats.submissions.total)
+        .replace('{approvalsPending}', stats.approvals.pending)
+        .replace('{approvalsPaid}', stats.approvals.paid)
+        .replace('{approvalsReview}', stats.approvals.review)
+        .replace('{approvalsTotal}', stats.approvals.total)
+        .replace('{transcriptsCreated}', stats.transcriptsCreated))
       .addFields(
         {
-          name: `${EMOJIS.STAR} Tickets por Categoria (30 dias)`,
+          name: `${EMOJIS.STAR} ${MESSAGES.STATISTICS.CATEGORIES_FIELD}`,
           value: stats.ticketsByCategory.length > 0 
             ? stats.ticketsByCategory.map(cat => `**${cat._id}:** ${cat.count}`).join('\n')
-            : 'Nenhum ticket encontrado',
+            : MESSAGES.STATISTICS.NO_DATA,
           inline: true
         },
         {
-          name: `${EMOJIS.DIAMOND} Contadores por Categoria`,
+          name: `${EMOJIS.DIAMOND} ${MESSAGES.STATISTICS.COUNTERS_FIELD}`,
           value: stats.categoryCounters.length > 0
             ? stats.categoryCounters.map(cat => `**${cat.category}:** ${cat.count}`).join('\n')
-            : 'Nenhum contador encontrado',
+            : MESSAGES.STATISTICS.NO_DATA,
           inline: true
         }
       )
       .setTimestamp()
-      .setFooter({ text: 'Estatísticas atualizadas automaticamente' });
+      .setFooter({ text: MESSAGES.FOOTERS.STATS_AUTO_UPDATE });
 
     return embed;
   }

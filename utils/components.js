@@ -1,6 +1,7 @@
 // utils/components.js
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const { EMOJIS, VIP_CASINOS } = require('../config/constants');
+const MESSAGES = require('../config/messages');
 
 class ComponentFactory {
   static styleMap = {
@@ -36,26 +37,26 @@ class ComponentFactory {
   }
 
   static nextStepButton() {
-    return this.createButton('proof_next', 'Próximo Passo', ButtonStyle.Primary, EMOJIS.STAR);
+    return this.createButton('proof_next', MESSAGES.BUTTONS.NEXT_STEP, ButtonStyle.Primary, EMOJIS.STAR);
   }
 
   static finishButton() {
-    return this.createButton('finish_ticket', 'Finalizar', ButtonStyle.Success, EMOJIS.SUCCESS);
+    return this.createButton('finish_ticket', MESSAGES.BUTTONS.FINISH, ButtonStyle.Success, EMOJIS.SUCCESS);
   }
 
   static supportButton() {
-    return this.createButton('support_ticket', 'Falar com Suporte', ButtonStyle.Danger, EMOJIS.SHIELD);
+    return this.createButton('support_ticket', MESSAGES.BUTTONS.SUPPORT, ButtonStyle.Danger, EMOJIS.SHIELD);
   }
 
   static closeTicketButton() {
-    return this.createButton('close_ticket_menu', 'Fechar Ticket', ButtonStyle.Secondary, '🔒');
+    return this.createButton('close_ticket_menu', MESSAGES.BUTTONS.CLOSE_TICKET, ButtonStyle.Secondary, '🔒');
   }
 
   // === WEBSITE BUTTONS ===
   static websiteTypeButtons() {
     return this.createButtonRow(
-      this.createButton('website_bug', 'Reportar Bug', ButtonStyle.Danger, '🐛'),
-      this.createButton('website_redeem', 'Resgatar Redeem', ButtonStyle.Success, '🎁'),
+      this.createButton('website_bug', MESSAGES.BUTTONS.REPORT_BUG, ButtonStyle.Danger, '🐛'),
+      this.createButton('website_redeem', MESSAGES.BUTTONS.REDEEM_ITEM, ButtonStyle.Success, '🎁'),
       this.supportButton(),
       this.closeTicketButton()
     );
@@ -85,9 +86,9 @@ class ComponentFactory {
 
   static markRedeemCompleteButton(redeemId) {
     return this.createButtonRow(
-      this.createButton(`mark_redeem_complete_${redeemId}`, 'Marcar Redeem como Concluído', ButtonStyle.Success, '✅'),
-      this.createButton('close_with_transcript', 'Fechar com Transcript', ButtonStyle.Secondary, '📋'),
-      this.createButton('close_delete_ticket', 'Eliminar Ticket', ButtonStyle.Danger, '🗑️')
+      this.createButton(`mark_redeem_complete_${redeemId}`, MESSAGES.BUTTONS.MARK_COMPLETE, ButtonStyle.Success, '✅'),
+      this.createButton('close_with_transcript', MESSAGES.BUTTONS.CLOSE_WITH_TRANSCRIPT, ButtonStyle.Secondary, '📋'),
+      this.createButton('close_delete_ticket', MESSAGES.BUTTONS.DELETE_TICKET, ButtonStyle.Danger, '🗑️')
     );
   }
 
@@ -110,7 +111,7 @@ class ComponentFactory {
 
   static resubmitButtons() {
     return this.createButtonRow(
-      this.createButton('rejection_resubmit', 'Reenviar', ButtonStyle.Primary, '🔄'),
+      this.createButton('rejection_resubmit', MESSAGES.BUTTONS.RESUBMIT, ButtonStyle.Primary, '🔄'),
       this.supportButton(),
       this.closeTicketButton()
     );
@@ -118,15 +119,15 @@ class ComponentFactory {
 
   static closeTicketButtons() {
     return this.createButtonRow(
-      this.createButton('close_with_transcript', 'Fechar com Transcript', ButtonStyle.Success, '📋'),
-      this.createButton('close_delete_ticket', 'Eliminar Ticket', ButtonStyle.Danger, '🗑️')
+      this.createButton('close_with_transcript', MESSAGES.BUTTONS.CLOSE_WITH_TRANSCRIPT, ButtonStyle.Success, '📋'),
+      this.createButton('close_delete_ticket', MESSAGES.BUTTONS.DELETE_TICKET, ButtonStyle.Danger, '🗑️')
     );
   }
 
   static transcriptButtons(transcriptId) {
     return this.createButtonRow(
-      this.createButton(`view_transcript_${transcriptId}`, 'Ver Transcript', ButtonStyle.Primary, '📋'),
-      this.createButton(`download_transcript_${transcriptId}`, 'Download', ButtonStyle.Secondary, '💾')
+      this.createButton(`view_transcript_${transcriptId}`, MESSAGES.BUTTONS.VIEW_TRANSCRIPT, ButtonStyle.Primary, '📋'),
+      this.createButton(`download_transcript_${transcriptId}`, MESSAGES.BUTTONS.DOWNLOAD, ButtonStyle.Secondary, '💾')
     );
   }
 
@@ -265,7 +266,7 @@ class ComponentFactory {
     return this.createButtonRow(
       this.createLinkButton(
         `https://discord.com/channels/@me/${channelId}`,
-        `Ir para Ticket #${ticketNumber}`,
+        `${MESSAGES.BUTTONS.GOTO_TICKET} #${ticketNumber}`,
         '🎫'
       )
     );
@@ -274,24 +275,24 @@ class ComponentFactory {
   // === MOD BUTTONS (apenas visíveis para mods) ===
   static modButtons(submissionId) {
     return this.createButtonRow(
-      this.createButton(`mod_approve_${submissionId}`, 'Aprovar', ButtonStyle.Success, '✅'),
-      this.createButton(`mod_reject_${submissionId}`, 'Não Aprovar', ButtonStyle.Danger, '❌')
+      this.createButton(`mod_approve_${submissionId}`, MESSAGES.BUTTONS.APPROVE, ButtonStyle.Success, '✅'),
+      this.createButton(`mod_reject_${submissionId}`, MESSAGES.BUTTONS.REJECT, ButtonStyle.Danger, '❌')
     );
   }
 
   // === APPROVAL BUTTONS ===
   static approvalButtons(approvalId) {
     return this.createButtonRow(
-      this.createButton(`approval_goto_${approvalId}`, 'Ir para Ticket', ButtonStyle.Primary, '🎫'),
-      this.createButton(`approval_paid_${approvalId}`, 'Pago', ButtonStyle.Success, '💰'),
-      this.createButton(`approval_review_${approvalId}`, 'Rever', ButtonStyle.Secondary, '🔍')
+      this.createButton(`approval_goto_${approvalId}`, MESSAGES.BUTTONS.GOTO_TICKET, ButtonStyle.Primary, '🎫'),
+      this.createButton(`approval_paid_${approvalId}`, MESSAGES.BUTTONS.PAID, ButtonStyle.Success, '💰'),
+      this.createButton(`approval_review_${approvalId}`, MESSAGES.BUTTONS.REVIEW, ButtonStyle.Secondary, '🔍')
     );
   }
 
   // === SUPPORT COMPLETION BUTTON ===
   static supportCompletionButton(supportId) {
     return this.createButtonRow(
-      this.createButton(`support_complete_${supportId}`, 'Marcar como Concluído', ButtonStyle.Success, '✅')
+      this.createButton(`support_complete_${supportId}`, MESSAGES.BUTTONS.MARK_COMPLETE, ButtonStyle.Success, '✅')
     );
   }
 
