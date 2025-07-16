@@ -72,6 +72,9 @@ function getUserVerifiedCasinos(member) {
 module.exports = {
   name: 'interactionCreate',
   async execute(interaction, client) {
+    // Note: Error handling is now managed by ErrorHandler class in index.js
+    // This function is called safely through errorHandler.safeExecuteInteraction()
+    
     await refreshExpired();
 
     // Initialize transcript manager
@@ -80,7 +83,10 @@ module.exports = {
     // Slash Commands
     if (interaction.isChatInputCommand()) {
       const command = client.commands.get(interaction.commandName);
-      if (command) return command.execute(interaction, client);
+      if (command) {
+        // Command execution is handled by ErrorHandler
+        return command.execute(interaction, client);
+      }
     }
 
     // Modal Submissions

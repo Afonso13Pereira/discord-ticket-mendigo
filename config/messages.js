@@ -653,6 +653,17 @@ module.exports = {
     OPERATION_FAILED: 'Operação falhou',
     TIMEOUT: 'Operação expirou',
     NETWORK_ERROR: 'Erro de rede',
-    UNKNOWN_ERROR: 'Erro desconhecido'
+    UNKNOWN_ERROR: 'Erro desconhecido',
+    INTERNAL_ERROR: 'Erro interno do sistema',
+    SYSTEM_ERROR_TITLE: 'Erro Interno',
+    SYSTEM_ERROR_DESCRIPTION: [
+      'Ocorreu um erro interno no sistema.',
+      '',
+      '🛡️ **A equipa técnica foi notificada**',
+      '🔄 **Tente novamente em alguns momentos**',
+      '💬 **Se persistir, contacte o suporte**'
+    ].join('\n'),
+    CRITICAL_ERROR_ALERT: 'ERRO CRÍTICO DETECTADO',
+    ERROR_RECOVERY_FOOTER: 'Sistema de Recuperação de Erros'
   }
 };
