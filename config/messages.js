@@ -41,19 +41,21 @@ module.exports = {
     ].join('\n'),
 
     CREATED_SUCCESS: 'Ticket #{number} criado com sucesso: {channel}',
-    CLOSE_TITLE: 'Fechar Ticket',
+    CLOSE_TITLE: 'Confirmar Fecho de Ticket',
     CLOSE_DESCRIPTION: [
-      '**Como desejas fechar com este ticket?**',
+      '**Tem a certeza que deseja fechar este ticket?**',
       '',
-      '📋 **Fechar com Transcript** - Salva todas as mensagens por 2 semanas',
-      '🗑️ **Eliminar Ticket** - Remove o canal permanentemente',
+      '📋 **O ticket será fechado com transcript automático**',
+      '💾 **Todas as mensagens serão guardadas por 2 semanas**',
+      '🗑️ **O canal será eliminado após criar o transcript**',
       '',
-      'ℹ️ Transcripts expiram automaticamente após 2 semanas'
+      '⚠️ **Esta ação não pode ser desfeita**'
     ].join('\n'),
     
     CLOSING_WITH_TRANSCRIPT: 'Transcript criado com ID: `{id}`\nCanal será eliminado em 10 segundos...',
     CLOSING_WITHOUT_TRANSCRIPT: 'Ticket será eliminado em 5 segundos...',
-    ONLY_IN_TICKETS: 'Este comando só pode ser usado em canais de ticket'
+    ONLY_IN_TICKETS: 'Este comando só pode ser usado em canais de ticket',
+    CLOSE_CANCELLED: 'Fecho de ticket cancelado.'
   },
 
   // === CONFIRMAÇÃO +18 ===
@@ -560,8 +562,8 @@ module.exports = {
     FINISH: 'Finalizar',
     SUPPORT: 'Falar com Suporte',
     CLOSE_TICKET: 'Fechar Ticket',
-    CLOSE_WITH_TRANSCRIPT: 'Fechar com Transcript',
-    DELETE_TICKET: 'Eliminar Ticket',
+    CONFIRM_CLOSE: 'Sim, Fechar Ticket',
+    CANCEL_CLOSE: 'Cancelar',
     RESUBMIT: 'Reenviar',
     APPROVE: 'Aprovar',
     REJECT: 'Não Aprovar',

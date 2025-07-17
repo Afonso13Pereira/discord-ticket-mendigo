@@ -426,8 +426,21 @@ module.exports = {
         return;
       }
 
-      const embed = EmbedFactory.ticketClose();
-      const components = ComponentFactory.closeTicketButtons();
+      // Criar embed de confirmação
+      const embed = EmbedFactory.warning([
+        '**Tem a certeza que deseja fechar este ticket?**',
+        '',
+        '📋 **O ticket será fechado com transcript automático**',
+        '💾 **Todas as mensagens serão guardadas por 2 semanas**',
+        '🗑️ **O canal será eliminado após criar o transcript**',
+        '',
+        '⚠️ **Esta ação não pode ser desfeita**'
+      ].join('\n'), 'Confirmar Fecho de Ticket');
+      
+      const components = ComponentFactory.createButtonRow(
+        ComponentFactory.createButton('confirm_close_ticket', 'Sim, Fechar Ticket', 'Danger', '✅'),
+        ComponentFactory.createButton('cancel_close_ticket', 'Cancelar', 'Secondary', '❌')
+      );
 
       try {
         return await interaction.reply({
@@ -442,22 +455,87 @@ module.exports = {
           await interaction.channel.send({
             embeds: [embed],
             components: [components]
-          });
+        components: [components],
+        flags: 64 // Ephemeral
         } catch (channelError) {
           console.error('❌ Failed to send close ticket menu to channel:', channelError);
         }
-      }
-    }
-
-    // Close Ticket Buttons
-    if (interaction.isButton() && (interaction.customId === 'close_with_transcript' || interaction.customId === 'close_delete_ticket')) {
-      // Check if interaction is still valid
-      if (interaction.replied || interaction.deferred) {
-        console.warn('⚠️ Close ticket interaction already processed, skipping');
-        return;
+    // Confirm close ticket
+    if (interaction.customId === 'confirm_close_ticket') {
+      await safeDefer(interaction);
+      
+      const ticketState = client.ticketStates.get(interaction.channel.id);
+      if (!ticketState) {
+        return safeEditReply(interaction, {
+          embeds: [EmbedFactory.error('Estado do ticket não encontrado')]
+        });
       }
 
       try {
+        // Always create transcript
+        const TranscriptManager = require('../utils/transcripts');
+        const transcriptManager = new TranscriptManager(client.db);
+        
+        const transcriptId = await transcriptManager.generateTranscript(interaction.channel, ticketState);
+        
+        if (transcriptId) {
+          // Send transcript to transcripts channel
+          const transcriptsChannel = await interaction.guild.channels.fetch(CHANNELS.TRANSCRIPTS);
+          const transcriptEmbed = EmbedFactory.transcriptCreated(
+            transcriptId,
+            interaction.channel.name,
+            ticketState.ticketNumber || 0,
+            ticketState.ownerTag,
+            ticketState.category || 'unknown'
+          );
+          const transcriptComponents = ComponentFactory.transcriptButtons(transcriptId);
+          
+          await transcriptsChannel.send({
+            embeds: [transcriptEmbed],
+            components: [transcriptComponents]
+          });
+          
+          // Log transcript creation
+          await client.db.logAction(interaction.channel.id, interaction.user.id, 'transcript_created', transcriptId);
+          
+          await safeEditReply(interaction, {
+            embeds: [EmbedFactory.success(`Transcript criado com ID: \`${transcriptId}\`\nCanal será eliminado em 10 segundos...`)]
+          });
+        } else {
+          await safeEditReply(interaction, {
+            embeds: [EmbedFactory.warning('Erro ao criar transcript, mas o ticket será fechado mesmo assim.\nCanal será eliminado em 5 segundos...')]
+          });
+        }
+        
+        // Delete ticket state and channel after delay
+        setTimeout(async () => {
+          try {
+            await client.deleteTicketState(interaction.channel.id);
+            await interaction.channel.delete();
+          } catch (error) {
+            console.error('Error deleting ticket channel:', error);
+          }
+        }, transcriptId ? 10000 : 5000);
+        
+      } catch (error) {
+        console.error('Error closing ticket:', error);
+        await safeEditReply(interaction, {
+          embeds: [EmbedFactory.error('Erro ao fechar ticket. Tente novamente.')]
+        });
+      }
+      return;
+    }
+
+    // Cancel close ticket
+    if (interaction.customId === 'cancel_close_ticket') {
+      return safeReply(interaction, {
+        embeds: [EmbedFactory.info('Fecho de ticket cancelado.')],
+        flags: 64 // Ephemeral
+      });
+    }
+
+      }
+    }
         await interaction.deferReply({ flags: 64 });
       } catch (error) {
         console.error('❌ Failed to defer close ticket interaction:', error);
@@ -544,57 +622,8 @@ module.exports = {
             await interaction.editReply({
               embeds: [EmbedFactory.error(MESSAGES.ERRORS.OPERATION_FAILED)]
             });
-          } catch (editError) {
-            try {
-              await interaction.followUp({
-                embeds: [EmbedFactory.error(MESSAGES.ERRORS.OPERATION_FAILED)],
-                flags: 64
-              });
-            } catch (followUpError) {
-              await interaction.channel.send({
-                embeds: [EmbedFactory.error(MESSAGES.ERRORS.OPERATION_FAILED)]
-              });
-            }
-          }
-        }
-      }
-
-      if (interaction.customId === 'close_delete_ticket') {
-        // Log ticket deletion
-        await client.db.logAction(interaction.channel.id, interaction.user.id, 'ticket_deleted', 'No transcript');
-        
-        // Clean up ticket state
-        await client.deleteTicketState(interaction.channel.id);
-        
-        // Try to send closing message
-        try {
-          await interaction.editReply({
-            embeds: [EmbedFactory.warning(MESSAGES.TICKETS.CLOSING_WITHOUT_TRANSCRIPT)]
-          });
-        } catch (editError) {
-          try {
-            await interaction.followUp({
-              embeds: [EmbedFactory.warning(MESSAGES.TICKETS.CLOSING_WITHOUT_TRANSCRIPT)],
-              flags: 64
-            });
-          } catch (followUpError) {
-            await interaction.channel.send({
-              embeds: [EmbedFactory.warning(MESSAGES.TICKETS.CLOSING_WITHOUT_TRANSCRIPT)]
-            });
-          }
-        }
-
-        // Delete channel after 5 seconds
-        setTimeout(async () => {
-          try {
-            await interaction.channel.delete();
-          } catch (error) {
-            console.error('Error deleting channel:', error);
-          }
-        }, 5000);
-      }
-
-      return;
+      // Redirect to new confirmation system
+      return interaction.customId = 'close_ticket_menu', execute(interaction, client);
     }
 
     // NOVO: Botão para resolver códigos duplicados
