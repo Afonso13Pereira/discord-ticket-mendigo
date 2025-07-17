@@ -455,22 +455,33 @@ module.exports = {
           await interaction.channel.send({
             embeds: [embed],
             components: [components]
-        components: [components],
-        flags: 64 // Ephemeral
+          });
         } catch (channelError) {
           console.error('❌ Failed to send close ticket menu to channel:', channelError);
         }
+      }
+    }
+
     // Confirm close ticket
-    if (interaction.customId === 'confirm_close_ticket') {
-      await safeDefer(interaction);
-      
-      const ticketState = client.ticketStates.get(interaction.channel.id);
-      if (!ticketState) {
-        return safeEditReply(interaction, {
-          embeds: [EmbedFactory.error('Estado do ticket não encontrado')]
-        });
+    if (interaction.isButton() && interaction.customId === 'confirm_close_ticket') {
+      try {
+        await interaction.deferReply({ flags: 64 });
+      } catch (error) {
+        console.error('❌ Failed to defer close ticket interaction:', error);
+        // Try to reply normally if defer fails
+        try {
+          await interaction.reply({
+            embeds: [EmbedFactory.warning('A processar pedido de fecho...')],
+            flags: 64
+          });
+        } catch (replyError) {
+          console.error('❌ Failed to reply to close ticket interaction:', replyError);
+          return; // Give up if both defer and reply fail
+        }
       }
 
+      const ticketState = client.ticketStates.get(interaction.channel.id);
+      
       try {
         // Always create transcript
         const TranscriptManager = require('../utils/transcripts');
@@ -498,13 +509,36 @@ module.exports = {
           // Log transcript creation
           await client.db.logAction(interaction.channel.id, interaction.user.id, 'transcript_created', transcriptId);
           
-          await safeEditReply(interaction, {
-            embeds: [EmbedFactory.success(`Transcript criado com ID: \`${transcriptId}\`\nCanal será eliminado em 10 segundos...`)]
-          });
+          try {
+            await interaction.editReply({
+              embeds: [EmbedFactory.success(`Transcript criado com ID: \`${transcriptId}\`\nCanal será eliminado em 10 segundos...`)]
+            });
+          } catch (editError) {
+            console.error('❌ Failed to edit reply, trying followUp:', editError);
+            try {
+              await interaction.followUp({
+                embeds: [EmbedFactory.success(`Transcript criado com ID: \`${transcriptId}\`\nCanal será eliminado em 10 segundos...`)],
+                flags: 64
+              });
+            } catch (followUpError) {
+              console.error('❌ Failed to send followUp:', followUpError);
+              // Send message to channel as last resort
+              await interaction.channel.send({
+                embeds: [EmbedFactory.success(`Transcript criado com ID: \`${transcriptId}\`\nCanal será eliminado em 10 segundos...`)]
+              });
+            }
+          }
         } else {
-          await safeEditReply(interaction, {
-            embeds: [EmbedFactory.warning('Erro ao criar transcript, mas o ticket será fechado mesmo assim.\nCanal será eliminado em 5 segundos...')]
-          });
+          try {
+            await interaction.editReply({
+              embeds: [EmbedFactory.warning('Erro ao criar transcript, mas o ticket será fechado mesmo assim.\nCanal será eliminado em 5 segundos...')]
+            });
+          } catch (editError) {
+            console.error('❌ Failed to edit reply for transcript error:', editError);
+            await interaction.channel.send({
+              embeds: [EmbedFactory.warning('Erro ao criar transcript, mas o ticket será fechado mesmo assim.\nCanal será eliminado em 5 segundos...')]
+            });
+          }
         }
         
         // Delete ticket state and channel after delay
@@ -519,111 +553,26 @@ module.exports = {
         
       } catch (error) {
         console.error('Error closing ticket:', error);
-        await safeEditReply(interaction, {
-          embeds: [EmbedFactory.error('Erro ao fechar ticket. Tente novamente.')]
-        });
+        try {
+          await interaction.editReply({
+            embeds: [EmbedFactory.error('Erro ao fechar ticket. Tente novamente.')]
+          });
+        } catch (editError) {
+          console.error('❌ Failed to edit reply for error:', editError);
+          await interaction.channel.send({
+            embeds: [EmbedFactory.error('Erro ao fechar ticket. Tente novamente.')]
+          });
+        }
       }
       return;
     }
 
     // Cancel close ticket
-    if (interaction.customId === 'cancel_close_ticket') {
-      return safeReply(interaction, {
+    if (interaction.isButton() && interaction.customId === 'cancel_close_ticket') {
+      return interaction.reply({
         embeds: [EmbedFactory.info('Fecho de ticket cancelado.')],
         flags: 64 // Ephemeral
       });
-    }
-
-      }
-    }
-        await interaction.deferReply({ flags: 64 });
-      } catch (error) {
-        console.error('❌ Failed to defer close ticket interaction:', error);
-        // Try to reply normally if defer fails
-        try {
-          await interaction.reply({
-            embeds: [EmbedFactory.warning('A processar pedido de fecho...')],
-            flags: 64
-          });
-        } catch (replyError) {
-          console.error('❌ Failed to reply to close ticket interaction:', replyError);
-          return; // Give up if both defer and reply fail
-        }
-      }
-
-      const ticketState = client.ticketStates.get(interaction.channel.id);
-      
-      if (interaction.customId === 'close_with_transcript') {
-        try {
-          // Generate transcript
-          const transcriptId = await transcriptManager.generateTranscript(interaction.channel, ticketState || { 
-            ownerTag: 'Unknown', 
-            ownerId: 'Unknown',
-            ticketNumber: 0,
-            category: 'unknown'
-          });
-          
-          // Log transcript creation
-          await client.db.logAction(interaction.channel.id, interaction.user.id, 'transcript_created', `ID: ${transcriptId}`);
-          
-          // Send transcript info to transcripts channel
-          const transcriptsChannel = await interaction.guild.channels.fetch(CHANNELS.TRANSCRIPTS);
-          const embed = EmbedFactory.transcriptCreated(
-            transcriptId, 
-            interaction.channel.name,
-            ticketState?.ticketNumber || 0,
-            ticketState?.ownerTag || 'Unknown',
-            ticketState?.category || 'unknown'
-          );
-          const components = ComponentFactory.transcriptButtons(transcriptId);
-          
-          await transcriptsChannel.send({
-            embeds: [embed],
-            components: [components]
-          });
-
-          // Clean up ticket state
-          await client.deleteTicketState(interaction.channel.id);
-          
-          // Try to edit reply, fallback to followUp if it fails
-          try {
-            await interaction.editReply({
-              embeds: [EmbedFactory.success(MESSAGES.TICKETS.CLOSING_WITH_TRANSCRIPT.replace('{id}', transcriptId))]
-            });
-          } catch (editError) {
-            console.error('❌ Failed to edit reply, trying followUp:', editError);
-            try {
-              await interaction.followUp({
-                embeds: [EmbedFactory.success(MESSAGES.TICKETS.CLOSING_WITH_TRANSCRIPT.replace('{id}', transcriptId))],
-                flags: 64
-              });
-            } catch (followUpError) {
-              console.error('❌ Failed to send followUp:', followUpError);
-              // Send message to channel as last resort
-              await interaction.channel.send({
-                embeds: [EmbedFactory.success(MESSAGES.TICKETS.CLOSING_WITH_TRANSCRIPT.replace('{id}', transcriptId))]
-              });
-            }
-          }
-
-          // Delete channel after 10 seconds
-          setTimeout(async () => {
-            try {
-              await interaction.channel.delete();
-            } catch (error) {
-              console.error('Error deleting channel:', error);
-            }
-          }, 10000);
-
-        } catch (error) {
-          console.error('Error creating transcript:', error);
-          // Try to send error message
-          try {
-            await interaction.editReply({
-              embeds: [EmbedFactory.error(MESSAGES.ERRORS.OPERATION_FAILED)]
-            });
-      // Redirect to new confirmation system
-      return interaction.customId = 'close_ticket_menu', execute(interaction, client);
     }
 
     // NOVO: Botão para resolver códigos duplicados
