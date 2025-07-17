@@ -89,6 +89,102 @@ module.exports = {
       }
     }
 
+    if (interaction.customId.startsWith('view_transcript_')) {
+      // Check if interaction is already processed or expired
+      if (interaction.replied || interaction.deferred) {
+        console.warn('⚠️ View transcript interaction already processed, skipping');
+        return;
+      }
+
+      const interactionAge = Date.now() - interaction.createdTimestamp;
+      if (interactionAge > 15 * 60 * 1000) {
+        console.warn('⚠️ View transcript interaction too old, skipping');
+        return;
+      }
+
+      try {
+        await interaction.deferReply({ flags: 64 });
+      } catch (error) {
+        console.error('Error deferring view transcript interaction:', error);
+        return;
+      }
+
+      const transcriptId = interaction.customId.replace('view_transcript_', '');
+      
+      try {
+        const transcript = await client.db.getTranscript(transcriptId);
+        
+        if (!transcript) {
+          return interaction.editReply({
+            embeds: [EmbedFactory.error('Transcript não encontrado ou expirado')]
+          });
+        }
+
+        const embed = EmbedFactory.transcriptView(transcript);
+        const components = ComponentFactory.transcriptButtons(transcriptId);
+
+        return interaction.editReply({
+          embeds: [embed],
+          components: [components]
+        });
+      } catch (error) {
+        console.error('Error viewing transcript:', error);
+        return interaction.editReply({
+          embeds: [EmbedFactory.error('Erro ao visualizar transcript')]
+        });
+      }
+    }
+
+    if (interaction.customId.startsWith('download_transcript_')) {
+      // Check if interaction is already processed or expired
+      if (interaction.replied || interaction.deferred) {
+        console.warn('⚠️ Download transcript interaction already processed, skipping');
+        return;
+      }
+
+      const interactionAge = Date.now() - interaction.createdTimestamp;
+      if (interactionAge > 15 * 60 * 1000) {
+        console.warn('⚠️ Download transcript interaction too old, skipping');
+        return;
+      }
+
+      try {
+        await interaction.deferReply({ flags: 64 });
+      } catch (error) {
+        console.error('Error deferring download transcript interaction:', error);
+        return;
+      }
+
+      const transcriptId = interaction.customId.replace('download_transcript_', '');
+      
+      try {
+        const transcript = await client.db.getTranscript(transcriptId);
+        
+        if (!transcript) {
+          return interaction.editReply({
+            embeds: [EmbedFactory.error('Transcript não encontrado ou expirado')]
+          });
+        }
+
+        // Create text file attachment
+        const { AttachmentBuilder } = require('discord.js');
+        const buffer = Buffer.from(transcript.content, 'utf-8');
+        const attachment = new AttachmentBuilder(buffer, {
+          name: `transcript-${transcript.channelName}-${transcriptId}.txt`
+        });
+
+        return interaction.editReply({
+          embeds: [EmbedFactory.success(`Download do transcript **${transcript.channelName}** (ID: \`${transcriptId}\`)`)],
+          files: [attachment]
+        });
+      } catch (error) {
+        console.error('Error downloading transcript:', error);
+        return interaction.editReply({
+          embeds: [EmbedFactory.error('Erro ao fazer download do transcript')]
+        });
+      }
+    }
+
     // === TRANSCRIPT PAGINATION ===
     if (interaction.customId.startsWith('transcript_user_') && interaction.customId.includes('_page_')) {
       if (!interaction.replied && !interaction.deferred) {
