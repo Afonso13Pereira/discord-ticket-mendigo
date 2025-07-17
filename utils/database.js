@@ -163,11 +163,16 @@ class DatabaseManager {
 
   async connect() {
     try {
-      const mongoUri = 'mongodb+srv://franciscop2004:MendigoTVAPI@mendigoapi.b8mvaps.mongodb.net/mendigo';
+      const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://franciscop2004:MendigoTVAPI@mendigoapi.b8mvaps.mongodb.net/mendigo?retryWrites=true&w=majority';
       
       await mongoose.connect(mongoUri, {
         useNewUrlParser: true,
-        useUnifiedTopology: true
+        useUnifiedTopology: true,
+        serverSelectionTimeoutMS: 30000, // 30 seconds
+        socketTimeoutMS: 45000, // 45 seconds
+        maxPoolSize: 10,
+        retryWrites: true,
+        retryReads: true
       });
 
       // Create models with collection names in DiscordBot folder structure
@@ -186,6 +191,7 @@ class DatabaseManager {
       console.log('✅ Connected to MongoDB (mendigo/DiscordBot + reedems)');
     } catch (error) {
       console.error('❌ MongoDB connection error:', error);
+      console.error(`❌ Connection attempt ${this.connectionAttempts}/${this.maxRetries}`);
       this.connected = false;
     }
   }
