@@ -256,10 +256,10 @@ module.exports = {
         });
 
         // Update approval with message info
-        await client.db.updateApproval(approvalId, approvalMessage.id, approveChannel.id, 'pending');
+        await client.db.updateApproval(approvalId, 'pending');
 
         // Update submission status
-        await client.db.updateSubmission(submissionId, null, null, 'approved');
+        await client.db.updateSubmission(submissionId, 'approved');
 
         // NOVO: Apagar mensagem de submissão pendente
         try {
@@ -309,7 +309,7 @@ module.exports = {
         });
 
         // Update submission status
-        await client.db.updateSubmission(submissionId, null, null, 'rejected');
+        await client.db.updateSubmission(submissionId, 'rejected');
 
         // NOVO: Apagar mensagem de submissão pendente
         try {
@@ -359,15 +359,7 @@ module.exports = {
         });
 
         // Update approval status
-        await client.db.updateApproval(approvalId, null, null, 'review');
-
-        // Delete original approval message
-        try {
-          const originalMessage = await interaction.guild.channels.cache.get(approval.channelId)?.messages.fetch(approval.messageId);
-          if (originalMessage) await originalMessage.delete();
-        } catch (error) {
-          console.error('Error deleting original approval message:', error);
-        }
+        await client.db.updateApproval(approvalId, 'review');
 
         return interaction.reply({
           embeds: [EmbedFactory.success(MESSAGES.APPROVALS.REVIEW_SENT)],
@@ -1279,7 +1271,7 @@ module.exports = {
       });
 
       // Update submission with message info
-      await client.db.updateSubmission(submissionId, null, modChannel.id, 'pending');
+      await client.db.updateSubmission(submissionId, 'pending');
       
       // Send mod buttons to the ticket itself
       const modButtons = ComponentFactory.modButtons(submissionId);
@@ -1378,7 +1370,7 @@ module.exports = {
         });
 
         // Update approval status
-        await client.db.updateApproval(approvalId, null, null, 'paid');
+        await client.db.updateApproval(approvalId, 'paid');
 
         // NOVO: Adicionar cargo de verificação para o usuário
         if (approval.casino && CASINOS[approval.casino]) {

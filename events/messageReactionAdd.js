@@ -19,15 +19,23 @@ module.exports = {
       }
     }
 
-    // Check if this is an approval reaction
-    const approval = await client.db.getApproval(reaction.message.id);
+    // Check if this is an approval reaction by looking for approval buttons
+    const approvalButton = reaction.message.components?.[0]?.components?.find(comp => 
+      comp.customId && comp.customId.startsWith('approval_')
+    );
+    
+    if (!approvalButton) return;
+
+    // Extract approval ID from button customId
+    const approvalId = approvalButton.customId.split('_')[2];
+    const approval = await client.db.getApproval(approvalId);
     if (!approval) return;
 
     // Handle approval reactions
-    if (reaction.emoji.name === '👍' && !approval.approved) {
+    if (reaction.emoji.name === '👍' && approval.status === 'pending') {
       try {
         // Update approval status
-        await client.db.updateApproval(reaction.message.id, true);
+        await client.db.updateApproval(approvalId, 'approved');
 
         // Get the ticket channel
         const ticketChannel = await client.channels.fetch(approval.ticketChannelId);
@@ -62,10 +70,10 @@ module.exports = {
       }
     }
 
-    if (reaction.emoji.name === '❌' && !approval.approved) {
+    if (reaction.emoji.name === '❌' && approval.status === 'pending') {
       try {
         // Update approval status to rejected
-        await client.db.updateApproval(reaction.message.id, false);
+        await client.db.updateApproval(approvalId, 'rejected');
 
         // Get the ticket channel
         const ticketChannel = await client.channels.fetch(approval.ticketChannelId);

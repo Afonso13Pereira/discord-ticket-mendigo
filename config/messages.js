@@ -593,7 +593,9 @@ module.exports = {
     MARK_COMPLETE: 'Marcar como Concluído',
     MARK_RESOLVED: 'Marcar como Resolvido',
     REPORT_BUG: 'Reportar Bug',
-    REDEEM_ITEM: 'Resgatar Redeem'
+    REDEEM_ITEM: 'Resgatar Redeem',
+    CLOSE_WITH_TRANSCRIPT: 'Fechar com Transcript',
+    DELETE_TICKET: 'Eliminar Ticket'
   },
 
   // === LABELS E PLACEHOLDERS ===

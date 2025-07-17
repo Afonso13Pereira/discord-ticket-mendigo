@@ -21,14 +21,10 @@ const TicketStateSchema = new mongoose.Schema({
   awaitingSupport: { type: Boolean, default: false }, // NOVO: Para pausar tickets
   websiteType: { type: String, default: null },
   twitchNick: { type: String, default: null },
-  twitchProofImage: { type: Boolean, default: false },
   selectedRedeem: { type: String, default: null },
   bcGameId: { type: String, default: null },
   prize: { type: String, default: null },
   telegramCode: { type: String, default: null },
-  telegramHasImg: { type: Boolean, default: false },
-  step4HasImg: { type: Boolean, default: false },
-  step4HasAddr: { type: Boolean, default: false },
   ltcAddress: { type: String, default: null },
   description: { type: String, default: null },
   isVerified: { type: Boolean, default: false },
@@ -84,8 +80,6 @@ const CategoryCounterSchema = new mongoose.Schema({
 
 const SubmissionSchema = new mongoose.Schema({
   submissionId: { type: String, required: true, unique: true },
-  messageId: { type: String, default: null },
-  channelId: { type: String, default: null },
   ticketChannelId: { type: String, required: true },
   ticketNumber: { type: Number, required: true },
   userId: { type: String, required: true },
@@ -101,8 +95,6 @@ const SubmissionSchema = new mongoose.Schema({
 
 const ApprovalSchema = new mongoose.Schema({
   approvalId: { type: String, required: true, unique: true },
-  messageId: { type: String, default: null },
-  channelId: { type: String, default: null },
   ticketChannelId: { type: String, required: true },
   ticketNumber: { type: Number, required: true },
   userId: { type: String, required: true },
@@ -117,9 +109,7 @@ const ApprovalSchema = new mongoose.Schema({
 
 const RedeemSchema = new mongoose.Schema({
   itemName: { type: String, required: true },
-  itemId: { type: String, required: true },
   twitchName: { type: String, required: true },
-  twitchId: { type: Number, required: true },
   redeemed: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
@@ -134,12 +124,7 @@ const TelegramCodeSchema = new mongoose.Schema({
   casino: { type: String, default: null },
   prize: { type: String, default: null },
   usedAt: { type: Date, default: Date.now },
-  status: { type: String, default: 'used' }, // used, duplicate_attempt
-  // NOVO: Para tentativas duplicadas
-  lastAttemptTicketId: { type: String, default: null },
-  lastAttemptUserId: { type: String, default: null },
-  lastAttemptUserTag: { type: String, default: null },
-  lastAttemptAt: { type: Date, default: null }
+  status: { type: String, default: 'used' } // used, duplicate_attempt
 });
 
 // Add index for automatic deletion
@@ -259,11 +244,7 @@ class DatabaseManager {
       await this.TelegramCode.findOneAndUpdate(
         { code: code.toLowerCase() },
         { 
-          status: 'duplicate_attempt',
-          lastAttemptTicketId: attemptTicketId,
-          lastAttemptUserId: attemptUserId,
-          lastAttemptUserTag: attemptUserTag,
-          lastAttemptAt: new Date()
+          status: 'duplicate_attempt'
         }
       );
       return true;
@@ -286,9 +267,7 @@ class DatabaseManager {
       return redeems.map(redeem => ({
         id: redeem._id.toString(),
         itemName: redeem.itemName,
-        itemId: redeem.itemId,
         twitchName: redeem.twitchName,
-        twitchId: redeem.twitchId,
         redeemed: redeem.redeemed,
         createdAt: redeem.createdAt
       }));
@@ -328,9 +307,7 @@ class DatabaseManager {
       return {
         id: redeem._id.toString(),
         itemName: redeem.itemName,
-        itemId: redeem.itemId,
         twitchName: redeem.twitchName,
-        twitchId: redeem.twitchId,
         redeemed: redeem.redeemed,
         createdAt: redeem.createdAt
       };
@@ -385,14 +362,10 @@ class DatabaseManager {
           awaitingSupport: state.awaitingSupport || false,
           websiteType: state.websiteType || null,
           twitchNick: state.twitchNick || null,
-          twitchProofImage: state.twitchProofImage || false,
           selectedRedeem: state.selectedRedeem || null,
           bcGameId: state.bcGameId || null,
           prize: state.prize || null,
           telegramCode: state.telegramCode || null,
-          telegramHasImg: state.telegramHasImg || false,
-          step4HasImg: state.step4HasImg || false,
-          step4HasAddr: state.step4HasAddr || false,
           ltcAddress: state.ltcAddress || null,
           description: state.description || null,
           isVerified: state.isVerified || false,
@@ -431,14 +404,10 @@ class DatabaseManager {
         awaitingSupport: doc.awaitingSupport,
         websiteType: doc.websiteType,
         twitchNick: doc.twitchNick,
-        twitchProofImage: doc.twitchProofImage,
         selectedRedeem: doc.selectedRedeem,
         bcGameId: doc.bcGameId,
         prize: doc.prize,
         telegramCode: doc.telegramCode,
-        telegramHasImg: doc.telegramHasImg,
-        step4HasImg: doc.step4HasImg,
-        step4HasAddr: doc.step4HasAddr,
         ltcAddress: doc.ltcAddress,
         description: doc.description,
         isVerified: doc.isVerified
@@ -486,14 +455,10 @@ class DatabaseManager {
           awaitingSupport: doc.awaitingSupport,
           websiteType: doc.websiteType,
           twitchNick: doc.twitchNick,
-          twitchProofImage: doc.twitchProofImage,
           selectedRedeem: doc.selectedRedeem,
           bcGameId: doc.bcGameId,
           prize: doc.prize,
           telegramCode: doc.telegramCode,
-          telegramHasImg: doc.telegramHasImg,
-          step4HasImg: doc.step4HasImg,
-          step4HasAddr: doc.step4HasAddr,
           ltcAddress: doc.ltcAddress,
           description: doc.description,
           isVerified: doc.isVerified
@@ -544,8 +509,6 @@ class DatabaseManager {
       
       return {
         submissionId: doc.submissionId,
-        messageId: doc.messageId,
-        channelId: doc.channelId,
         ticketChannelId: doc.ticketChannelId,
         ticketNumber: doc.ticketNumber,
         userId: doc.userId,
@@ -564,17 +527,13 @@ class DatabaseManager {
     }
   }
 
-  async updateSubmission(submissionId, messageId, channelId, status = 'pending') {
+  async updateSubmission(submissionId, status = 'pending') {
     if (!this.connected) return;
     
     try {
-      const updateData = { status };
-      if (messageId) updateData.messageId = messageId;
-      if (channelId) updateData.channelId = channelId;
-      
       await this.Submission.findOneAndUpdate(
         { submissionId },
-        updateData,
+        { status },
         { new: true }
       );
     } catch (error) {
@@ -587,7 +546,7 @@ class DatabaseManager {
     if (!this.connected) return null;
     
     try {
-      const approvalId = require('crypto').randomUUID().slice(0, 12);
+      const approvalId = `approval_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
       const approval = new this.Approval({
         approvalId,
@@ -618,8 +577,6 @@ class DatabaseManager {
       
       return {
         approvalId: doc.approvalId,
-        messageId: doc.messageId,
-        channelId: doc.channelId,
         ticketChannelId: doc.ticketChannelId,
         ticketNumber: doc.ticketNumber,
         userId: doc.userId,
@@ -637,17 +594,13 @@ class DatabaseManager {
     }
   }
 
-  async updateApproval(approvalId, messageId, channelId, status = 'pending') {
+  async updateApproval(approvalId, status = 'pending') {
     if (!this.connected) return;
     
     try {
-      const updateData = { status };
-      if (messageId) updateData.messageId = messageId;
-      if (channelId) updateData.channelId = channelId;
-      
       await this.Approval.findOneAndUpdate(
         { approvalId },
-        updateData,
+        { status },
         { new: true }
       );
     } catch (error) {
