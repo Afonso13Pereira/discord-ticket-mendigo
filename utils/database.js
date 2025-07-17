@@ -148,6 +148,8 @@ TranscriptSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 class DatabaseManager {
   constructor() {
     this.connected = false;
+    this.connectionAttempts = 0;
+    this.maxRetries = 5;
     this.TicketState = null;
     this.Promotion = null;
     this.Category = null;
@@ -163,6 +165,7 @@ class DatabaseManager {
 
   async connect() {
     try {
+      this.connectionAttempts++;
       const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://franciscop2004:MendigoTVAPI@mendigoapi.b8mvaps.mongodb.net/mendigo?retryWrites=true&w=majority';
       
       await mongoose.connect(mongoUri, {
@@ -188,11 +191,19 @@ class DatabaseManager {
       this.TelegramCode = mongoose.model('TelegramCode', TelegramCodeSchema, 'DiscordBot.telegramCodes');
 
       this.connected = true;
+      this.connectionAttempts = 0; // Reset on successful connection
       console.log('✅ Connected to MongoDB (mendigo/DiscordBot + reedems)');
     } catch (error) {
       console.error('❌ MongoDB connection error:', error);
-      console.error(`❌ Connection attempt ${this.connectionAttempts}/${this.maxRetries}`);
       this.connected = false;
+      
+      // Retry connection after 5 seconds
+      if (this.connectionAttempts < this.maxRetries) {
+        console.log(`🔄 Retrying connection in 5 seconds... (${this.connectionAttempts}/${this.maxRetries})`);
+        setTimeout(() => {
+          this.connect();
+        }, 5000);
+      }
     }
   }
 

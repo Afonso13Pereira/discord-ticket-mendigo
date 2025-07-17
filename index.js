@@ -31,16 +31,30 @@ client.ticketStates = new Map();
 // Restore ticket states from database on startup
 async function restoreTicketStates() {
   // Wait for database connection
-  setTimeout(async () => {
+  const waitForDatabase = async () => {
+    let attempts = 0;
+    while ((!client.db || !client.db.connected) && attempts < 60) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      attempts++;
+    }
+    
+    if (!client.db || !client.db.connected) {
+      console.log('⚠️ Database not available, starting with empty ticket states');
+      return;
+    }
+    
     try {
-      const savedStates = await db.getAllTicketStates();
+      const savedStates = await client.db.getAllTicketStates();
       client.ticketStates = savedStates;
       
       console.log(`✅ Restored ${savedStates.size} ticket states from MongoDB`);
     } catch (error) {
       console.error('Error restoring ticket states:', error);
     }
-  }, 2000); // Wait 2 seconds for DB connection
+  };
+  
+  // Start waiting for database in background
+  waitForDatabase();
 }
 
 // Save ticket state to database
