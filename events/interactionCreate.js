@@ -89,6 +89,47 @@ module.exports = {
       }
     }
 
+    // === TRANSCRIPT PAGINATION ===
+    if (interaction.customId.startsWith('transcript_user_') && interaction.customId.includes('_page_')) {
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.deferUpdate();
+      }
+
+      try {
+        const parts = interaction.customId.split('_');
+        const userId = parts[2];
+        const page = parseInt(parts[4]);
+        const limit = 10;
+        const offset = (page - 1) * limit;
+
+        const { transcripts, total } = await client.db.getUserTranscripts(userId, limit, offset);
+        const user = await client.users.fetch(userId);
+        
+        if (transcripts.length === 0) {
+          return safeEditReply(interaction, {
+            embeds: [EmbedFactory.info('Não há mais transcripts nesta página.', 'Transcripts do Usuário')],
+            components: []
+          });
+        }
+
+        const totalPages = Math.ceil(total / limit);
+        const embed = EmbedFactory.userTranscriptsList(user, transcripts, page, totalPages, total);
+        const components = ComponentFactory.transcriptPaginationButtons(userId, page, totalPages);
+
+        return safeEditReply(interaction, {
+          embeds: [embed],
+          components: components.length > 0 ? [components] : []
+        });
+
+      } catch (error) {
+        console.error('Error in transcript pagination:', error);
+        return safeEditReply(interaction, {
+          embeds: [EmbedFactory.error('Erro ao carregar página de transcripts')],
+          components: []
+        });
+      }
+    }
+
     // Modal Submissions
     if (interaction.type === InteractionType.ModalSubmit) {
       if (interaction.customId === 'promo_create') {
