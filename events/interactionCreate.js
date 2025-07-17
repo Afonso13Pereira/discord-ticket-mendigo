@@ -652,6 +652,19 @@ module.exports = {
 
     // Category Buttons (Ticket Creation)
     if (interaction.isButton() && interaction.customId.startsWith('category_')) {
+      // Prevent duplicate replies
+      if (interaction.replied || interaction.deferred) {
+        console.warn('⚠️ Interaction already replied/deferred, skipping category creation');
+        return;
+      }
+      
+      try {
+        await interaction.deferReply({ flags: 64 });
+      } catch (error) {
+        console.error('Error deferring interaction:', error);
+        return;
+      }
+      
       const categoryId = interaction.customId.slice(9);
       
       await ensureInitialized();
@@ -756,7 +769,7 @@ module.exports = {
         await ticketChannel.send({ components: [supportRow] });
       }
 
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [EmbedFactory.success(MESSAGES.TICKETS.CREATED_SUCCESS
           .replace('{number}', ticketNumber)
           .replace('{channel}', ticketChannel))],
