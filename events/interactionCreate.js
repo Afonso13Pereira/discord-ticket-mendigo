@@ -666,16 +666,8 @@ module.exports = {
       const prefix = CATEGORY_PREFIXES[category.name] || category.name.toLowerCase();
       const ticketName = `ticket-${prefix}${String(ticketNumber).padStart(4, '0')}`;
 
-      // Find or create category channel
-      let parentCategory = interaction.guild.channels.cache
-        .find(c => c.name.toLowerCase() === category.name.toLowerCase() && c.type === ChannelType.GuildCategory);
-      
-      if (!parentCategory) {
-        parentCategory = await interaction.guild.channels.create({
-          name: category.name,
-          type: ChannelType.GuildCategory
-        });
-      }
+      // Find or create category channel with overflow support
+      let parentCategory = await findOrCreateCategoryWithOverflow(interaction.guild, category.name);
 
       const ticketChannel = await interaction.guild.channels.create({
         name: ticketName,
@@ -1189,6 +1181,62 @@ module.exports = {
     }
   }
 };
+
+// Helper function to find or create category with overflow support
+async function findOrCreateCategoryWithOverflow(guild, categoryName) {
+  // Find all categories with this base name (including numbered ones)
+  const existingCategories = guild.channels.cache
+    .filter(c => c.type === ChannelType.GuildCategory)
+    .filter(c => {
+      const name = c.name.toLowerCase();
+      return name === categoryName.toLowerCase() || 
+             name.startsWith(categoryName.toLowerCase() + ' ');
+    })
+    .sort((a, b) => {
+      // Sort by number (Giveaways, Giveaways 2, Giveaways 3, etc.)
+      const aNum = extractCategoryNumber(a.name, categoryName);
+      const bNum = extractCategoryNumber(b.name, categoryName);
+      return aNum - bNum;
+    });
+
+  // Check each category for available space (Discord limit is 50 channels per category)
+  for (const category of existingCategories.values()) {
+    const channelCount = guild.channels.cache
+      .filter(c => c.parentId === category.id)
+      .size;
+    
+    if (channelCount < 50) {
+      console.log(`✅ Using existing category: ${category.name} (${channelCount}/50 channels)`);
+      return category;
+    }
+  }
+
+  // All categories are full, create a new one
+  const nextNumber = existingCategories.size + 1;
+  const newCategoryName = nextNumber === 1 ? categoryName : `${categoryName} ${nextNumber}`;
+  
+  console.log(`📁 Creating new category: ${newCategoryName} (overflow from full categories)`);
+  
+  const newCategory = await guild.channels.create({
+    name: newCategoryName,
+    type: ChannelType.GuildCategory
+  });
+
+  return newCategory;
+}
+
+// Helper function to extract number from category name
+function extractCategoryNumber(categoryName, baseName) {
+  const name = categoryName.toLowerCase();
+  const base = baseName.toLowerCase();
+  
+  if (name === base) {
+    return 1; // Base category is number 1
+  }
+  
+  const match = name.match(new RegExp(`^${base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} (\\d+)$`));
+  return match ? parseInt(match[1]) : 999; // Unknown format goes to end
+}
 
 // Helper Functions
 function askCasino(channel) {

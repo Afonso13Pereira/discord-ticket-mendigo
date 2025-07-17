@@ -810,6 +810,16 @@ module.exports = {
       CHECKLIST_AUTO_ADVANCE: 'Checklist avança automaticamente após validação',
       VIP_STEP_COMPLETED: 'Passo VIP {step} concluído',
       FINAL_STEP_REACHED: 'Último passo do checklist atingido'
+    },
+
+    // Category Overflow System
+    CATEGORY_OVERFLOW: {
+      CATEGORY_FULL: 'Categoria {name} está cheia ({count}/50 canais)',
+      CREATING_OVERFLOW: 'Criando nova categoria: {name}',
+      USING_EXISTING: 'Usando categoria existente: {name} ({count}/50 canais)',
+      OVERFLOW_CREATED: 'Nova categoria criada devido a overflow: {name}',
+      CHANNEL_LIMIT_REACHED: 'Limite de canais atingido na categoria {name}',
+      AUTO_ORGANIZATION: 'Sistema de organização automática ativo'
     }
   },
 
