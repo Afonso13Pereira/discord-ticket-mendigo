@@ -716,6 +716,136 @@ module.exports = {
       });
     }
 
+    // View transcript button
+    if (interaction.isButton() && interaction.customId.startsWith('view_transcript_')) {
+      try {
+        // Verificar se a interação já foi processada ou expirou
+        if (interaction.replied || interaction.deferred) {
+          console.warn('⚠️ View transcript interaction already processed, skipping');
+          return;
+        }
+
+        // Verificar idade da interação (máximo 2 minutos para botões)
+        const interactionAge = Date.now() - interaction.createdTimestamp;
+        if (interactionAge > 2 * 60 * 1000) {
+          console.warn('⚠️ View transcript interaction too old, skipping');
+          return;
+        }
+
+        // Tentar defer com timeout
+        const deferPromise = interaction.deferReply({ flags: 64 });
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Defer timeout')), 2000)
+        );
+        
+        await Promise.race([deferPromise, timeoutPromise]);
+        
+        const transcriptId = interaction.customId.replace('view_transcript_', '');
+        const transcript = await client.db.getTranscript(transcriptId);
+        
+        if (!transcript) {
+          await interaction.editReply({
+            embeds: [EmbedFactory.error('Transcript não encontrado ou expirado')]
+          });
+          return;
+        }
+
+        const embed = EmbedFactory.transcriptView(transcript);
+        const components = ComponentFactory.transcriptButtons(transcriptId);
+
+        await interaction.editReply({
+          embeds: [embed],
+          components: [components]
+        });
+      } catch (error) {
+        console.error('Error in view transcript interaction:', error);
+        
+        // Tentar responder com erro se ainda for possível
+        try {
+          if (!interaction.replied && !interaction.deferred) {
+            await interaction.reply({
+              embeds: [EmbedFactory.error('Erro ao visualizar transcript - interação expirou')],
+              flags: 64
+            });
+          } else if (interaction.deferred) {
+            await interaction.editReply({
+              embeds: [EmbedFactory.error('Erro ao visualizar transcript')]
+            });
+          }
+        } catch (replyError) {
+          console.error('Failed to send error message for view transcript:', replyError);
+        }
+      }
+      return;
+    }
+
+    // Download transcript button
+    if (interaction.isButton() && interaction.customId.startsWith('download_transcript_')) {
+      try {
+        // Verificar se a interação já foi processada ou expirou
+        if (interaction.replied || interaction.deferred) {
+          console.warn('⚠️ Download transcript interaction already processed, skipping');
+          return;
+        }
+
+        // Verificar idade da interação (máximo 2 minutos para botões)
+        const interactionAge = Date.now() - interaction.createdTimestamp;
+        if (interactionAge > 2 * 60 * 1000) {
+          console.warn('⚠️ Download transcript interaction too old, skipping');
+          return;
+        }
+
+        // Tentar defer com timeout
+        const deferPromise = interaction.deferReply({ flags: 64 });
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Defer timeout')), 2000)
+        );
+        
+        await Promise.race([deferPromise, timeoutPromise]);
+        
+        const transcriptId = interaction.customId.replace('download_transcript_', '');
+        const transcript = await client.db.getTranscript(transcriptId);
+        
+        if (!transcript) {
+          await interaction.editReply({
+            embeds: [EmbedFactory.error('Transcript não encontrado ou expirado')]
+          });
+          return;
+        }
+
+        // Create text file attachment
+        const buffer = Buffer.from(transcript.content, 'utf-8');
+        const attachment = new AttachmentBuilder(buffer, {
+          name: `transcript-${transcript.channelName}-${transcriptId}.txt`
+        });
+
+        await interaction.editReply({
+          embeds: [EmbedFactory.success(`Download do transcript **${transcript.channelName}** (ID: \`${transcriptId}\`)`)],
+          files: [attachment]
+        });
+
+      } catch (error) {
+        console.error('Error in download transcript interaction:', error);
+        
+        // Tentar responder com erro se ainda for possível
+        try {
+          if (!interaction.replied && !interaction.deferred) {
+            await interaction.reply({
+              embeds: [EmbedFactory.error('Erro ao fazer download - interação expirou')],
+              flags: 64
+            });
+          } else if (interaction.deferred) {
+            await interaction.editReply({
+              embeds: [EmbedFactory.error('Erro ao fazer download do transcript')]
+            });
+          }
+        } catch (replyError) {
+          console.error('Failed to send error message for download transcript:', replyError);
+        }
+      }
+      return;
+    }
+
     // Transcript View/Download Buttons
     if (interaction.isButton() && (interaction.customId.startsWith('view_transcript_') || interaction.customId.startsWith('download_transcript_'))) {
       // Verificar se já foi processado
