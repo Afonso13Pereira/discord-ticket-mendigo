@@ -59,15 +59,14 @@ async function updateTicketMessage(guild, client) {
     console.log(`📋 Active categories:`, activeCats.map(([id, cat]) => `${cat.name} (${id})`));
     
     const embed = EmbedFactory.ticket(
-      'Sistema de Suporte',
+      'Sistema de Tickets',
       [
-        '**Bem-vindo ao nosso sistema de suporte!**',
+        '**Bem-vindo ao nosso sistema de tickets!**',
         '',
-        `${EMOJIS.STAR} Clique no botão que melhor descreve o seu pedido`,
-        `${EMOJIS.SHIELD} Suporte disponível 24/7`,
+        `${EMOJIS.STAR} Clica no botão que melhor descreve o teu pedido`,
         `${EMOJIS.DIAMOND} Resposta rápida e profissional`,
         '',
-        '*Escolha uma categoria abaixo para começar:*'
+        '*Escolhe uma categoria abaixo para começar:*'
       ].join('\n')
     );
 
