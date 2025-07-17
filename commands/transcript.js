@@ -2,12 +2,37 @@ const { SlashCommandBuilder, PermissionFlagsBits, AttachmentBuilder } = require(
 const EmbedFactory = require('../utils/embeds');
 const ComponentFactory = require('../utils/components');
 const { CHANNELS, EMOJIS } = require('../config/constants');
+const MESSAGES = require('../config/messages');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('transcript')
     .setDescription('Gerir transcripts de tickets')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
+    .addSubcommand(sub => 
+      sub.setName('user')
+        .setDescription('Ver transcripts de um usuário')
+        .addUserOption(option =>
+          option.setName('user')
+            .setDescription('Usuário para ver transcripts')
+            .setRequired(true)
+        )
+        .addIntegerOption(option =>
+          option.setName('page')
+            .setDescription('Página dos resultados (padrão: 1)')
+            .setRequired(false)
+            .setMinValue(1)
+        )
+    )
+    .addSubcommand(sub => 
+      sub.setName('id')
+        .setDescription('Ver transcript por ID')
+        .addStringOption(option =>
+          option.setName('id')
+            .setDescription('ID do transcript')
+            .setRequired(true)
+        )
+    )
     .addSubcommand(sub => 
       sub.setName('view')
         .setDescription('Ver transcript por ID')
@@ -38,9 +63,72 @@ module.exports = {
 
   async execute(interaction, client) {
     const subcommand = interaction.options.getSubcommand();
-    const transcriptId = interaction.options.getString('id');
+
+    if (subcommand === 'user') {
+      const user = interaction.options.getUser('user');
+      const page = interaction.options.getInteger('page') || 1;
+      const limit = 10;
+      const offset = (page - 1) * limit;
+
+      try {
+        const { transcripts, total } = await client.db.getUserTranscripts(user.id, limit, offset);
+        
+        if (transcripts.length === 0) {
+          return interaction.reply({
+            embeds: [EmbedFactory.info(
+              page === 1 
+                ? MESSAGES.TRANSCRIPTS.USER_NO_TRANSCRIPTS.replace('{user}', user.tag)
+                : MESSAGES.TRANSCRIPTS.USER_NO_MORE_PAGES.replace('{page}', page),
+              'Transcripts do Usuário'
+            )],
+            flags: 64
+          });
+        }
+
+        const totalPages = Math.ceil(total / limit);
+        const embed = EmbedFactory.userTranscriptsList(user, transcripts, page, totalPages, total);
+        const components = ComponentFactory.transcriptPaginationButtons(user.id, page, totalPages);
+
+        return interaction.reply({
+          embeds: [embed],
+          components: components.length > 0 ? [components] : [],
+          flags: 64
+        });
+
+      } catch (error) {
+        console.error('Error getting user transcripts:', error);
+        return interaction.reply({
+          embeds: [EmbedFactory.error(MESSAGES.TRANSCRIPTS.GET_ERROR)],
+          flags: 64
+        });
+      }
+    }
+
+    if (subcommand === 'id') {
+      const transcriptId = interaction.options.getString('id');
+      
+      const transcript = await client.db.getTranscript(transcriptId);
+      
+      if (!transcript) {
+        return interaction.reply({
+          embeds: [EmbedFactory.error(MESSAGES.TRANSCRIPTS.NOT_FOUND)],
+          flags: 64
+        });
+      }
+
+      const embed = EmbedFactory.transcriptView(transcript);
+      const components = ComponentFactory.transcriptButtons(transcriptId);
+
+      return interaction.reply({
+        embeds: [embed],
+        components: [components],
+        flags: 64
+      });
+    }
 
     if (subcommand === 'view') {
+      const transcriptId = interaction.options.getString('id');
+      
       const transcript = await client.db.getTranscript(transcriptId);
       
       if (!transcript) {
@@ -61,6 +149,8 @@ module.exports = {
     }
 
     if (subcommand === 'download') {
+      const transcriptId = interaction.options.getString('id');
+      
       const transcript = await client.db.getTranscript(transcriptId);
       
       if (!transcript) {
@@ -84,6 +174,8 @@ module.exports = {
     }
 
     if (subcommand === 'send') {
+      const transcriptId = interaction.options.getString('id');
+      
       const transcript = await client.db.getTranscript(transcriptId);
       
       if (!transcript) {

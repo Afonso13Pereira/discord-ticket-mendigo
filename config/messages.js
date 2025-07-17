@@ -491,10 +491,33 @@ module.exports = {
       '```'
     ].join('\n'),
 
+    USER_LIST_TITLE: 'Transcripts de {user}',
+    USER_LIST_DESCRIPTION: [
+      '**Total de transcripts:** {total}',
+      '**Página:** {page}/{totalPages}',
+      '',
+      'ℹ️ Use `/transcript id <ID>` para ver um transcript específico',
+      '💾 Use os botões de paginação para navegar'
+    ].join('\n'),
+
+    USER_NO_TRANSCRIPTS: 'O usuário **{user}** não possui transcripts.',
+    USER_NO_MORE_PAGES: 'Não há mais transcripts na página {page}.',
+
+    ALL_LIST_TITLE: 'Todos os Transcripts',
+    CATEGORY_LIST_TITLE: 'Transcripts da Categoria: {category}',
+    ALL_LIST_DESCRIPTION: [
+      '**Total de transcripts:** {total}',
+      '**Página:** {page}/{totalPages}',
+      '**Categoria:** {category}',
+      '',
+      'ℹ️ Use `/transcript id <ID>` para ver um transcript específico',
+      '💾 Use os botões de paginação para navegar'
+    ].join('\n'),
     DOWNLOAD_SUCCESS: 'Download do transcript **{channel}**',
     NOT_FOUND: 'Transcript não encontrado ou expirado',
     SENT_TO_CHANNEL: 'Transcript **{channel}** enviado para {channelMention}',
-    SEND_ERROR: 'Erro ao enviar transcript para o canal'
+    SEND_ERROR: 'Erro ao enviar transcript para o canal',
+    GET_ERROR: 'Erro ao obter transcripts'
   },
 
   // === ESTATÍSTICAS ===

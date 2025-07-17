@@ -306,6 +306,75 @@ class EmbedFactory {
     return embed;
   }
 
+  static userTranscriptsList(user, transcripts, page, totalPages, total) {
+    const embed = new EmbedBuilder()
+      .setColor(COLORS.INFO)
+      .setTitle(`📋 ${MESSAGES.TRANSCRIPTS.USER_LIST_TITLE.replace('{user}', user.tag)}`)
+      .setDescription(MESSAGES.TRANSCRIPTS.USER_LIST_DESCRIPTION
+        .replace('{total}', total)
+        .replace('{page}', page)
+        .replace('{totalPages}', totalPages))
+      .setThumbnail(user.displayAvatarURL())
+      .setTimestamp()
+      .setFooter({ text: `Página ${page}/${totalPages} • Total: ${total} transcripts` });
+
+    transcripts.forEach((transcript, index) => {
+      const number = (page - 1) * 10 + index + 1;
+      const isExpired = transcript.expiresAt < new Date();
+      const status = isExpired ? '🔴 Expirado' : '🟢 Ativo';
+      
+      embed.addFields({
+        name: `${number}. Ticket #${transcript.ticketNumber} (${transcript.category})`,
+        value: [
+          `**ID:** \`${transcript.transcriptId}\``,
+          `**Canal:** #${transcript.channelName}`,
+          `**Criado:** <t:${Math.floor(transcript.createdAt.getTime() / 1000)}:R>`,
+          `**Expira:** <t:${Math.floor(transcript.expiresAt.getTime() / 1000)}:R>`,
+          `**Status:** ${status}`
+        ].join('\n'),
+        inline: false
+      });
+    });
+
+    return embed;
+  }
+
+  static allTranscriptsList(transcripts, page, totalPages, total, category = null) {
+    const title = category 
+      ? `📋 ${MESSAGES.TRANSCRIPTS.CATEGORY_LIST_TITLE.replace('{category}', category)}`
+      : `📋 ${MESSAGES.TRANSCRIPTS.ALL_LIST_TITLE}`;
+      
+    const embed = new EmbedBuilder()
+      .setColor(COLORS.INFO)
+      .setTitle(title)
+      .setDescription(MESSAGES.TRANSCRIPTS.ALL_LIST_DESCRIPTION
+        .replace('{total}', total)
+        .replace('{page}', page)
+        .replace('{totalPages}', totalPages)
+        .replace('{category}', category || 'todas as categorias'))
+      .setTimestamp()
+      .setFooter({ text: `Página ${page}/${totalPages} • Total: ${total} transcripts` });
+
+    transcripts.forEach((transcript, index) => {
+      const number = (page - 1) * 20 + index + 1;
+      const isExpired = transcript.expiresAt < new Date();
+      const status = isExpired ? '🔴 Expirado' : '🟢 Ativo';
+      
+      embed.addFields({
+        name: `${number}. #${transcript.ticketNumber} - ${transcript.ownerTag} (${transcript.category})`,
+        value: [
+          `**ID:** \`${transcript.transcriptId}\``,
+          `**Canal:** #${transcript.channelName}`,
+          `**Criado:** <t:${Math.floor(transcript.createdAt.getTime() / 1000)}:R>`,
+          `**Status:** ${status}`
+        ].join('\n'),
+        inline: true
+      });
+    });
+
+    return embed;
+  }
+
   // === SUBMISSION EMBEDS ===
   static submissionReady(ticketNumber, userTag, channelId) {
     return new EmbedBuilder()

@@ -131,6 +131,89 @@ class ComponentFactory {
     );
   }
 
+  static transcriptPaginationButtons(userId, currentPage, totalPages) {
+    const buttons = [];
+    
+    // Previous page button
+    if (currentPage > 1) {
+      buttons.push(
+        this.createButton(
+          `transcript_user_${userId}_page_${currentPage - 1}`,
+          'Página Anterior',
+          ButtonStyle.Secondary,
+          '⬅️'
+        )
+      );
+    }
+    
+    // Page info (disabled button)
+    buttons.push(
+      this.createButton(
+        'page_info',
+        `${currentPage}/${totalPages}`,
+        ButtonStyle.Secondary,
+        '📄',
+        true // disabled
+      )
+    );
+    
+    // Next page button
+    if (currentPage < totalPages) {
+      buttons.push(
+        this.createButton(
+          `transcript_user_${userId}_page_${currentPage + 1}`,
+          'Próxima Página',
+          ButtonStyle.Secondary,
+          '➡️'
+        )
+      );
+    }
+    
+    return buttons.length > 1 ? this.createButtonRow(...buttons) : new ActionRowBuilder();
+  }
+
+  static allTranscriptsPaginationButtons(currentPage, totalPages, category = null) {
+    const buttons = [];
+    const baseId = category ? `transcript_category_${category}` : 'transcript_all';
+    
+    // Previous page button
+    if (currentPage > 1) {
+      buttons.push(
+        this.createButton(
+          `${baseId}_page_${currentPage - 1}`,
+          'Página Anterior',
+          ButtonStyle.Secondary,
+          '⬅️'
+        )
+      );
+    }
+    
+    // Page info (disabled button)
+    buttons.push(
+      this.createButton(
+        'page_info',
+        `${currentPage}/${totalPages}`,
+        ButtonStyle.Secondary,
+        '📄',
+        true // disabled
+      )
+    );
+    
+    // Next page button
+    if (currentPage < totalPages) {
+      buttons.push(
+        this.createButton(
+          `${baseId}_page_${currentPage + 1}`,
+          'Próxima Página',
+          ButtonStyle.Secondary,
+          '➡️'
+        )
+      );
+    }
+    
+    return buttons.length > 1 ? this.createButtonRow(...buttons) : new ActionRowBuilder();
+  }
+
   static giveawayTypeButtons() {
     return this.createButtonRow(
       this.createButton('gw_type_telegram', 'Telegram', ButtonStyle.Primary, '📱'),

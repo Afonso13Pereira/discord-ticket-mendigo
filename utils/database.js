@@ -876,6 +876,74 @@ class DatabaseManager {
     }
   }
 
+  async getUserTranscripts(userId, limit = 10, offset = 0) {
+    if (!this.connected) return { transcripts: [], total: 0 };
+    
+    try {
+      const [transcripts, total] = await Promise.all([
+        this.Transcript.find({ ownerId: userId })
+          .sort({ createdAt: -1 })
+          .limit(limit)
+          .skip(offset)
+          .lean(),
+        this.Transcript.countDocuments({ ownerId: userId })
+      ]);
+      
+      const formattedTranscripts = transcripts.map(doc => ({
+        transcriptId: doc.transcriptId,
+        channelId: doc.channelId,
+        channelName: doc.channelName,
+        ticketNumber: doc.ticketNumber,
+        ownerTag: doc.ownerTag,
+        ownerId: doc.ownerId,
+        category: doc.category,
+        createdAt: doc.createdAt,
+        expiresAt: doc.expiresAt,
+        contentPreview: doc.content ? doc.content.substring(0, 100) + '...' : 'Sem conteúdo'
+      }));
+      
+      return { transcripts: formattedTranscripts, total };
+    } catch (error) {
+      console.error('Error getting user transcripts:', error);
+      return { transcripts: [], total: 0 };
+    }
+  }
+
+  async getAllTranscripts(limit = 20, offset = 0, category = null) {
+    if (!this.connected) return { transcripts: [], total: 0 };
+    
+    try {
+      const query = category ? { category } : {};
+      
+      const [transcripts, total] = await Promise.all([
+        this.Transcript.find(query)
+          .sort({ createdAt: -1 })
+          .limit(limit)
+          .skip(offset)
+          .lean(),
+        this.Transcript.countDocuments(query)
+      ]);
+      
+      const formattedTranscripts = transcripts.map(doc => ({
+        transcriptId: doc.transcriptId,
+        channelId: doc.channelId,
+        channelName: doc.channelName,
+        ticketNumber: doc.ticketNumber,
+        ownerTag: doc.ownerTag,
+        ownerId: doc.ownerId,
+        category: doc.category,
+        createdAt: doc.createdAt,
+        expiresAt: doc.expiresAt,
+        contentPreview: doc.content ? doc.content.substring(0, 100) + '...' : 'Sem conteúdo'
+      }));
+      
+      return { transcripts: formattedTranscripts, total };
+    } catch (error) {
+      console.error('Error getting all transcripts:', error);
+      return { transcripts: [], total: 0 };
+    }
+  }
+
   async cleanupExpiredTranscripts() {
     if (!this.connected) return 0;
     
