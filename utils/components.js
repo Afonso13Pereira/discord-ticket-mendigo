@@ -119,7 +119,7 @@ class ComponentFactory {
 
   static closeTicketButtons() {
     return this.createButtonRow(
-      this.createButton('confirm_close_ticket', 'Sim, Fechar com Transcript', ButtonStyle.Danger, '✅'),
+      this.createButton('confirm_close_ticket', 'Sim, Fechar Ticket', ButtonStyle.Danger, '✅'),
       this.createButton('cancel_close_ticket', 'Cancelar', ButtonStyle.Secondary, '❌')
     );
   }
