@@ -6,19 +6,37 @@ module.exports = {
   emoji: '🧡',
   default: false,
 
-  checklist: [
-    "👋 Hello, já tens conta na 1xBit? Se sim podes avançar para o proximo passo. Se não, regista-te atraves do link: https://refpa4979689.top/L?tag=b_4439477m_126254c_MENDIGOTV&site=4439477&ad=126254&r=registration&utm_source=TWITCH&utm_medium=fix&utm_campaign=STREAM&utm_term=OMENDIGOTV&utm_content=all e utiliza o promocode MENDIGOTV",
-    "📧 Envia **screenshot** do email de registro no  com as informações visiveis",
-    "👤 Envia **screenshot** do perfil da Hexabet com email visível",
-    "🎁 Envia **screenshot** dos freespins da Hexabet na secção presentes e bonus",
-    "📥 Envia **screenshot** do depósito em LTC **e** cola o **endereço LTC** em texto"
-  ],
 
-  images: [
-    "https://mendigotv.com/assets/1xbit-OlEHbMK9.png",
-    "https://i.imgur.com/oL3fLZz.png",
-    "https://i.imgur.com/kJYiTgQ.png",
-    "https://i.imgur.com/ntYoB1o.png",
-    "https://i.imgur.com/wKjWS4x.png"
+  checklist: [
+    {
+      title: 'Passo 1',
+      description: '👋 Hello, já tens conta na 1xBit? Se sim podes avançar para o proximo passo. Se não, regista-te atraves do link: https://bit.ly/_1xBit',
+      type: [],
+      image: 'https://mendigotv.com/assets/1xbit-59FBzNPj.png'
+    },
+    {
+      title: 'Passo 2',
+      description: '📧 Envia **screenshot** do email de registro no  com as informações visiveis',
+      type: ['image', 'text'],
+      image: 'https://i.imgur.com/oL3fLZz.png'
+    },
+    {
+      title: 'Passo 3',
+      description: '👤 Envia **screenshot** do perfil da 1xBit com email visível',
+      type: ['image'],
+      image: 'https://i.imgur.com/kJYiTgQ.png'
+    }, 
+    {
+      title: 'Passo 4',
+      description: '🎁 Envia **screenshot** dos freespins da 1xBit na secção presentes e bonus',
+      type: ['image'],
+      image: 'https://i.imgur.com/ntYoB1o.png'
+    },
+    {
+      title: 'Passo 5',
+      description: '📥 Envia **screenshot** do depósito em LTC **e** cola o **endereço LTC** em texto',
+      type: ['image', 'text'],
+      image: 'https://i.imgur.com/wKjWS4x.png'
+    }
   ]
 };

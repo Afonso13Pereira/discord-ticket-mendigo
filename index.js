@@ -128,7 +128,7 @@ for (const file of fs.readdirSync(commandsPath).filter(f => f.endsWith('.js'))) 
 
 // carregar eventos
 const eventsPath = path.join(__dirname, 'events');
-for (const file of fs.readdirSync(eventsPath).filter(f => f.endsWith('.js'))) {
+for (const file of fs.readdirSync(eventsPath).filter(f => f.endsWith('.js') && f !== 'interactionCreate.js')) {
   const evt = require(path.join(eventsPath, file));
   if (evt.once) client.once(evt.name, (...args) => evt.execute(...args, client));
   else client.on(evt.name, (...args) => evt.execute(...args, client));

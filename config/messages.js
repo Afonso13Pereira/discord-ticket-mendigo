@@ -141,11 +141,6 @@ module.exports = {
     IMAGE_REQUIRED: 'Este passo requer o envio de uma **imagem**',
     MISSING_REQUIREMENTS: 'Ainda falta: {missing}',
 
-    // BCGame específico
-    BCGAME_STEP1: '📧 Envia **screenshot** do email de registro no BC.Game **e** o **ID da BCGame em texto**',
-    BCGAME_MISSING_EMAIL: '**screenshot do email**',
-    BCGAME_MISSING_ID: '**ID da BCGame em texto**',
-
     // Passo final (depósito + LTC)
     DEPOSIT_MISSING_IMAGE: '**imagem do depósito**',
     DEPOSIT_MISSING_ADDRESS: '**endereço LTC em texto**'

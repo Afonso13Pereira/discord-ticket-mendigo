@@ -101,6 +101,14 @@ class ComponentFactory {
     );
   }
 
+  static infoStepButtons() {
+    return this.createButtonRow(
+      this.nextStepButton(),
+      this.supportButton(),
+      this.closeTicketButton()
+    );
+  }
+
   static finishButtons() {
     return this.createButtonRow(
       this.finishButton(),

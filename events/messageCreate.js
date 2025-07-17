@@ -76,24 +76,27 @@ module.exports = {
 
     // NOVO: LTC + Depósito para usuários verificados (OBRIGATÓRIO)
     if (ticketState.awaitLtcOnly) {
-      // Aceitar imagem e texto em mensagens separadas
+      // Initialize LTC data if not exists
+      if (!ticketState.ltcData) ticketState.ltcData = {};
+      
+      // Check current message for inputs
       if (message.attachments.size > 0) {
-        ticketState.step4HasImg = true;
-        await client.saveTicketState(message.channel.id, ticketState);
+        ticketState.ltcData.hasImage = true;
       }
       
       const ltcAddress = message.content.trim();
       if (ltcAddress.length >= 25) {
-        ticketState.step4HasAddr = true;
+        ticketState.ltcData.hasAddress = true;
         ticketState.ltcAddress = ltcAddress;
-        await client.saveTicketState(message.channel.id, ticketState);
       }
       
+      await client.saveTicketState(message.channel.id, ticketState);
+      
       // Verificar se tem ambos
-      if (!ticketState.step4HasImg || !ticketState.step4HasAddr) {
+      if (!ticketState.ltcData.hasImage || !ticketState.ltcData.hasAddress) {
         const missing = [];
-        if (!ticketState.step4HasImg) missing.push('**imagem do depósito com QR visível**');
-        if (!ticketState.step4HasAddr) missing.push('**endereço LTC em texto**');
+        if (!ticketState.ltcData.hasImage) missing.push('**imagem do depósito com QR visível**');
+        if (!ticketState.ltcData.hasAddress) missing.push('**endereço LTC em texto**');
         
         return message.reply({
           embeds: [EmbedFactory.error(MESSAGES.GIVEAWAYS.VERIFIED_USER_MISSING.replace('{missing}', missing.join(' e ')))]
@@ -102,8 +105,7 @@ module.exports = {
       
       // Tem ambos - finalizar
       ticketState.awaitLtcOnly = false;
-      ticketState.step4HasImg = false;
-      ticketState.step4HasAddr = false;
+      delete ticketState.ltcData;
       await client.saveTicketState(message.channel.id, ticketState);
       
       // Log LTC address
@@ -117,35 +119,26 @@ module.exports = {
 
     // Website Twitch Nick Input (pode ser em mensagens separadas)
     if (ticketState.awaitTwitchNick) {
-      const hasImage = message.attachments.size > 0;
+      // Initialize twitch data if not exists
+      if (!ticketState.twitchData) ticketState.twitchData = {};
+      
+      // Check current message for inputs
+      if (message.attachments.size > 0) {
+        ticketState.twitchData.hasImage = true;
+      }
+      
       const twitchNick = message.content.trim();
-      
-      // Aceitar imagem ou texto separadamente
-      if (hasImage) {
-        ticketState.twitchProofImage = true;
-        await client.saveTicketState(message.channel.id, ticketState);
-        
-        if (!ticketState.twitchNick) {
-          return message.reply({
-            embeds: [EmbedFactory.info(MESSAGES.WEBSITE.NICK_IMAGE_RECEIVED)]
-          });
-        }
-      }
-      
       if (twitchNick && twitchNick.length >= 3) {
+        ticketState.twitchData.hasNick = true;
         ticketState.twitchNick = twitchNick;
-        await client.saveTicketState(message.channel.id, ticketState);
-        
-        if (!ticketState.twitchProofImage) {
-          return message.reply({
-            embeds: [EmbedFactory.info(MESSAGES.WEBSITE.NICK_TEXT_RECEIVED)]
-          });
-        }
       }
+      
+      await client.saveTicketState(message.channel.id, ticketState);
       
       // Se tem ambos, processar
-      if (ticketState.twitchNick && ticketState.twitchProofImage) {
+      if (ticketState.twitchData.hasNick && ticketState.twitchData.hasImage) {
         ticketState.awaitTwitchNick = false;
+        delete ticketState.twitchData;
         await client.saveTicketState(message.channel.id, ticketState);
         
         // Log twitch nick provided
@@ -229,11 +222,19 @@ module.exports = {
       // Handle combined steps (image + text)
       if (stepIndex === 0 || (ticketState.vipType === 'semanal' && stepIndex === 4) || (ticketState.vipType === 'leaderboard' && stepIndex === 1)) {
         // These steps require both image and text
+        // Initialize step data if not exists
+        if (!ticketState.stepData) ticketState.stepData = {};
+        if (!ticketState.stepData[stepIndex]) ticketState.stepData[stepIndex] = {};
+
+        // Check current message for inputs
         if (message.attachments.size > 0) {
-          ticketState.step4HasImg = true;
+          ticketState.stepData[stepIndex].hasImage = true;
         }
         if (message.content && message.content.trim().length >= 5) {
-          ticketState.step4HasAddr = true;
+          ticketState.stepData[stepIndex].hasText = true;
+          ticketState.stepData[stepIndex].textContent = message.content.trim();
+          
+          // Save specific data based on step
           if (stepIndex === 0) {
             ticketState.vipId = message.content.trim();
           } else {
@@ -243,10 +244,11 @@ module.exports = {
         
         await client.saveTicketState(message.channel.id, ticketState);
         
-        if (!ticketState.step4HasImg || !ticketState.step4HasAddr) {
+        // Check if both requirements are met
+        if (!ticketState.stepData[stepIndex].hasImage || !ticketState.stepData[stepIndex].hasText) {
           const missing = [];
-          if (!ticketState.step4HasImg) missing.push('**imagem**');
-          if (!ticketState.step4HasAddr) missing.push(stepIndex === 0 ? '**ID em texto**' : '**endereço LTC em texto**');
+          if (!ticketState.stepData[stepIndex].hasImage) missing.push('**imagem**');
+          if (!ticketState.stepData[stepIndex].hasText) missing.push(stepIndex === 0 ? '**ID em texto**' : '**endereço LTC em texto**');
           
           return message.reply({
             embeds: [EmbedFactory.error(MESSAGES.CHECKLIST.MISSING_REQUIREMENTS.replace('{missing}', missing.join(' e ')))]
@@ -254,8 +256,7 @@ module.exports = {
         }
         
         // Reset flags for next step
-        ticketState.step4HasImg = false;
-        ticketState.step4HasAddr = false;
+        delete ticketState.stepData[stepIndex];
         ticketState.awaitProof = false;
         await client.saveTicketState(message.channel.id, ticketState);
       } else {
@@ -293,26 +294,34 @@ module.exports = {
 
     // Telegram Code + Screenshot
     if (ticketState.gwType === 'telegram' && !ticketState.casino) {
+      // Initialize telegram data if not exists
+      if (!ticketState.telegramData) ticketState.telegramData = {};
+      
+      // Check current message for inputs
       if (message.attachments.size > 0) {
-        ticketState.telegramHasImg = true;
-        await client.saveTicketState(message.channel.id, ticketState);
+        ticketState.telegramData.hasImage = true;
       }
       
       const codeMatch = message.content.match(/[a-f0-9]{8}/i);
       if (codeMatch) {
+        ticketState.telegramData.hasCode = true;
         ticketState.telegramCode = codeMatch[0].toLowerCase();
-        await client.saveTicketState(message.channel.id, ticketState);
       }
 
-      if (!ticketState.telegramCode || !ticketState.telegramHasImg) {
+      await client.saveTicketState(message.channel.id, ticketState);
+
+      if (!ticketState.telegramData.hasCode || !ticketState.telegramData.hasImage) {
         const missing = [];
-        if (!ticketState.telegramCode) missing.push('**código**');
-        if (!ticketState.telegramHasImg) missing.push('**screenshot**');
+        if (!ticketState.telegramData.hasCode) missing.push('**código**');
+        if (!ticketState.telegramData.hasImage) missing.push('**screenshot**');
         
         return message.reply({
           embeds: [EmbedFactory.error(MESSAGES.GIVEAWAYS.TELEGRAM_CODE_MISSING.replace('{missing}', missing.join(' e ')))]
         });
       }
+
+      // Clear telegram data after validation
+      delete ticketState.telegramData;
 
       // NOVO: Verificar se o código já foi usado
       const existingCode = await client.db.checkTelegramCode(ticketState.telegramCode);
@@ -473,7 +482,7 @@ module.exports = {
         ticketState.prize
       );
 
-      // Check if casino is "Todos" or specific
+      // Check if casino is "Todos" or specific || Aqui verifica se receber o nome com ";" se receber com ponto e virugula tem que verificar se o casino existe \
       if (/todos/i.test(logsCasino)) {
         // Casino is "Todos" - user can choose any casino
         await client.saveTicketState(message.channel.id, ticketState);
@@ -482,9 +491,44 @@ module.exports = {
           embeds: [EmbedFactory.success(MESSAGES.GIVEAWAYS.TELEGRAM_CODE_VALIDATED.replace('{casino}', logsCasino))]
         });
         return askCasino(message.channel);
+      } else if (logsCasino.includes(';')) {
+        // Separar e filtrar casinos válidos
+        const allowedCasinoNames = logsCasino.split(';').map(c => c.trim()).filter(Boolean);
+        const allowedCasinos = {};
+        for (const name of allowedCasinoNames) {
+          const id = Object.keys(CASINOS).find(id => 
+            id.toLowerCase() === name.toLowerCase() || 
+            CASINOS[id].label.toLowerCase() === name.toLowerCase()
+          );
+          if (id) allowedCasinos[id] = CASINOS[id];
+        }
+
+        if (Object.keys(allowedCasinos).length === 0) {
+          return message.reply({
+            embeds: [EmbedFactory.error('Nenhum casino válido encontrado na lista.')]
+          });
+        }
+
+        // Salvar estado aguardando seleção
+        ticketState.awaitingCasinoSelection = true;
+        ticketState.allowedCasinos = Object.keys(allowedCasinos);
+        await client.saveTicketState(message.channel.id, ticketState);
+
+        // Enviar select menu apenas com os casinos permitidos
+        return message.reply({
+          embeds: [EmbedFactory.casino(
+            'Selecione o casino',
+            'Escolha o casino para o qual deseja resgatar o prêmio:'
+          )],
+          components: [ComponentFactory.casinoSelectMenu(allowedCasinos)]
+        });
       } else {
         // Casino is specific - find matching casino
+        console.log(logsCasino);
+        
         const casinoId = findCasinoId(logsCasino);
+        console.log(casinoId);
+        
         if (!casinoId) {
           return message.reply({
             embeds: [EmbedFactory.error(MESSAGES.GIVEAWAYS.CASINO_NOT_CONFIGURED.replace('{casino}', logsCasino))]
@@ -525,64 +569,58 @@ module.exports = {
     if (ticketState.casino && ticketState.awaitProof && !ticketState.vipType) {
       const casino = CASINOS[ticketState.casino];
       const stepIndex = ticketState.step;
+      const currentStep = casino.checklist[stepIndex];
 
-      // NOVO: Para BCGame no primeiro passo, aceitar ID em texto
-      if (ticketState.casino === 'BCGame' && stepIndex === 0) {
-        if (message.attachments.size > 0) {
-          ticketState.step4HasImg = true;
-        }
-        if (message.content && message.content.trim().length >= 5) {
-          ticketState.step4HasAddr = true;
-          ticketState.bcGameId = message.content.trim();
-        }
-        
+      // Check if current step requires any input
+      let stepTypes = [];
+      if (typeof currentStep === 'object' && currentStep !== null && Array.isArray(currentStep.type)) {
+        stepTypes = currentStep.type;
+      }
+
+      // If step has no requirements (empty type array), advance automatically
+      if (stepTypes.length === 0) {
+        ticketState.awaitProof = false;
         await client.saveTicketState(message.channel.id, ticketState);
-        
-        if (!ticketState.step4HasImg || !ticketState.step4HasAddr) {
+      } else {
+        // Initialize step data if not exists
+        if (!ticketState.stepData) ticketState.stepData = {};
+        if (!ticketState.stepData[stepIndex]) ticketState.stepData[stepIndex] = {};
+
+        // Check current message for inputs
+        if (stepTypes.includes('image') && message.attachments.size > 0) {
+          ticketState.stepData[stepIndex].hasImage = true;
+        }
+        if (stepTypes.includes('text') && message.content && message.content.trim().length >= 5) {
+          ticketState.stepData[stepIndex].hasText = true;
+          ticketState.stepData[stepIndex].textContent = message.content.trim();
+        }
+
+        // Check if all required types are provided
+        const allRequirementsMet = stepTypes.every(type => {
+          if (type === 'image') return ticketState.stepData[stepIndex].hasImage;
+          if (type === 'text') return ticketState.stepData[stepIndex].hasText;
+          return false;
+        });
+
+        if (allRequirementsMet) {
+          // All requirements met, advance to next step
+          ticketState.awaitProof = false;
+          // Clear step data for this step
+          delete ticketState.stepData[stepIndex];
+          await client.saveTicketState(message.channel.id, ticketState);
+        } else {
+          // Still missing requirements, save state and wait for more input
+          await client.saveTicketState(message.channel.id, ticketState);
+          
+          // Show what's still missing
           const missing = [];
-          if (!ticketState.step4HasImg) missing.push(MESSAGES.CHECKLIST.BCGAME_MISSING_EMAIL);
-          if (!ticketState.step4HasAddr) missing.push(MESSAGES.CHECKLIST.BCGAME_MISSING_ID);
+          if (stepTypes.includes('image') && !ticketState.stepData[stepIndex].hasImage) missing.push('**imagem**');
+          if (stepTypes.includes('text') && !ticketState.stepData[stepIndex].hasText) missing.push('**texto**');
           
           return message.reply({
             embeds: [EmbedFactory.error(MESSAGES.CHECKLIST.MISSING_REQUIREMENTS.replace('{missing}', missing.join(' e ')))]
           });
         }
-        
-        // Reset flags
-        ticketState.step4HasImg = false;
-        ticketState.step4HasAddr = false;
-        ticketState.awaitProof = false;
-        await client.saveTicketState(message.channel.id, ticketState);
-      } else if (stepIndex < 3) {
-        if (message.attachments.size === 0) {
-          return message.reply({
-            embeds: [EmbedFactory.error(MESSAGES.CHECKLIST.IMAGE_REQUIRED)]
-          });
-        }
-        ticketState.awaitProof = false;
-        await client.saveTicketState(message.channel.id, ticketState);
-      } else if (stepIndex === 3) {
-        if (message.attachments.size > 0) {
-          ticketState.step4HasImg = true;
-        }
-        if (message.content && message.content.length >= 25) {
-          ticketState.step4HasAddr = true;
-          ticketState.ltcAddress = message.content;
-        }
-        
-        await client.saveTicketState(message.channel.id, ticketState);
-        
-        if (!ticketState.step4HasImg || !ticketState.step4HasAddr) {
-          const missing = [];
-          if (!ticketState.step4HasImg) missing.push(MESSAGES.CHECKLIST.DEPOSIT_MISSING_IMAGE);
-          if (!ticketState.step4HasAddr) missing.push(MESSAGES.CHECKLIST.DEPOSIT_MISSING_ADDRESS);
-          
-          return message.reply({
-            embeds: [EmbedFactory.error(MESSAGES.CHECKLIST.MISSING_REQUIREMENTS.replace('{missing}', missing.join(' e ')))]
-          });
-        }
-        ticketState.awaitProof = false;
-        await client.saveTicketState(message.channel.id, ticketState);
       }
 
       if (!ticketState.awaitProof) {
@@ -618,10 +656,19 @@ module.exports = {
 
 // Helper Functions
 function findCasinoId(name) {
-  return Object.keys(CASINOS).find(id => 
-    id.toLowerCase() === name.toLowerCase() || 
-    CASINOS[id].label.toLowerCase() === name.toLowerCase()
-  ) || null;
+  // CASO TENHA ; TEM QUE SEPARAR E PERCORRER O ARRAY E VERIFICAR SE O CASINO EXISTE
+  if (name.includes(';')) {
+    const casinos = name.split(';');
+    for (const casino of casinos) {
+      const id = Object.keys(CASINOS).find(id => id.toLowerCase() === casino.toLowerCase() || CASINOS[id].label.toLowerCase() === casino.toLowerCase());
+      if (id) return id;
+    }
+  } else {
+    return Object.keys(CASINOS).find(id => 
+      id.toLowerCase() === name.toLowerCase() || 
+      CASINOS[id].label.toLowerCase() === name.toLowerCase()
+    ) || null;
+  }
 }
 
 function askCasino(channel) {
@@ -644,22 +691,45 @@ function askChecklist(channel, ticketState) {
 
   const stepIndex = ticketState.step ?? 0;
   
-  // NOVO: Para BCGame, modificar o primeiro passo para incluir ID
-  let checklist = [...casino.checklist];
-  if (ticketState.casino === 'BCGame' && stepIndex === 0) {
-    checklist[0] = MESSAGES.CHECKLIST.BCGAME_STEP1;
+  // NOVO: Handle new checklist structure (objects with title, description, type, image)
+  let stepDescription, stepImage;
+  if (typeof casino.checklist[stepIndex] === 'object' && casino.checklist[stepIndex] !== null) {
+    // New structure: object with title, description, type, image
+    stepDescription = casino.checklist[stepIndex].description;
+    stepImage = casino.checklist[stepIndex].image;
+  } else {
+    // Old structure: just a string
+    stepDescription = casino.checklist[stepIndex];
+    stepImage = casino.images?.[stepIndex];
   }
   
   const embed = EmbedFactory.checklist(
     stepIndex + 1,
-    checklist.length,
-    checklist[stepIndex],
-    casino.images?.[stepIndex]
+    casino.checklist.length,
+    stepDescription,
+    stepImage
   );
+
+  // Check if current step requires any input
+  const currentStep = casino.checklist[stepIndex];
+  let stepTypes = [];
+  if (typeof currentStep === 'object' && currentStep !== null && Array.isArray(currentStep.type)) {
+    stepTypes = currentStep.type;
+  }
+
+  // Show different buttons based on step requirements
+  let components;
+  if (stepTypes.length === 0) {
+    // Step has no requirements - show next step button (for info steps)
+    components = [ComponentFactory.infoStepButtons()];
+  } else {
+    // Step has requirements - show next step button
+    components = [ComponentFactory.stepButtons()];
+  }
 
   channel.send({
     embeds: [embed],
-    components: [ComponentFactory.stepButtons()]
+    components: components
   });
 }
 

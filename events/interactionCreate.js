@@ -80,6 +80,16 @@ module.exports = {
     // Initialize transcript manager
     const transcriptManager = new TranscriptManager(client.db);
 
+    // Add this at the start of the execute function to log all interactions
+    console.log('[Interaction]', {
+      type: interaction.type,
+      customId: interaction.customId,
+      commandName: interaction.commandName,
+      user: interaction.user?.tag,
+      userId: interaction.user?.id,
+      createdTimestamp: interaction.createdTimestamp,
+    });
+
     // Slash Commands
     if (interaction.isChatInputCommand()) {
       const command = client.commands.get(interaction.commandName);
@@ -910,7 +920,7 @@ module.exports = {
         console.warn('⚠️ Interaction already replied/deferred, skipping category creation');
         return;
       }
-      
+      // Defer immediately to avoid interaction expiration
       try {
         await interaction.deferReply({ flags: 64 });
       } catch (error) {
@@ -918,10 +928,11 @@ module.exports = {
         return;
       }
       
-      const categoryId = interaction.customId.slice(9);
-      
+      // Now do all other async work:
       await ensureInitialized();
       await refreshCategories();
+      
+      const categoryId = interaction.customId.slice(9);
       
       const category = cats[categoryId] || { name: categoryId, color: 'grey', emoji: null };
 
@@ -1162,6 +1173,18 @@ module.exports = {
       }
 
       const ticketState = client.ticketStates.get(interaction.channel.id);
+      // NOVO: Se estiver aguardando seleção filtrada, só permitir allowedCasinos
+      if (ticketState.awaitingCasinoSelection && Array.isArray(ticketState.allowedCasinos)) {
+        if (!ticketState.allowedCasinos.includes(choice)) {
+          return interaction.followUp({
+            embeds: [EmbedFactory.error('Seleção de casino inválida para este ticket.')],
+            flags: 64
+          });
+        }
+        // Limpar flags de seleção após escolha
+        ticketState.awaitingCasinoSelection = false;
+        ticketState.allowedCasinos = undefined;
+      }
       ticketState.casino = choice;
       
       // NOVO: Verificar se o usuário tem cargo de verificação para este casino
@@ -1190,23 +1213,39 @@ module.exports = {
     // Next Step Button - AUTOMÁTICO AGORA
     if (interaction.isButton() && interaction.customId === 'proof_next') {
       try { await interaction.deferUpdate(); } catch {}
+      console.log(interaction);
       
       const ticketState = client.ticketStates.get(interaction.channel.id);
-      if (!ticketState || ticketState.awaitProof) {
+      console.log(ticketState);
+   
+
+      // Check if current step requires any input
+      const casino = CASINOS[ticketState.casino];
+      const stepIndex = ticketState.step;
+      const currentStep = casino.checklist[stepIndex];
+      
+      let stepTypes = [];
+      if (typeof currentStep === 'object' && currentStep !== null && Array.isArray(currentStep.type)) {
+        stepTypes = currentStep.type;
+      }
+
+      // If step has no requirements (empty type array), advance automatically
+      if (stepTypes.length === 0) {
+        ticketState.step++;
+        ticketState.awaitProof = true;
+        await client.saveTicketState(interaction.channel.id, ticketState);
+        
+        if (ticketState.vipType) {
+          return askVipChecklist(interaction.channel, ticketState);
+        } else {
+          return askChecklist(interaction.channel, ticketState);
+        }
+      } else {
+        // Step requires input, show error
         return interaction.followUp({
           embeds: [EmbedFactory.error(MESSAGES.CHECKLIST.IMAGE_REQUIRED)],
           flags: 64
         });
-      }
-
-      ticketState.step++;
-      ticketState.awaitProof = true;
-      await client.saveTicketState(interaction.channel.id, ticketState);
-      
-      if (ticketState.vipType) {
-        return askVipChecklist(interaction.channel, ticketState);
-      } else {
-        return askChecklist(interaction.channel, ticketState);
       }
     }
 
@@ -1525,22 +1564,45 @@ function askChecklist(channel, ticketState) {
 
   const stepIndex = ticketState.step ?? 0;
   
-  // NOVO: Para BCGame, modificar o primeiro passo para incluir ID
-  let checklist = [...casino.checklist];
-  if (ticketState.casino === 'BCGame' && stepIndex === 0) {
-    checklist[0] = MESSAGES.CHECKLIST.BCGAME_STEP1;
+  // NOVO: Handle new checklist structure (objects with title, description, type, image)
+  let stepDescription, stepImage;
+  if (typeof casino.checklist[stepIndex] === 'object' && casino.checklist[stepIndex] !== null) {
+    // New structure: object with title, description, type, image
+    stepDescription = casino.checklist[stepIndex].description;
+    stepImage = casino.checklist[stepIndex].image;
+  } else {
+    // Old structure: just a string
+    stepDescription = casino.checklist[stepIndex];
+    stepImage = casino.images?.[stepIndex];
   }
   
   const embed = EmbedFactory.checklist(
     stepIndex + 1,
-    checklist.length,
-    checklist[stepIndex],
-    casino.images?.[stepIndex]
+    casino.checklist.length,
+    stepDescription,
+    stepImage
   );
+
+  // Check if current step requires any input
+  const currentStep = casino.checklist[stepIndex];
+  let stepTypes = [];
+  if (typeof currentStep === 'object' && currentStep !== null && Array.isArray(currentStep.type)) {
+    stepTypes = currentStep.type;
+  }
+
+  // Show different buttons based on step requirements
+  let components;
+  if (stepTypes.length === 0) {
+    // Step has no requirements - show next step button (for info steps)
+    components = [ComponentFactory.infoStepButtons()];
+  } else {
+    // Step has requirements - show next step button
+    components = [ComponentFactory.stepButtons()];
+  }
 
   channel.send({
     embeds: [embed],
-    components: [ComponentFactory.stepButtons()]
+    components: components
   });
 }
 
