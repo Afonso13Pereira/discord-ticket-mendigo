@@ -167,6 +167,13 @@ class ErrorHandler {
 
   async safeExecuteInteraction(interaction) {
     try {
+      // Check if interaction is expired (older than 15 minutes)
+      const interactionAge = Date.now() - interaction.createdTimestamp;
+      if (interactionAge > 15 * 60 * 1000) {
+        console.warn('⚠️ Interaction is too old, skipping execution');
+        return;
+      }
+
       // Handle different interaction types safely
       if (interaction.isChatInputCommand()) {
         const command = this.client.commands.get(interaction.commandName);
@@ -180,8 +187,31 @@ class ErrorHandler {
       }
     } catch (error) {
       console.error('🚨 Interaction Handler Error:', error);
+      
+      // Try to send error message to user if possible
+      try {
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({
+            embeds: [this.createSystemErrorEmbed()],
+            flags: 64
+          });
+        }
+      } catch (replyError) {
+        console.error('❌ Failed to send error message to user:', replyError);
+      }
+      
       await this.sendErrorToSupport(error, 'Interaction Handler');
     }
+  }
+
+  // Helper method to create system error embed
+  createSystemErrorEmbed() {
+    return new EmbedBuilder()
+      .setColor(COLORS.DANGER)
+      .setTitle(`${EMOJIS.ERROR} ${MESSAGES.ERRORS.SYSTEM_ERROR_TITLE}`)
+      .setDescription(MESSAGES.ERRORS.SYSTEM_ERROR_DESCRIPTION)
+      .setTimestamp()
+      .setFooter({ text: MESSAGES.ERRORS.ERROR_RECOVERY_FOOTER });
   }
 
   async gracefulShutdown() {

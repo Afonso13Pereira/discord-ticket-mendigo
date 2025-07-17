@@ -420,19 +420,58 @@ module.exports = {
 
     // Close Ticket Menu Button
     if (interaction.isButton() && interaction.customId === 'close_ticket_menu') {
+      // Check if interaction is still valid
+      if (interaction.replied || interaction.deferred) {
+        console.warn('⚠️ Close ticket menu interaction already processed, skipping');
+        return;
+      }
+
       const embed = EmbedFactory.ticketClose();
       const components = ComponentFactory.closeTicketButtons();
 
-      return interaction.reply({
-        embeds: [embed],
-        components: [components],
-        flags: 64
-      });
+      try {
+        return await interaction.reply({
+          embeds: [embed],
+          components: [components],
+          flags: 64
+        });
+      } catch (error) {
+        console.error('❌ Failed to reply to close ticket menu:', error);
+        // Try to send message to channel as fallback
+        try {
+          await interaction.channel.send({
+            embeds: [embed],
+            components: [components]
+          });
+        } catch (channelError) {
+          console.error('❌ Failed to send close ticket menu to channel:', channelError);
+        }
+      }
     }
 
     // Close Ticket Buttons
     if (interaction.isButton() && (interaction.customId === 'close_with_transcript' || interaction.customId === 'close_delete_ticket')) {
-      try { await interaction.deferReply({ flags: 64 }); } catch {}
+      // Check if interaction is still valid
+      if (interaction.replied || interaction.deferred) {
+        console.warn('⚠️ Close ticket interaction already processed, skipping');
+        return;
+      }
+
+      try {
+        await interaction.deferReply({ flags: 64 });
+      } catch (error) {
+        console.error('❌ Failed to defer close ticket interaction:', error);
+        // Try to reply normally if defer fails
+        try {
+          await interaction.reply({
+            embeds: [EmbedFactory.warning('A processar pedido de fecho...')],
+            flags: 64
+          });
+        } catch (replyError) {
+          console.error('❌ Failed to reply to close ticket interaction:', replyError);
+          return; // Give up if both defer and reply fail
+        }
+      }
 
       const ticketState = client.ticketStates.get(interaction.channel.id);
       
@@ -468,9 +507,26 @@ module.exports = {
           // Clean up ticket state
           await client.deleteTicketState(interaction.channel.id);
           
-          await interaction.editReply({
-            embeds: [EmbedFactory.success(MESSAGES.TICKETS.CLOSING_WITH_TRANSCRIPT.replace('{id}', transcriptId))]
-          });
+          // Try to edit reply, fallback to followUp if it fails
+          try {
+            await interaction.editReply({
+              embeds: [EmbedFactory.success(MESSAGES.TICKETS.CLOSING_WITH_TRANSCRIPT.replace('{id}', transcriptId))]
+            });
+          } catch (editError) {
+            console.error('❌ Failed to edit reply, trying followUp:', editError);
+            try {
+              await interaction.followUp({
+                embeds: [EmbedFactory.success(MESSAGES.TICKETS.CLOSING_WITH_TRANSCRIPT.replace('{id}', transcriptId))],
+                flags: 64
+              });
+            } catch (followUpError) {
+              console.error('❌ Failed to send followUp:', followUpError);
+              // Send message to channel as last resort
+              await interaction.channel.send({
+                embeds: [EmbedFactory.success(MESSAGES.TICKETS.CLOSING_WITH_TRANSCRIPT.replace('{id}', transcriptId))]
+              });
+            }
+          }
 
           // Delete channel after 10 seconds
           setTimeout(async () => {
@@ -483,9 +539,23 @@ module.exports = {
 
         } catch (error) {
           console.error('Error creating transcript:', error);
-          await interaction.editReply({
-            embeds: [EmbedFactory.error(MESSAGES.ERRORS.OPERATION_FAILED)]
-          });
+          // Try to send error message
+          try {
+            await interaction.editReply({
+              embeds: [EmbedFactory.error(MESSAGES.ERRORS.OPERATION_FAILED)]
+            });
+          } catch (editError) {
+            try {
+              await interaction.followUp({
+                embeds: [EmbedFactory.error(MESSAGES.ERRORS.OPERATION_FAILED)],
+                flags: 64
+              });
+            } catch (followUpError) {
+              await interaction.channel.send({
+                embeds: [EmbedFactory.error(MESSAGES.ERRORS.OPERATION_FAILED)]
+              });
+            }
+          }
         }
       }
 
@@ -496,9 +566,23 @@ module.exports = {
         // Clean up ticket state
         await client.deleteTicketState(interaction.channel.id);
         
-        await interaction.editReply({
-          embeds: [EmbedFactory.warning(MESSAGES.TICKETS.CLOSING_WITHOUT_TRANSCRIPT)]
-        });
+        // Try to send closing message
+        try {
+          await interaction.editReply({
+            embeds: [EmbedFactory.warning(MESSAGES.TICKETS.CLOSING_WITHOUT_TRANSCRIPT)]
+          });
+        } catch (editError) {
+          try {
+            await interaction.followUp({
+              embeds: [EmbedFactory.warning(MESSAGES.TICKETS.CLOSING_WITHOUT_TRANSCRIPT)],
+              flags: 64
+            });
+          } catch (followUpError) {
+            await interaction.channel.send({
+              embeds: [EmbedFactory.warning(MESSAGES.TICKETS.CLOSING_WITHOUT_TRANSCRIPT)]
+            });
+          }
+        }
 
         // Delete channel after 5 seconds
         setTimeout(async () => {
