@@ -126,7 +126,7 @@ module.exports = {
       'Este código foi usado no ticket #{originalTicket} por {originalUser}',
       '',
       '⏳ **Ambos os tickets estão revisão manual**',
-      '🛡️ **Suporte humano foi notificado**',
+      '🛡️ **A equipa foi notificada**',
       '',
       'Aguarda enquanto a nossa equipa verifica a situação.'
     ].join('\n')
@@ -331,7 +331,7 @@ module.exports = {
 
     TEAM_NOTIFIED: 'Equipe de suporte foi notificada! Aguarda um momento.',
     COMPLETED: 'Suporte marcado como concluído!',
-    TICKET_PAUSED: '⚠️ **Ticket pausado para revisão**\n\nO código `{code}` foi usado novamente em outro ticket.\n\n🛡️ **Suporte humano foi notificado**\nAguarde enquanto a nossa equipa verifica a situação.',
+    TICKET_PAUSED: '⚠️ **Ticket pausado para revisão**\n\nO código `{code}` foi usado novamente em outro ticket.\n\n🛡️ **A equipa foi notificada**\nAguarde enquanto a nossa equipa verifica a situação.',
     SITUATION_RESOLVED: '✅ **Situação resolvida pelo suporte**\n\nPode continuar com o seu ticket normalmente.'
   },
 
@@ -429,10 +429,10 @@ module.exports = {
       '👤 **User:** {user}',
       '📝 **Motivo:** {reason}',
       '',
-      '🛡️ Suporte humano necessário'
+      '🛡️ Suporte da equipa necessário'
     ].join('\n'),
 
-    REVIEW_SENT: 'Solicitação de revisão enviada para o suporte humano.'
+    REVIEW_SENT: 'Solicitação de revisão enviada para o equipa.'
   },
 
   // === CÓDIGOS TELEGRAM DUPLICADOS ===
@@ -725,7 +725,7 @@ module.exports = {
         'Este código foi usado no ticket #{originalTicket} por {originalUser}',
         '',
         '⏳ **Ticket pausado para revisão manual**',
-        '🛡️ **Suporte humano foi notificado**',
+        '🛡️ **A equipa foi notificada**',
         '',
         'Aguarda enquanto a nossa equipa verifica a situação.'
       ].join('\n'),
@@ -735,7 +735,7 @@ module.exports = {
         '',
         'O código `{code}` foi usado novamente em outro ticket.',
         '',
-        '🛡️ **Suporte humano foi notificado**',
+        '🛡️ **A equipa foi notificada**',
         'Aguarde enquanto a nossa equipa verifica a situação.'
       ].join('\n'),
       
