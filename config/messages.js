@@ -638,176 +638,179 @@ module.exports = {
     ADMIN_ONLY: 'Este comando requer permissões de administrador'
   },
 
-  // === ERROR HANDLING SYSTEM ===
-  ERROR_HANDLER: {
-    SYSTEM_ERROR_TITLE: 'Erro do Sistema',
-    CRITICAL_ERROR_TITLE: 'ERRO CRÍTICO',
-    WARNING_TITLE: 'Aviso do Sistema',
-    INFO_TITLE: 'Informação do Sistema',
-    
-    SYSTEM_ERROR_DESCRIPTION: [
-      'Ocorreu um erro interno no sistema.',
-      '',
-      '🛡️ **A equipa técnica foi notificada**',
-      '🔄 **Tente novamente em alguns momentos**',
-      '💬 **Se persistir, contacte o suporte**'
-    ].join('\n'),
-    
-    CRITICAL_ERROR_DETECTED: '@here **ERRO CRÍTICO DETECTADO**',
-    ERROR_CONTEXT_FIELD: 'Contexto',
-    ERROR_TIMESTAMP_FIELD: 'Timestamp',
-    ERROR_SEVERITY_FIELD: 'Severidade',
-    SEVERITY_CRITICAL: 'CRÍTICA',
-    SEVERITY_NORMAL: 'Normal',
-    
-    GRACEFUL_SHUTDOWN_START: 'Starting graceful shutdown...',
-    GRACEFUL_SHUTDOWN_COMPLETE: 'Graceful shutdown completed',
-    DATABASE_CLOSED: 'Database connections closed',
-    CLIENT_DESTROYED: 'Discord client destroyed',
-    
-    MONITORING_FOOTER: 'Sistema de Monitorização de Erros',
-    RECOVERY_FOOTER: 'Sistema de Recuperação de Erros',
-    LOGS_FOOTER: 'Sistema de Logs'
-  },
+  // === MENSAGENS ADICIONAIS E SISTEMA DE ERROR HANDLING ===
+  ADDITIONAL: {
+    // Error Handling System
+    ERROR_HANDLER: {
+      SYSTEM_ERROR_TITLE: 'Erro do Sistema',
+      CRITICAL_ERROR_TITLE: 'ERRO CRÍTICO',
+      WARNING_TITLE: 'Aviso do Sistema',
+      INFO_TITLE: 'Informação do Sistema',
+      
+      SYSTEM_ERROR_DESCRIPTION: [
+        'Ocorreu um erro interno no sistema.',
+        '',
+        '🛡️ **A equipa técnica foi notificada**',
+        '🔄 **Tente novamente em alguns momentos**',
+        '💬 **Se persistir, contacte o suporte**'
+      ].join('\n'),
+      
+      CRITICAL_ERROR_DETECTED: '@here **ERRO CRÍTICO DETECTADO**',
+      ERROR_CONTEXT_FIELD: 'Contexto',
+      ERROR_TIMESTAMP_FIELD: 'Timestamp',
+      ERROR_SEVERITY_FIELD: 'Severidade',
+      SEVERITY_CRITICAL: 'CRÍTICA',
+      SEVERITY_NORMAL: 'Normal',
+      
+      GRACEFUL_SHUTDOWN_START: 'Starting graceful shutdown...',
+      GRACEFUL_SHUTDOWN_COMPLETE: 'Graceful shutdown completed',
+      DATABASE_CLOSED: 'Database connections closed',
+      CLIENT_DESTROYED: 'Discord client destroyed',
+      
+      MONITORING_FOOTER: 'Sistema de Monitorização de Erros',
+      RECOVERY_FOOTER: 'Sistema de Recuperação de Erros',
+      LOGS_FOOTER: 'Sistema de Logs'
+    },
 
-  // === DUPLICATE TELEGRAM CODES ===
-  DUPLICATE_TELEGRAM: {
-    ALERT_TITLE: 'CÓDIGO TELEGRAM DUPLICADO DETECTADO',
-    ALERT_DESCRIPTION: [
-      '**🚨 CÓDIGO TELEGRAM DUPLICADO DETECTADO**',
-      '',
-      '🔴 **Código:** `{code}`',
-      '',
-      '📋 **Uso Original:**',
-      '• Ticket: #{originalTicket}',
-      '• Usuário: {originalUser}',
-      '• Casino: {originalCasino}',
-      '• Data: {originalDate}',
-      '',
-      '🆕 **Tentativa Atual:**',
-      '• Ticket: #{currentTicket}',
-      '• Usuário: {currentUser}',
-      '• Canal: {currentChannel}',
-      '',
-      '⚠️ **AMBOS os tickets foram pausados para revisão manual**'
-    ].join('\n'),
-    
-    USER_NOTIFICATION: [
-      '🚨 **Código já foi utilizado anteriormente**',
-      '',
-      'Este código foi usado no ticket #{originalTicket} por {originalUser}',
-      '',
-      '⏳ **Ticket pausado para revisão manual**',
-      '🛡️ **Suporte humano foi notificado**',
-      '',
-      'Aguarda enquanto a nossa equipa verifica a situação.'
-    ].join('\n'),
-    
-    TICKET_PAUSED: [
-      '⚠️ **Ticket pausado para revisão**',
-      '',
-      'O código `{code}` foi usado novamente em outro ticket.',
-      '',
-      '🛡️ **Suporte humano foi notificado**',
-      'Aguarde enquanto a nossa equipa verifica a situação.'
-    ].join('\n'),
-    
-    SITUATION_RESOLVED: 'Situação de código duplicado resolvida! Ambos os tickets foram reativados.',
-    RESOLUTION_ERROR: 'Erro ao resolver situação de código duplicado',
-    BOTH_TICKETS_REACTIVATED: '✅ **Situação resolvida pelo suporte**\n\nPode continuar com o seu ticket normalmente.',
-    
-    BUTTON_ORIGINAL_TICKET: 'Ticket Original #{number}',
-    BUTTON_CURRENT_TICKET: 'Ticket Atual #{number}',
-    BUTTON_MARK_RESOLVED: 'Marcar como Resolvido'
-  },
+    // Duplicate Telegram Codes
+    DUPLICATE_TELEGRAM: {
+      ALERT_TITLE: 'CÓDIGO TELEGRAM DUPLICADO DETECTADO',
+      ALERT_DESCRIPTION: [
+        '**🚨 CÓDIGO TELEGRAM DUPLICADO DETECTADO**',
+        '',
+        '🔴 **Código:** `{code}`',
+        '',
+        '📋 **Uso Original:**',
+        '• Ticket: #{originalTicket}',
+        '• Usuário: {originalUser}',
+        '• Casino: {originalCasino}',
+        '• Data: {originalDate}',
+        '',
+        '🆕 **Tentativa Atual:**',
+        '• Ticket: #{currentTicket}',
+        '• Usuário: {currentUser}',
+        '• Canal: {currentChannel}',
+        '',
+        '⚠️ **AMBOS os tickets foram pausados para revisão manual**'
+      ].join('\n'),
+      
+      USER_NOTIFICATION: [
+        '🚨 **Código já foi utilizado anteriormente**',
+        '',
+        'Este código foi usado no ticket #{originalTicket} por {originalUser}',
+        '',
+        '⏳ **Ticket pausado para revisão manual**',
+        '🛡️ **Suporte humano foi notificado**',
+        '',
+        'Aguarda enquanto a nossa equipa verifica a situação.'
+      ].join('\n'),
+      
+      TICKET_PAUSED: [
+        '⚠️ **Ticket pausado para revisão**',
+        '',
+        'O código `{code}` foi usado novamente em outro ticket.',
+        '',
+        '🛡️ **Suporte humano foi notificado**',
+        'Aguarde enquanto a nossa equipa verifica a situação.'
+      ].join('\n'),
+      
+      SITUATION_RESOLVED: 'Situação de código duplicado resolvida! Ambos os tickets foram reativados.',
+      RESOLUTION_ERROR: 'Erro ao resolver situação de código duplicado',
+      BOTH_TICKETS_REACTIVATED: '✅ **Situação resolvida pelo suporte**\n\nPode continuar com o seu ticket normalmente.',
+      
+      BUTTON_ORIGINAL_TICKET: 'Ticket Original #{number}',
+      BUTTON_CURRENT_TICKET: 'Ticket Atual #{number}',
+      BUTTON_MARK_RESOLVED: 'Marcar como Resolvido'
+    },
 
-  // === BCGAME SPECIFIC ===
-  BCGAME: {
-    STEP1_DESCRIPTION: '📧 Envia **screenshot** do email de registro no BC.Game **e** o **ID da BCGame em texto**',
-    MISSING_EMAIL: '**screenshot do email**',
-    MISSING_ID: '**ID da BCGame em texto**',
-    ID_RECEIVED: 'ID da BCGame recebido: {id}',
-    VERIFICATION_ROLE_ADDED: 'Cargo de verificação BCGame adicionado ao usuário {user}'
-  },
+    // BCGame Specific Messages
+    BCGAME: {
+      STEP1_DESCRIPTION: '📧 Envia **screenshot** do email de registro no BC.Game **e** o **ID da BCGame em texto**',
+      MISSING_EMAIL: '**screenshot do email**',
+      MISSING_ID: '**ID da BCGame em texto**',
+      ID_RECEIVED: 'ID da BCGame recebido: {id}',
+      VERIFICATION_ROLE_ADDED: 'Cargo de verificação BCGame adicionado ao usuário {user}'
+    },
 
-  // === VERIFIED USERS SYSTEM ===
-  VERIFIED_USERS: {
-    SKIP_CHECKLIST: '✅ **Utilizador verificado** - envia **imagem do depósito com QR visível** + **endereço LTC em texto**.',
-    MISSING_REQUIREMENTS: 'Ainda falta: {missing}',
-    DEPOSIT_COMPLETE: 'Depósito e endereço LTC recebidos! Clique em **Finalizar** para completar.',
-    VERIFICATION_STATUS: 'Status de verificação: {status}',
-    VERIFIED_FOR_CASINO: 'Verificado para {casino}',
-    NOT_VERIFIED: 'Não verificado'
-  },
+    // Verified Users System
+    VERIFIED_USERS: {
+      SKIP_CHECKLIST: '✅ **Utilizador verificado** - envia **imagem do depósito com QR visível** + **endereço LTC em texto**.',
+      MISSING_REQUIREMENTS: 'Ainda falta: {missing}',
+      DEPOSIT_COMPLETE: 'Depósito e endereço LTC recebidos! Clique em **Finalizar** para completar.',
+      VERIFICATION_STATUS: 'Status de verificação: {status}',
+      VERIFIED_FOR_CASINO: 'Verificado para {casino}',
+      NOT_VERIFIED: 'Não verificado'
+    },
 
-  // === DATABASE AND SYSTEM ===
-  DATABASE: {
-    CONNECTION_SUCCESS: 'Connected to MongoDB',
-    CONNECTION_ERROR: 'MongoDB connection error',
-    CONNECTION_CLOSED: 'MongoDB connection closed',
-    CATEGORIES_LOADED: 'Loaded {count} categories from database',
-    PROMOTIONS_LOADED: 'Loaded {count} promotions from database',
-    TICKET_STATES_RESTORED: 'Restored {count} ticket states from MongoDB',
-    CLEANUP_COMPLETED: 'Cleaned up {count} old records',
-    SAVE_ERROR: 'Error saving to database',
-    LOAD_ERROR: 'Error loading from database'
-  },
+    // Database and System Messages
+    DATABASE: {
+      CONNECTION_SUCCESS: 'Connected to MongoDB',
+      CONNECTION_ERROR: 'MongoDB connection error',
+      CONNECTION_CLOSED: 'MongoDB connection closed',
+      CATEGORIES_LOADED: 'Loaded {count} categories from database',
+      PROMOTIONS_LOADED: 'Loaded {count} promotions from database',
+      TICKET_STATES_RESTORED: 'Restored {count} ticket states from MongoDB',
+      CLEANUP_COMPLETED: 'Cleaned up {count} old records',
+      SAVE_ERROR: 'Error saving to database',
+      LOAD_ERROR: 'Error loading from database'
+    },
 
-  // === AUTO-UPDATE MESSAGES ===
-  AUTO_UPDATE: {
-    STATS_UPDATED: 'Statistics updated in stats channel',
-    TICKET_MESSAGE_UPDATED: 'Ticket message updated automatically',
-    PROMOTIONS_REFRESHED: 'Promotions refreshed from database',
-    CATEGORIES_REFRESHED: 'Categories refreshed from database',
-    EXPIRED_PROMOTIONS: 'Expired promotion: {name} (ID: {id})',
-    UPDATE_ERROR: 'Error during automatic update'
-  },
+    // Auto-Update Messages
+    AUTO_UPDATE: {
+      STATS_UPDATED: 'Statistics updated in stats channel',
+      TICKET_MESSAGE_UPDATED: 'Ticket message updated automatically',
+      PROMOTIONS_REFRESHED: 'Promotions refreshed from database',
+      CATEGORIES_REFRESHED: 'Categories refreshed from database',
+      EXPIRED_PROMOTIONS: 'Expired promotion: {name} (ID: {id})',
+      UPDATE_ERROR: 'Error during automatic update'
+    },
 
-  // === LOGS AND MONITORING ===
-  LOGS: {
-    TICKET_CREATED: 'Ticket created: #{number} by {user}',
-    TICKET_CLOSED: 'Ticket closed: #{number}',
-    CATEGORY_CREATED: 'Category created: {name} (ID: {id})',
-    PROMOTION_CREATED: 'Promotion created: {name} (ID: {id})',
-    USER_VERIFIED: 'User verified for {casino}: {user}',
-    CODE_VALIDATED: 'Telegram code validated: {code}',
-    DUPLICATE_CODE_DETECTED: 'Duplicate telegram code detected: {code}',
-    SUPPORT_REQUESTED: 'Support requested in ticket #{number}',
-    TRANSCRIPT_CREATED: 'Transcript created: {id}',
-    SUBMISSION_APPROVED: 'Submission approved: ticket #{number}',
-    SUBMISSION_REJECTED: 'Submission rejected: ticket #{number}',
-    PAYMENT_COMPLETED: 'Payment completed: ticket #{number}'
-  },
+    // Logs and Monitoring
+    LOGS: {
+      TICKET_CREATED: 'Ticket created: #{number} by {user}',
+      TICKET_CLOSED: 'Ticket closed: #{number}',
+      CATEGORY_CREATED: 'Category created: {name} (ID: {id})',
+      PROMOTION_CREATED: 'Promotion created: {name} (ID: {id})',
+      USER_VERIFIED: 'User verified for {casino}: {user}',
+      CODE_VALIDATED: 'Telegram code validated: {code}',
+      DUPLICATE_CODE_DETECTED: 'Duplicate telegram code detected: {code}',
+      SUPPORT_REQUESTED: 'Support requested in ticket #{number}',
+      TRANSCRIPT_CREATED: 'Transcript created: {id}',
+      SUBMISSION_APPROVED: 'Submission approved: ticket #{number}',
+      SUBMISSION_REJECTED: 'Submission rejected: ticket #{number}',
+      PAYMENT_COMPLETED: 'Payment completed: ticket #{number}'
+    },
 
-  // === DEBUG AND DEVELOPMENT ===
-  DEBUG: {
-    FORCE_REFRESH_START: 'FORCE REFRESH: Starting...',
-    FORCE_REFRESH_COMPLETE: 'FORCE REFRESH: Memory now has {count} items',
-    MEMORY_STATE: 'Items in memory: {items}',
-    DATABASE_STATE: 'Database returned {count} items',
-    DIRECT_DB_QUERY: 'Direct DB query returned {count} items',
-    REFRESH_COMPLETE: 'Refresh Completo Executado',
-    INITIALIZATION_COMPLETE: 'System initialization complete',
-    ERROR_HANDLER_READY: 'Error handlers initialized',
-    BOT_READY: 'Bot online como {tag}'
-  },
+    // Debug and Development
+    DEBUG: {
+      FORCE_REFRESH_START: 'FORCE REFRESH: Starting...',
+      FORCE_REFRESH_COMPLETE: 'FORCE REFRESH: Memory now has {count} items',
+      MEMORY_STATE: 'Items in memory: {items}',
+      DATABASE_STATE: 'Database returned {count} items',
+      DIRECT_DB_QUERY: 'Direct DB query returned {count} items',
+      REFRESH_COMPLETE: 'Refresh Completo Executado',
+      INITIALIZATION_COMPLETE: 'System initialization complete',
+      ERROR_HANDLER_READY: 'Error handlers initialized',
+      BOT_READY: 'Bot online como {tag}'
+    },
 
-  // === CASINO VERIFICATION ===
-  CASINO_VERIFICATION: {
-    ROLE_ADDED: 'Verification role added for {casino}',
-    ROLE_ADD_ERROR: 'Error adding verification role',
-    USER_VERIFIED_FOR: 'User {user} verified for {casino}',
-    VERIFICATION_CHECK: 'Checking verification for {casino}',
-    NO_VERIFICATION_ROLE: 'No verification role configured for {casino}'
-  },
+    // Casino Verification
+    CASINO_VERIFICATION: {
+      ROLE_ADDED: 'Verification role added for {casino}',
+      ROLE_ADD_ERROR: 'Error adding verification role',
+      USER_VERIFIED_FOR: 'User {user} verified for {casino}',
+      VERIFICATION_CHECK: 'Checking verification for {casino}',
+      NO_VERIFICATION_ROLE: 'No verification role configured for {casino}'
+    },
 
-  // === AUTOMATIC PROGRESSION ===
-  AUTO_PROGRESSION: {
-    NEXT_STEP_AUTO: 'Avançando automaticamente para o próximo passo...',
-    STEP_COMPLETED: 'Passo {step} concluído! Próximo passo:',
-    CHECKLIST_AUTO_ADVANCE: 'Checklist avança automaticamente após validação',
-    VIP_STEP_COMPLETED: 'Passo VIP {step} concluído',
-    FINAL_STEP_REACHED: 'Último passo do checklist atingido'
+    // Automatic Progression
+    AUTO_PROGRESSION: {
+      NEXT_STEP_AUTO: 'Avançando automaticamente para o próximo passo...',
+      STEP_COMPLETED: 'Passo {step} concluído! Próximo passo:',
+      CHECKLIST_AUTO_ADVANCE: 'Checklist avança automaticamente após validação',
+      VIP_STEP_COMPLETED: 'Passo VIP {step} concluído',
+      FINAL_STEP_REACHED: 'Último passo do checklist atingido'
+    }
   },
 
   // === ERROS COMUNS ===
