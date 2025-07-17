@@ -18,11 +18,12 @@ const TicketStateSchema = new mongoose.Schema({
   awaitDescription: { type: Boolean, default: false },
   awaitTwitchNick: { type: Boolean, default: false },
   awaitLtcOnly: { type: Boolean, default: false },
+  awaitingSupport: { type: Boolean, default: false }, // NOVO: Para pausar tickets
   websiteType: { type: String, default: null },
   twitchNick: { type: String, default: null },
   twitchProofImage: { type: Boolean, default: false },
   selectedRedeem: { type: String, default: null },
-  bcGameId: { type: String, default: null }, // NOVO: Para BCGame ID
+  bcGameId: { type: String, default: null },
   prize: { type: String, default: null },
   telegramCode: { type: String, default: null },
   telegramHasImg: { type: Boolean, default: false },
@@ -93,7 +94,7 @@ const SubmissionSchema = new mongoose.Schema({
   casino: { type: String, default: null },
   prize: { type: String, default: null },
   ltcAddress: { type: String, default: null },
-  bcGameId: { type: String, default: null }, // NOVO: Para BCGame ID
+  bcGameId: { type: String, default: null },
   status: { type: String, default: 'pending' },
   createdAt: { type: Date, default: Date.now }
 });
@@ -109,7 +110,7 @@ const ApprovalSchema = new mongoose.Schema({
   casino: { type: String, required: true },
   prize: { type: String, required: true },
   ltcAddress: { type: String, required: true },
-  bcGameId: { type: String, default: null }, // NOVO: Para BCGame ID
+  bcGameId: { type: String, default: null },
   status: { type: String, default: 'pending' },
   createdAt: { type: Date, default: Date.now }
 });
@@ -133,7 +134,12 @@ const TelegramCodeSchema = new mongoose.Schema({
   casino: { type: String, default: null },
   prize: { type: String, default: null },
   usedAt: { type: Date, default: Date.now },
-  status: { type: String, default: 'used' } // used, duplicate_attempt
+  status: { type: String, default: 'used' }, // used, duplicate_attempt
+  // NOVO: Para tentativas duplicadas
+  lastAttemptTicketId: { type: String, default: null },
+  lastAttemptUserId: { type: String, default: null },
+  lastAttemptUserTag: { type: String, default: null },
+  lastAttemptAt: { type: Date, default: null }
 });
 
 // Add index for automatic deletion
@@ -359,6 +365,7 @@ class DatabaseManager {
           awaitDescription: state.awaitDescription || false,
           awaitTwitchNick: state.awaitTwitchNick || false,
           awaitLtcOnly: state.awaitLtcOnly || false,
+          awaitingSupport: state.awaitingSupport || false,
           websiteType: state.websiteType || null,
           twitchNick: state.twitchNick || null,
           twitchProofImage: state.twitchProofImage || false,
@@ -404,6 +411,7 @@ class DatabaseManager {
         awaitDescription: doc.awaitDescription,
         awaitTwitchNick: doc.awaitTwitchNick,
         awaitLtcOnly: doc.awaitLtcOnly,
+        awaitingSupport: doc.awaitingSupport,
         websiteType: doc.websiteType,
         twitchNick: doc.twitchNick,
         twitchProofImage: doc.twitchProofImage,
@@ -458,6 +466,7 @@ class DatabaseManager {
           awaitDescription: doc.awaitDescription,
           awaitTwitchNick: doc.awaitTwitchNick,
           awaitLtcOnly: doc.awaitLtcOnly,
+          awaitingSupport: doc.awaitingSupport,
           websiteType: doc.websiteType,
           twitchNick: doc.twitchNick,
           twitchProofImage: doc.twitchProofImage,
