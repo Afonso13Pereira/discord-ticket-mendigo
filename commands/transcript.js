@@ -62,6 +62,27 @@ module.exports = {
     ),
 
   async execute(interaction, client) {
+    // Verificar se a interação já foi processada ou expirou
+    if (interaction.replied || interaction.deferred) {
+      console.warn('⚠️ Interaction already processed, skipping transcript command');
+      return;
+    }
+
+    // Verificar idade da interação (máximo 15 minutos)
+    const interactionAge = Date.now() - interaction.createdTimestamp;
+    if (interactionAge > 15 * 60 * 1000) {
+      console.warn('⚠️ Interaction too old, skipping transcript command');
+      return;
+    }
+
+    // Defer a resposta imediatamente para operações que podem demorar
+    try {
+      await interaction.deferReply({ flags: 64 });
+    } catch (error) {
+      console.error('Error deferring transcript interaction:', error);
+      return;
+    }
+
     const subcommand = interaction.options.getSubcommand();
 
     if (subcommand === 'user') {
@@ -74,14 +95,12 @@ module.exports = {
         const { transcripts, total } = await client.db.getUserTranscripts(user.id, limit, offset);
         
         if (transcripts.length === 0) {
-          return interaction.reply({
+          return interaction.editReply({
             embeds: [EmbedFactory.info(
               page === 1 
                 ? MESSAGES.TRANSCRIPTS.USER_NO_TRANSCRIPTS.replace('{user}', user.tag)
-                : MESSAGES.TRANSCRIPTS.USER_NO_MORE_PAGES.replace('{page}', page),
-              'Transcripts do Usuário'
-            )],
-            flags: 64
+                : MESSAGES.TRANSCRIPTS.USER_NO_MORE_PAGES.replace('{page}', page)
+            )]
           });
         }
 
@@ -89,17 +108,15 @@ module.exports = {
         const embed = EmbedFactory.userTranscriptsList(user, transcripts, page, totalPages, total);
         const components = ComponentFactory.transcriptPaginationButtons(user.id, page, totalPages);
 
-        return interaction.reply({
+        return interaction.editReply({
           embeds: [embed],
-          components: components.length > 0 ? [components] : [],
-          flags: 64
+          components: components.length > 0 ? [components] : []
         });
 
       } catch (error) {
         console.error('Error getting user transcripts:', error);
-        return interaction.reply({
-          embeds: [EmbedFactory.error(MESSAGES.TRANSCRIPTS.GET_ERROR)],
-          flags: 64
+        return interaction.editReply({
+          embeds: [EmbedFactory.error(MESSAGES.TRANSCRIPTS.GET_ERROR)]
         });
       }
     }
@@ -110,19 +127,17 @@ module.exports = {
       const transcript = await client.db.getTranscript(transcriptId);
       
       if (!transcript) {
-        return interaction.reply({
-          embeds: [EmbedFactory.error(MESSAGES.TRANSCRIPTS.NOT_FOUND)],
-          flags: 64
+        return interaction.editReply({
+          embeds: [EmbedFactory.error(MESSAGES.TRANSCRIPTS.NOT_FOUND)]
         });
       }
 
       const embed = EmbedFactory.transcriptView(transcript);
       const components = ComponentFactory.transcriptButtons(transcriptId);
 
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [embed],
-        components: [components],
-        flags: 64
+        components: [components]
       });
     }
 
@@ -132,19 +147,17 @@ module.exports = {
       const transcript = await client.db.getTranscript(transcriptId);
       
       if (!transcript) {
-        return interaction.reply({
-          embeds: [EmbedFactory.error('Transcript não encontrado ou expirado')],
-          flags: 64
+        return interaction.editReply({
+          embeds: [EmbedFactory.error('Transcript não encontrado ou expirado')]
         });
       }
 
       const embed = EmbedFactory.transcriptView(transcript);
       const components = ComponentFactory.transcriptButtons(transcriptId);
 
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [embed],
-        components: [components],
-        flags: 64
+        components: [components]
       });
     }
 
@@ -154,9 +167,8 @@ module.exports = {
       const transcript = await client.db.getTranscript(transcriptId);
       
       if (!transcript) {
-        return interaction.reply({
-          embeds: [EmbedFactory.error('Transcript não encontrado ou expirado')],
-          flags: 64
+        return interaction.editReply({
+          embeds: [EmbedFactory.error('Transcript não encontrado ou expirado')]
         });
       }
 
@@ -166,10 +178,9 @@ module.exports = {
         name: `transcript-${transcript.channelName}-${transcriptId}.txt`
       });
 
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [EmbedFactory.success(`Download do transcript **${transcript.channelName}** (ID: \`${transcriptId}\`)`)],
-        files: [attachment],
-        flags: 64
+        files: [attachment]
       });
     }
 
@@ -179,9 +190,8 @@ module.exports = {
       const transcript = await client.db.getTranscript(transcriptId);
       
       if (!transcript) {
-        return interaction.reply({
-          embeds: [EmbedFactory.error('Transcript não encontrado ou expirado')],
-          flags: 64
+        return interaction.editReply({
+          embeds: [EmbedFactory.error('Transcript não encontrado ou expirado')]
         });
       }
 
@@ -196,16 +206,14 @@ module.exports = {
           components: [components]
         });
 
-        return interaction.reply({
-          embeds: [EmbedFactory.success(`Transcript **${transcript.channelName}** enviado para ${transcriptsChannel}`)],
-          flags: 64
+        return interaction.editReply({
+          embeds: [EmbedFactory.success(`Transcript **${transcript.channelName}** enviado para ${transcriptsChannel}`)]
         });
 
       } catch (error) {
         console.error('Error sending transcript to channel:', error);
-        return interaction.reply({
-          embeds: [EmbedFactory.error('Erro ao enviar transcript para o canal')],
-          flags: 64
+        return interaction.editReply({
+          embeds: [EmbedFactory.error('Erro ao enviar transcript para o canal')]
         });
       }
     }
