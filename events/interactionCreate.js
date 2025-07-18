@@ -1651,53 +1651,6 @@ module.exports = {
       let targetChannel;
       let channelName;
       
-      if (ticketState?.gwType || ticketState?.casino || ticketState?.category === 'Giveaways') {
-        // Giveaway-related ticket - use GIVEAWAYSHELP channel
-        targetChannel = await interaction.guild.channels.fetch(CHANNELS.GIVEAWAYSHELP).catch(() => null);
-        channelName = 'GIVEAWAYSHELP_CHANNEL_ID';
-      } else if (ticketState?.category === 'Website' && ticketState?.websiteType === 'redeem') {
-        // Website redeem ticket - use REDEEMS channel
-        targetChannel = await interaction.guild.channels.fetch(CHANNELS.REDEEMS).catch(() => null);
-        channelName = 'REDEEMS_CHANNEL_ID';
-      } else if (ticketState?.category === 'Website' && ticketState?.websiteType === 'bug') {
-        // Website bug ticket - use OTHER channel
-        targetChannel = await interaction.guild.channels.fetch(CHANNELS.OTHER).catch(() => null);
-        channelName = 'OTHER_CHANNEL_ID';
-      } else if (ticketState?.category === 'Dúvidas') {
-        // Questions ticket - use AJUDAS channel
-        targetChannel = await interaction.guild.channels.fetch(CHANNELS.AJUDAS).catch(() => null);
-        channelName = 'AJUDAS_CHANNEL_ID';
-      } else {
-        // Other ticket types - use OTHER channel
-        targetChannel = await interaction.guild.channels.fetch(CHANNELS.OTHER).catch(() => null);
-        channelName = 'OTHER_CHANNEL_ID';
-      }
-      
-      if (targetChannel && targetChannel.send) {
-        const embed = EmbedFactory.supportRequest(
-          MESSAGES.SUPPORT.REQUEST_TITLE,
-          ticketState?.ticketNumber || 'N/A',
-          interaction.user.tag,
-          interaction.channel.id
-        );
-        const components = ComponentFactory.supportCompletionButton(`general_${interaction.channel.id}`);
-        
-        await targetChannel.send({
-          embeds: [embed],
-          components: [components]
-        });
-      } else {
-        console.error(`❌ ${channelName} not found, invalid, or not a text channel`);
-      }
-      
-      // Log support request
-      await client.db.logAction(interaction.channel.id, interaction.user.id, 'support_requested', null);
-      
-      return interaction.followUp({
-        embeds: [EmbedFactory.success(MESSAGES.SUPPORT.TEAM_NOTIFIED)],
-        flags: 64
-      });
-    }
   }
 };
 

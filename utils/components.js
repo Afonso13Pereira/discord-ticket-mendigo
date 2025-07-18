@@ -386,7 +386,11 @@ class ComponentFactory {
   // === APPROVAL BUTTONS ===
   static approvalButtons(approvalId) {
     return this.createButtonRow(
-      this.createButton(`approval_goto_${approvalId}`, MESSAGES.BUTTONS.GOTO_TICKET, ButtonStyle.Primary, '🎫'),
+      this.createLinkButton(
+        `https://discord.com/channels/${process.env.GUILD_ID || '@me'}/${approvalId}`,
+        MESSAGES.BUTTONS.GOTO_TICKET,
+        '🎫'
+      ),
       this.createButton(`approval_paid_${approvalId}`, MESSAGES.BUTTONS.PAID, ButtonStyle.Success, '💰'),
       this.createButton(`approval_review_${approvalId}`, MESSAGES.BUTTONS.REVIEW, ButtonStyle.Secondary, '🔍')
     );
