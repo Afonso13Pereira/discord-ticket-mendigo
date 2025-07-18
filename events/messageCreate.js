@@ -77,7 +77,6 @@ module.exports = {
       if (ltcAddress.length >= 25) {
         ticketState.ltcData.hasAddress = true;
         ticketState.ltcAddress = ltcAddress;
-        console.log('[LTC_ONLY] LTC address capturado:', ltcAddress);
       }
       
       await client.saveTicketState(message.channel.id, ticketState);
@@ -100,7 +99,6 @@ module.exports = {
       
       // Log LTC address
       await client.db.logAction(message.channel.id, message.author.id, 'ltc_deposit_provided', ltcAddress.substring(0, 10) + '...');
-      console.log('[LTC_ONLY] Processo completo, LTC final:', ticketState.ltcAddress);
       
       return message.reply({
         embeds: [EmbedFactory.success(MESSAGES.GIVEAWAYS.VERIFIED_USER_COMPLETE)],
@@ -199,8 +197,11 @@ module.exports = {
           embeds: [embed],
           components: [components]
         });
+        const ltcFromStep = ticketState.stepData[lastStepIndex].textContent.trim();
+        console.log('[CHECKLIST][LTC] Copiando LTC do último passo:', ltcFromStep);
       } else {
         console.error('❌ AJUDAS_CHANNEL_ID not found, invalid, or not a text channel');
+        console.log('[CHECKLIST][LTC] LTC salvo no estado:', ticketState.ltcAddress);
       }
 
       return message.reply({
@@ -665,12 +666,9 @@ module.exports = {
           ticketState.stepData[lastStepIndex] &&
           ticketState.stepData[lastStepIndex].textContent
         ) {
-          const ltcFromStep = ticketState.stepData[lastStepIndex].textContent.trim();
-          console.log('[CHECKLIST][LTC] Copiando LTC do último passo:', ltcFromStep);
-          ticketState.ltcAddress = ltcFromStep;
+          console.log('[CHECKLIST][LTC] Copiando LTC:', ticketState.stepData[lastStepIndex].textContent);
+          ticketState.ltcAddress = ticketState.stepData[lastStepIndex].textContent;
           await client.saveTicketState(message.channel.id, ticketState);
-        } else {
-          console.log('[CHECKLIST][LTC] LTC salvo no estado:', ticketState.ltcAddress);
         }
 
         return message.reply({
