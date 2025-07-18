@@ -87,7 +87,7 @@ const SubmissionSchema = new mongoose.Schema({
   gwType: { type: String, required: true },
   casino: { type: String, default: null },
   prize: { type: String, default: null },
-  ltcAddress: { type: String, default: null },
+  ltcAddress: { type: String, default: 'N/A' },
   bcGameId: { type: String, default: null },
   status: { type: String, default: 'pending' },
   createdAt: { type: Date, default: Date.now }

@@ -1370,64 +1370,76 @@ module.exports = {
       });
     }
 
-    // Mod Approve Button
-    if (interaction.isButton() && interaction.customId.startsWith('mod_approve_')) {
-      // Check if user has mod role
-      if (!interaction.member.roles.cache.has(ROLES.MOD)) {
+    // === MOD BUTTONS ===
+    if (interaction.customId.startsWith('mod_')) {
+      const [action, submissionId] = interaction.customId.split('_').slice(1);
+      
+      console.log(`[MOD][${action.toUpperCase()}] Looking for submissionId:`, submissionId);
+      
+      const submission = await client.db.getSubmission(submissionId);
+      if (!submission) {
+        console.log(`[MOD][${action.toUpperCase()}] Submission not found:`, submissionId);
         return interaction.reply({
-          embeds: [EmbedFactory.error(MESSAGES.PERMISSIONS.NO_PERMISSION)],
+          embeds: [EmbedFactory.error('Submissão não encontrada')],
           flags: 64
         });
       }
-
-      const submissionId = interaction.customId.split('_')[2];
       
-      // Show prize modal
-      const modal = new ModalBuilder()
-        .setCustomId(`prize_modal_${submissionId}`)
-        .setTitle(`💰 ${MESSAGES.LABELS.PRIZE_VALUE}`)
-        .addComponents(
-          new ActionRowBuilder().addComponents(
-            new TextInputBuilder()
-              .setCustomId('prize_value')
-              .setLabel(MESSAGES.LABELS.PRIZE_VALUE)
-              .setStyle(TextInputStyle.Short)
-              .setPlaceholder(MESSAGES.PLACEHOLDERS.PRIZE_VALUE)
-              .setRequired(true)
-          )
-        );
-      
-      return interaction.showModal(modal);
-    }
+      console.log(`[MOD][${action.toUpperCase()}] Found submission:`, submission.submissionId);
 
-    // Mod Reject Button
-    if (interaction.isButton() && interaction.customId.startsWith('mod_reject_')) {
-      // Check if user has mod role
-      if (!interaction.member.roles.cache.has(ROLES.MOD)) {
-        return interaction.reply({
-          embeds: [EmbedFactory.error(MESSAGES.PERMISSIONS.NO_PERMISSION)],
-          flags: 64
-        });
+      if (action === 'approve') {
+        // Check if user has mod role
+        if (!interaction.member.roles.cache.has(ROLES.MOD)) {
+          return interaction.reply({
+            embeds: [EmbedFactory.error(MESSAGES.PERMISSIONS.NO_PERMISSION)],
+            flags: 64
+          });
+        }
+
+        // Show prize modal
+        const modal = new ModalBuilder()
+          .setCustomId(`prize_modal_${submissionId}`)
+          .setTitle(`💰 ${MESSAGES.LABELS.PRIZE_VALUE}`)
+          .addComponents(
+            new ActionRowBuilder().addComponents(
+              new TextInputBuilder()
+                .setCustomId('prize_value')
+                .setLabel(MESSAGES.LABELS.PRIZE_VALUE)
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder(MESSAGES.PLACEHOLDERS.PRIZE_VALUE)
+                .setRequired(true)
+            )
+          );
+        
+        return interaction.showModal(modal);
       }
 
-      const submissionId = interaction.customId.split('_')[2];
-      
-      // Show rejection modal
-      const modal = new ModalBuilder()
-        .setCustomId(`reject_modal_${submissionId}`)
-        .setTitle(`❌ ${MESSAGES.LABELS.REJECT_REASON}`)
-        .addComponents(
-          new ActionRowBuilder().addComponents(
-            new TextInputBuilder()
-              .setCustomId('reject_reason')
-              .setLabel(MESSAGES.LABELS.REJECT_REASON)
-              .setStyle(TextInputStyle.Paragraph)
-              .setPlaceholder(MESSAGES.PLACEHOLDERS.REJECT_REASON)
-              .setRequired(true)
-          )
-        );
-      
-      return interaction.showModal(modal);
+      if (action === 'reject') {
+        // Check if user has mod role
+        if (!interaction.member.roles.cache.has(ROLES.MOD)) {
+          return interaction.reply({
+            embeds: [EmbedFactory.error(MESSAGES.PERMISSIONS.NO_PERMISSION)],
+            flags: 64
+          });
+        }
+
+        // Show rejection modal
+        const modal = new ModalBuilder()
+          .setCustomId(`reject_modal_${submissionId}`)
+          .setTitle(`❌ ${MESSAGES.LABELS.REJECT_REASON}`)
+          .addComponents(
+            new ActionRowBuilder().addComponents(
+              new TextInputBuilder()
+                .setCustomId('reject_reason')
+                .setLabel(MESSAGES.LABELS.REJECT_REASON)
+                .setStyle(TextInputStyle.Paragraph)
+                .setPlaceholder(MESSAGES.PLACEHOLDERS.REJECT_REASON)
+                .setRequired(true)
+            )
+          );
+        
+        return interaction.showModal(modal);
+      }
     }
 
     // Approval Buttons
