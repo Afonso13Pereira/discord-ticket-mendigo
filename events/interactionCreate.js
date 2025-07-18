@@ -1350,36 +1350,37 @@ module.exports = {
       console.log('[FINISH][DEBUG] Estado completo do ticket:', JSON.stringify(ticketState, null, 2));
       console.log('[FINISH][DEBUG] ltcAddress no estado:', ticketState.ltcAddress);
       console.log('[FINISH][DEBUG] Tipo do ltcAddress:', typeof ticketState.ltcAddress);
-
-      // CORREÇÃO: Tentar obter ltcAddress de múltiplas fontes
+      console.log('[FINISH_TICKET][START] Estado completo do ticket:', JSON.stringify(ticketState, null, 2));
+      console.log('[FINISH_TICKET][START] ltcAddress inicial:', ticketState.ltcAddress);
       let finalLtcAddress = ticketState.ltcAddress;
-      
+      // CRÍTICO: Garantir que temos ltcAddress antes de continuar
       // Se não tem ltcAddress, tentar buscar nos stepData
-      if (!finalLtcAddress && ticketState.stepData) {
-        console.log('[FINISH][DEBUG] Procurando LTC nos stepData:', ticketState.stepData);
+        console.log('[FINISH_TICKET][SEARCH] ltcAddress não definido, buscando nos stepData...');
         
-        // Procurar em todos os passos por texto que possa ser LTC
+        // Primeiro: buscar por formato válido de LTC
         for (const [stepIdx, stepData] of Object.entries(ticketState.stepData)) {
           if (stepData.textContent && stepData.textContent.trim().length >= 10) {
             const potentialLtc = stepData.textContent.trim();
             console.log('[FINISH][DEBUG] Texto encontrado no passo', stepIdx, ':', potentialLtc);
             
-            // Validar se parece com endereço LTC
-            if (potentialLtc.length >= 25 && (potentialLtc.startsWith('L') || potentialLtc.startsWith('M') || potentialLtc.startsWith('ltc1'))) {
               finalLtcAddress = potentialLtc;
               console.log('[FINISH][DEBUG] LTC encontrado nos stepData:', finalLtcAddress);
-              
-              // Salvar no estado para próximas vezes
-              ticketState.ltcAddress = finalLtcAddress;
               await client.saveTicketState(interaction.channel.id, ticketState);
               break;
-            } else if (potentialLtc.length >= 10) {
+              console.log(`[FINISH_TICKET][SEARCH] LTC válido encontrado no passo ${stepIdx}:`, text);
               // Fallback: qualquer texto longo pode ser LTC
               finalLtcAddress = potentialLtc;
-              console.log('[FINISH][DEBUG] LTC encontrado (fallback) nos stepData:', finalLtcAddress);
-              
+            }
+          }
+        }
+        
+        // Segundo: se não encontrou formato válido, usar qualquer texto longo
+        if (!ticketState.ltcAddress) {
+          for (const [stepIdx, stepData] of Object.entries(ticketState.stepData)) {
+            if (stepData.textContent && stepData.textContent.trim().length >= 10) {
+              const text = stepData.textContent.trim();
               // Salvar no estado
-              ticketState.ltcAddress = finalLtcAddress;
+              console.log(`[FINISH_TICKET][SEARCH] LTC fallback encontrado no passo ${stepIdx}:`, text);
               await client.saveTicketState(interaction.channel.id, ticketState);
               break;
             }
@@ -1387,13 +1388,21 @@ module.exports = {
         }
       }
       
-      // Se ainda não tem, usar valor padrão
-      if (!finalLtcAddress) {
         finalLtcAddress = 'N/A - Não fornecido';
         console.log('[FINISH][DEBUG] Usando valor padrão para LTC');
+      // CRÍTICO: Verificar se conseguimos obter ltcAddress
+      console.log('[FINISH_TICKET][FINAL] ltcAddress após busca:', ticketState.ltcAddress);
+      
+      // Se ainda não temos ltcAddress, usar valor padrão informativo
+      if (!ticketState.ltcAddress) {
+        ticketState.ltcAddress = "N/A - Endereço não fornecido";
+        await client.saveTicketState(interaction.channel.id, ticketState);
+        console.log('[FINISH_TICKET][FINAL] Usando valor padrão para ltcAddress');
       }
       
-      console.log('[FINISH][DEBUG] ltcAddress final que será usado:', finalLtcAddress);
+      // Verificar estado final antes de criar submission
+      const finalState = await client.db.getTicketState(interaction.channel.id);
+      console.log('[FINISH_TICKET][DB_CHECK] Estado final na DB:', finalState?.ltcAddress);
 
       const submissionId = await client.db.saveSubmission(
         interaction.channel.id,
@@ -1403,13 +1412,12 @@ module.exports = {
         ticketState.gwType || ticketState.vipType || 'unknown',
         ticketState.casino || ticketState.vipCasino,
         ticketState.ltcAddress,
-        finalLtcAddress,
+        ticketState.ltcAddress,
         ticketState.bcGameId
       );
 
       console.log('[FINISH_TICKET][DEBUG] Submission criada com ID:', submissionId);
-      console.log('[FINISH_TICKET][DEBUG] ltcAddress enviado para submission:', ticketState.ltcAddress);
-
+      console.log('[FINISH_TICKET][DEBUG] ltcAddress enviado para DB:', ticketState.ltcAddress);
       console.log('[FINISH][DEBUG] Submission criada com ID:', submissionId);
       console.log('[FINISH][DEBUG] ltcAddress enviado para DB:', finalLtcAddress);
       

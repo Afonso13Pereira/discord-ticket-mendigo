@@ -479,6 +479,21 @@ class DatabaseManager {
     try {
       const submissionId = require('crypto').randomUUID().slice(0, 12);
       
+      // CRÍTICO: Garantir que ltcAddress nunca seja null
+      const finalLtcAddress = ltcAddress || 'N/A - Não fornecido';
+      
+      console.log('[DB][saveSubmission] Dados recebidos:');
+      console.log('  - ticketChannelId:', ticketChannelId);
+      console.log('  - ticketNumber:', ticketNumber);
+      console.log('  - userId:', userId);
+      console.log('  - userTag:', userTag);
+      console.log('  - gwType:', gwType);
+      console.log('  - casino:', casino);
+      console.log('  - prize:', prize);
+      console.log('  - ltcAddress original:', ltcAddress);
+      console.log('  - ltcAddress final:', finalLtcAddress);
+      console.log('  - bcGameId:', bcGameId);
+      
       const submission = new this.Submission({
         submissionId,
         ticketChannelId,
@@ -488,11 +503,12 @@ class DatabaseManager {
         gwType,
         casino,
         prize,
-        ltcAddress,
+        ltcAddress: finalLtcAddress,
         bcGameId
       });
       
       await submission.save();
+      console.log('[DB][saveSubmission] Submission salva com sucesso, ID:', submissionId);
       return submissionId;
     } catch (error) {
       console.error('Error saving submission:', error);
@@ -504,8 +520,15 @@ class DatabaseManager {
     if (!this.connected) return null;
     
     try {
+      console.log('[DB][getSubmission] Buscando submissionId:', submissionId);
       const doc = await this.Submission.findOne({ submissionId });
-      if (!doc) return null;
+      if (!doc) {
+        console.log('[DB][getSubmission] Submission não encontrada:', submissionId);
+        return null;
+      }
+      
+      console.log('[DB][getSubmission] Submission encontrada:', submissionId);
+      console.log('[DB][getSubmission] ltcAddress na DB:', doc.ltcAddress);
       
       return {
         submissionId: doc.submissionId,
@@ -548,21 +571,19 @@ class DatabaseManager {
     try {
       const approvalId = `approval_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      // DEBUG: Log todos os dados recebidos
-      console.log('[DB][saveApproval][DEBUG] Dados recebidos:');
+      // CRÍTICO: Garantir que ltcAddress nunca seja null
+      const finalLtcAddress = ltcAddress || 'N/A - Não fornecido';
+      
+      console.log('[DB][saveApproval] Dados recebidos:');
       console.log('  - ticketChannelId:', ticketChannelId);
       console.log('  - ticketNumber:', ticketNumber);
       console.log('  - userId:', userId);
       console.log('  - userTag:', userTag);
       console.log('  - casino:', casino);
       console.log('  - prize:', prize);
-      console.log('  - ltcAddress:', ltcAddress);
-      console.log('  - ltcAddress tipo:', typeof ltcAddress);
+      console.log('  - ltcAddress original:', ltcAddress);
+      console.log('  - ltcAddress final:', finalLtcAddress);
       console.log('  - bcGameId:', bcGameId);
-      
-      // Garantir que ltcAddress nunca seja null
-      const finalLtcAddress = ltcAddress || 'N/A';
-      console.log('[DB][saveApproval][DEBUG] ltcAddress final:', finalLtcAddress);
       
       const approval = new this.Approval({
         approvalId,
@@ -577,7 +598,7 @@ class DatabaseManager {
       });
       
       await approval.save();
-      console.log('[DB][saveApproval][DEBUG] Approval salva com sucesso, ID:', approvalId);
+      console.log('[DB][saveApproval] Approval salva com sucesso, ID:', approvalId);
       return approvalId;
     } catch (error) {
       console.error('Error saving approval:', error);
@@ -592,10 +613,12 @@ class DatabaseManager {
       console.log('[DB][getApproval] Buscando approvalId:', approvalId);
       const doc = await this.Approval.findOne({ approvalId });
       if (!doc) {
-        console.log('[DB][getApproval] Não encontrado:', approvalId);
+        console.log('[DB][getApproval] Approval não encontrada:', approvalId);
         return null;
       }
-      console.log('[DB][getApproval] Encontrado:', doc.approvalId);
+      
+      console.log('[DB][getApproval] Approval encontrada:', doc.approvalId);
+      console.log('[DB][getApproval] ltcAddress na DB:', doc.ltcAddress);
       
       return {
         approvalId: doc.approvalId,

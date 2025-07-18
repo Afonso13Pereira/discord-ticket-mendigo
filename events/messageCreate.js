@@ -83,15 +83,16 @@ module.exports = {
         ticketState.ltcData.hasAddress = true;
         ticketState.ltcAddress = ltcAddress;
         console.log('[LTC_ONLY][DEBUG] LTC address capturado e salvo:', ltcAddress);
+        await client.saveTicketState(message.channel.id, ticketState);
       } else if (ltcAddress.length >= 10) {
         // Fallback: qualquer texto com mais de 10 caracteres pode ser um endereço
         ticketState.ltcData.hasAddress = true;
         ticketState.ltcAddress = ltcAddress;
         console.log('[LTC_ONLY][DEBUG] LTC address capturado (fallback):', ltcAddress);
+        await client.saveTicketState(message.channel.id, ticketState);
       }
       
-      await client.saveTicketState(message.channel.id, ticketState);
-      console.log('[LTC_ONLY][DEBUG] Estado salvo, ltcAddress no estado:', ticketState.ltcAddress);
+      console.log('[LTC_ONLY][DEBUG] ltcAddress no estado após processamento:', ticketState.ltcAddress);
       
       // Verificar se tem ambos
       if (!ticketState.ltcData.hasImage || !ticketState.ltcData.hasAddress) {
@@ -106,14 +107,14 @@ module.exports = {
       
       // Ambos fornecidos - finalizar
       ticketState.awaitLtcOnly = false;
+      delete ticketState.ltcData; // Limpar dados temporários
       await client.saveTicketState(message.channel.id, ticketState);
       
-      const savedState = await client.db.getTicketState(message.channel.id);
-      console.log('[LTC_ONLY][DEBUG] Estado salvo na DB:', savedState?.ltcAddress);
+      console.log('[LTC_ONLY][COMPLETE] ltcAddress final salvo:', ticketState.ltcAddress);
       
-      // Agora podemos limpar stepData se quisermos
-      // delete ticketState.stepData;
-      // await client.saveTicketState(message.channel.id, ticketState);
+      // Verificar se foi realmente salvo na DB
+      const savedState = await client.db.getTicketState(message.channel.id);
+      console.log('[LTC_ONLY][COMPLETE] Verificação DB - ltcAddress:', savedState?.ltcAddress);
       
       return message.reply({
         embeds: [EmbedFactory.success(MESSAGES.GIVEAWAYS.VERIFIED_USER_COMPLETE)],
@@ -629,6 +630,22 @@ module.exports = {
         if (stepTypes.includes('text') && message.content && message.content.trim().length >= 5) {
           ticketState.stepData[stepIndex].hasText = true;
           ticketState.stepData[stepIndex].textContent = message.content.trim();
+          
+          // NOVO: Capturar LTC imediatamente quando texto é fornecido
+          const textContent = message.content.trim();
+          console.log(`[LTC][CAPTURE][STEP_${stepIndex}] Texto capturado:`, textContent);
+          
+          // Verificar se parece com endereço LTC
+          if (textContent.length >= 25 && (textContent.startsWith('L') || textContent.startsWith('M') || textContent.startsWith('ltc1'))) {
+            ticketState.ltcAddress = textContent;
+            console.log(`[LTC][CAPTURE][STEP_${stepIndex}] LTC válido capturado:`, textContent);
+            await client.saveTicketState(message.channel.id, ticketState);
+          } else if (textContent.length >= 10 && !ticketState.ltcAddress) {
+            // Fallback: qualquer texto longo se ainda não temos LTC
+            ticketState.ltcAddress = textContent;
+            console.log(`[LTC][CAPTURE][STEP_${stepIndex}] LTC fallback capturado:`, textContent);
+            await client.saveTicketState(message.channel.id, ticketState);
+          }
         }
 
         // Check if all required types are provided
@@ -641,8 +658,7 @@ module.exports = {
         if (allRequirementsMet) {
           // All requirements met, advance to next step
           ticketState.awaitProof = false;
-          // Clear step data for this step
-          delete ticketState.stepData[stepIndex];
+          // NÃO limpar step data ainda - precisamos para LTC
           await client.saveTicketState(message.channel.id, ticketState);
         } else {
           // Still missing requirements, save state and wait for more input
@@ -676,42 +692,32 @@ module.exports = {
         // Log checklist completion
         await client.db.logAction(message.channel.id, message.author.id, 'checklist_completed', `Casino: ${ticketState.casino}`);
 
-        // NOVO: Copiar texto do último passo para ltcAddress, se houver
-        const lastStepIndex = casino.checklist.length - 1;
-        const lastStep = casino.checklist[lastStepIndex];
-        console.log('[CHECKLIST][LTC][DEBUG] Verificando último passo:', lastStepIndex);
-        console.log('[CHECKLIST][LTC][DEBUG] stepData completo:', JSON.stringify(ticketState.stepData, null, 2));
+        // NOVO: Garantir que temos LTC antes de finalizar
+        console.log('[CHECKLIST][COMPLETE] ltcAddress atual:', ticketState.ltcAddress);
         
-        if (
-          Array.isArray(lastStep.type) &&
-          lastStep.type.includes('text') &&
-          ticketState.stepData &&
-          ticketState.stepData[lastStepIndex] &&
-          ticketState.stepData[lastStepIndex].textContent
-        ) {
-          const ltcFromStep = ticketState.stepData[lastStepIndex].textContent.trim();
-          console.log('[CHECKLIST][LTC][DEBUG] Copiando LTC do passo:', ltcFromStep);
-          ticketState.ltcAddress = ltcFromStep;
-          await client.saveTicketState(message.channel.id, ticketState);
-          console.log('[CHECKLIST][LTC][DEBUG] LTC salvo no estado:', ticketState.ltcAddress);
-        } else {
-          console.log('[CHECKLIST][LTC][DEBUG] Não foi possível copiar LTC do último passo');
-          console.log('[CHECKLIST][LTC][DEBUG] lastStep.type:', lastStep.type);
-          console.log('[CHECKLIST][LTC][DEBUG] stepData[lastStepIndex]:', ticketState.stepData?.[lastStepIndex]);
-        }
-        
-        // NOVO: Tentar encontrar qualquer texto que possa ser LTC em qualquer passo
+        // Se não temos LTC, procurar em todos os stepData
         if (!ticketState.ltcAddress && ticketState.stepData) {
-          console.log('[CHECKLIST][LTC][DEBUG] Procurando LTC em todos os passos...');
+          console.log('[CHECKLIST][COMPLETE] Procurando LTC em stepData...');
+          
+          // Procurar primeiro por formato válido
           for (const [stepIdx, stepData] of Object.entries(ticketState.stepData)) {
-            if (stepData.textContent && stepData.textContent.trim().length >= 10) {
-              const potentialLtc = stepData.textContent.trim();
-              console.log('[CHECKLIST][LTC][DEBUG] Encontrado texto no passo', stepIdx, ':', potentialLtc);
-              
-              // Se parece com endereço LTC, usar
-              if (potentialLtc.startsWith('L') || potentialLtc.startsWith('M') || potentialLtc.startsWith('ltc1') || potentialLtc.length >= 25) {
-                ticketState.ltcAddress = potentialLtc;
-                console.log('[CHECKLIST][LTC][DEBUG] LTC encontrado e salvo:', potentialLtc);
+            if (stepData.textContent) {
+              const text = stepData.textContent.trim();
+              if (text.length >= 25 && (text.startsWith('L') || text.startsWith('M') || text.startsWith('ltc1'))) {
+                ticketState.ltcAddress = text;
+                console.log(`[CHECKLIST][COMPLETE] LTC encontrado no passo ${stepIdx}:`, text);
+                await client.saveTicketState(message.channel.id, ticketState);
+                break;
+              }
+            }
+          }
+          
+          // Se ainda não encontrou, usar qualquer texto longo
+          if (!ticketState.ltcAddress) {
+            for (const [stepIdx, stepData] of Object.entries(ticketState.stepData)) {
+              if (stepData.textContent && stepData.textContent.trim().length >= 10) {
+                ticketState.ltcAddress = stepData.textContent.trim();
+                console.log(`[CHECKLIST][COMPLETE] LTC fallback do passo ${stepIdx}:`, ticketState.ltcAddress);
                 await client.saveTicketState(message.channel.id, ticketState);
                 break;
               }
@@ -719,8 +725,7 @@ module.exports = {
           }
         }
         
-        // NOVO: Verificar se ltcAddress foi definido
-        console.log('[CHECKLIST][LTC][DEBUG] ltcAddress final no estado:', ticketState.ltcAddress);
+        console.log('[CHECKLIST][COMPLETE] ltcAddress final:', ticketState.ltcAddress);
         
         return message.reply({
           embeds: [EmbedFactory.success(MESSAGES.CHECKLIST.COMPLETED)],
