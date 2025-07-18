@@ -725,6 +725,61 @@ module.exports = {
       });
     }
 
+    // === APPROVAL GOTO TICKET ===
+    if (interaction.customId.startsWith('approval_goto_')) {
+      const approvalId = interaction.customId.split('_')[2];
+      
+      try {
+        const approval = await client.db.getApproval(approvalId);
+        if (!approval) {
+          return interaction.reply({
+            embeds: [EmbedFactory.error('Aprovação não encontrada')],
+            flags: 64
+          });
+        }
+
+        const ticketChannel = await interaction.guild.channels.fetch(approval.ticketChannelId).catch(() => null);
+        if (!ticketChannel) {
+          return interaction.reply({
+            embeds: [EmbedFactory.error('Canal do ticket não encontrado')],
+            flags: 64
+          });
+        }
+
+        const embed = EmbedFactory.info([
+          `**Ticket #${approval.ticketNumber}**`,
+          '',
+          `👤 **Usuário:** ${approval.userTag}`,
+          `🎰 **Casino:** ${approval.casino}`,
+          `💰 **Prêmio:** ${approval.prize}`,
+          `📍 **Canal:** ${ticketChannel}`,
+          '',
+          'Clique no link abaixo para ir ao ticket:'
+        ].join('\n'), 'Informações do Ticket');
+
+        const linkButton = ComponentFactory.createButtonRow(
+          ComponentFactory.createLinkButton(
+            `https://discord.com/channels/${interaction.guild.id}/${approval.ticketChannelId}`,
+            `Ir para Ticket #${approval.ticketNumber}`,
+            '🎫'
+          )
+        );
+
+        return interaction.reply({
+          embeds: [embed],
+          components: [linkButton],
+          flags: 64
+        });
+
+      } catch (error) {
+        console.error('Error in approval goto:', error);
+        return interaction.reply({
+          embeds: [EmbedFactory.error('Erro ao buscar informações do ticket')],
+          flags: 64
+        });
+      }
+    }
+
     // View transcript button
     if (interaction.isButton() && interaction.customId.startsWith('view_transcript_')) {
       try {
@@ -1651,6 +1706,53 @@ module.exports = {
       let targetChannel;
       let channelName;
       
+      if (ticketState?.gwType || ticketState?.casino || ticketState?.category === 'Giveaways') {
+        // Giveaway-related ticket - use GIVEAWAYSHELP channel
+        targetChannel = await interaction.guild.channels.fetch(CHANNELS.GIVEAWAYSHELP).catch(() => null);
+        channelName = 'GIVEAWAYSHELP_CHANNEL_ID';
+      } else if (ticketState?.category === 'Website' && ticketState?.websiteType === 'redeem') {
+        // Website redeem ticket - use REDEEMS channel
+        targetChannel = await interaction.guild.channels.fetch(CHANNELS.REDEEMS).catch(() => null);
+        channelName = 'REDEEMS_CHANNEL_ID';
+      } else if (ticketState?.category === 'Website' && ticketState?.websiteType === 'bug') {
+        // Website bug ticket - use OTHER channel
+        targetChannel = await interaction.guild.channels.fetch(CHANNELS.OTHER).catch(() => null);
+        channelName = 'OTHER_CHANNEL_ID';
+      } else if (ticketState?.category === 'Dúvidas') {
+        // Questions ticket - use AJUDAS channel
+        targetChannel = await interaction.guild.channels.fetch(CHANNELS.AJUDAS).catch(() => null);
+        channelName = 'AJUDAS_CHANNEL_ID';
+      } else {
+        // Other ticket types - use OTHER channel
+        targetChannel = await interaction.guild.channels.fetch(CHANNELS.OTHER).catch(() => null);
+        channelName = 'OTHER_CHANNEL_ID';
+      }
+      
+      if (targetChannel && targetChannel.send) {
+        const embed = EmbedFactory.supportRequest(
+          MESSAGES.SUPPORT.REQUEST_TITLE,
+          ticketState?.ticketNumber || 'N/A',
+          interaction.user.tag,
+          interaction.channel.id
+        );
+        const components = ComponentFactory.supportCompletionButton(`general_${interaction.channel.id}`);
+        
+        await targetChannel.send({
+          embeds: [embed],
+          components: [components]
+        });
+      } else {
+        console.error(`❌ ${channelName} not found, invalid, or not a text channel`);
+      }
+      
+      // Log support request
+      await client.db.logAction(interaction.channel.id, interaction.user.id, 'support_requested', null);
+      
+      return interaction.followUp({
+        embeds: [EmbedFactory.success(MESSAGES.SUPPORT.TEAM_NOTIFIED)],
+        flags: 64
+      });
+    }
   }
 };
 
@@ -1683,10 +1785,10 @@ async function findOrCreateCategoryWithOverflow(guild, categoryName) {
     }
   }
 
-  // Handle approval_goto buttons (REMOVIDO - agora usa link direto)
+  // All categories are full, create a new one
+  const nextNumber = existingCategories.size + 1;
+  const newCategoryName = nextNumber === 1 ? categoryName : `${categoryName} ${nextNumber}`;
   
-  // Handle duplicate code resolution
-  if (interaction.customId.startsWith('duplicate_resolved_')) {
   console.log(`📁 Creating new category: ${newCategoryName} (overflow from full categories)`);
   
   const newCategory = await guild.channels.create({
