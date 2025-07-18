@@ -214,9 +214,6 @@ module.exports = {
           bcGameId = ticketState?.vipId || ticketState?.bcGameId || null;
         }
 
-        // Create approval
-        console.log('[APPROVAL][SUBMIT] ltcAddress:', submission.ltcAddress);
-        const approvalId = await client.db.saveApproval(
         // NOVO: Buscar imagem do perfil BCGame se for BCGame
         let bcGameProfileImage = null;
         if (submission.casino === 'BCGame') {
@@ -248,16 +245,21 @@ module.exports = {
             console.error('[BCGAME][PROFILE_IMAGE] Erro ao buscar imagem:', error);
           }
         }
-        
+
+        // Create approval
+        console.log('[APPROVAL][SUBMIT] ltcAddress:', submission.ltcAddress);
+        const approvalId = await client.db.saveApproval(
           submission.ticketChannelId,
           submission.ticketNumber,
           submission.userId,
           submission.userTag,
           submission.casino,
-        const approvalId = await client.db.saveApproval(submission.ticketChannelId, submission.ticketNumber, submission.userId, submission.userTag, submission.casino, submission.prize, submission.ltcAddress, submission.bcGameId, bcGameProfileImage);
+          prize,
           submission.ltcAddress,
-          bcGameId
+          bcGameId,
+          bcGameProfileImage
         );
+        
         if (!approvalId) {
           console.error('[APPROVAL][ERROR] Falha ao criar approval');
           return interaction.reply({
@@ -277,7 +279,8 @@ module.exports = {
           submission.ticketNumber,
           submission.ltcAddress,
           bcGameId,
-          isVerified
+          isVerified,
+          bcGameProfileImage
         );
         const components = ComponentFactory.approvalButtons(approvalId);
 
