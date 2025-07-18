@@ -1413,15 +1413,19 @@ module.exports = {
         ticketState.ownerTag,
         ticketState.gwType || ticketState.vipType || 'unknown',
         ticketState.casino || ticketState.vipCasino,
-        ticketState.ltcAddress,
+        ticketState.prize,
         ticketState.ltcAddress,
         ticketState.bcGameId
       );
-
       console.log('[FINISH_TICKET][DEBUG] Submission criada com ID:', submissionId);
       console.log('[FINISH_TICKET][DEBUG] ltcAddress enviado para DB:', ticketState.ltcAddress);
-      console.log('[FINISH][DEBUG] Submission criada com ID:', submissionId);
-      console.log('[FINISH][DEBUG] ltcAddress enviado para DB:', finalLtcAddress);
+      if (!submissionId) {
+        console.error('[FINISH_TICKET][ERRO] submissionId retornou null! Não foi possível criar a submissão.');
+        await interaction.channel.send({
+          embeds: [EmbedFactory.error('Erro ao criar submissão. Tente novamente ou contate o suporte.')],
+        });
+        return;
+      }
       
       // Send to mod channel
       const modChannel = await interaction.guild.channels.fetch(CHANNELS.MOD);
