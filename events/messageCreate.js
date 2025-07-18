@@ -199,9 +199,12 @@ module.exports = {
         });
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         const ltcFromStep = ticketState.stepData[lastStepIndex].textContent.trim();
         console.log('[CHECKLIST][LTC] Copiando LTC do último passo:', ltcFromStep);
 =======
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
         // NOVO: Copiar LTC do último passo após envio
@@ -217,6 +220,9 @@ module.exports = {
           console.log('[CHECKLIST][LTC] Copiando LTC do último passo:', ltcFromStep);
         }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
