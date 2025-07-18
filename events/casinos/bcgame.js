@@ -23,7 +23,7 @@ module.exports = {
     {
       title: 'Passo 3',
       description: '📥 Envia **screenshot** do depósito em LTC **e** cola o **endereço LTC** em texto',
-      type: ['image', 'text'],
+      type: ['image', 'ltcAdress'],
       image: 'https://i.imgur.com/iTeiS5c.png'
     }
   ]

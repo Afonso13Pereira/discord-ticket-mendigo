@@ -100,6 +100,33 @@ module.exports = {
       // Log LTC address
       await client.db.logAction(message.channel.id, message.author.id, 'ltc_deposit_provided', ltcAddress.substring(0, 10) + '...');
       
+      // Debug: logar dados enviados para submissão
+      console.log('[DEBUG][LTC] Salvando submissão:', {
+        channelId: message.channel.id,
+        ticketNumber: ticketState.ticketNumber,
+        ownerId: ticketState.ownerId,
+        ownerTag: ticketState.ownerTag,
+        gwType: ticketState.gwType || ticketState.vipType || 'unknown',
+        casino: ticketState.casino || ticketState.vipCasino,
+        prize: ticketState.prize,
+        ltcAddress: ticketState.ltcAddress,
+        bcGameId: ticketState.bcGameId
+      });
+      
+      // Salvar submissão com LTC
+      const submissionId = await client.db.saveSubmission(
+        message.channel.id,
+        ticketState.ticketNumber,
+        ticketState.ownerId,
+        ticketState.ownerTag,
+        ticketState.gwType || ticketState.vipType || 'unknown',
+        ticketState.casino || ticketState.vipCasino,
+        ticketState.prize,
+        ticketState.ltcAddress,
+        ticketState.bcGameId
+      );
+      console.log('[DEBUG][LTC] submissionId retornado:', submissionId);
+      
       return message.reply({
         embeds: [EmbedFactory.success(MESSAGES.GIVEAWAYS.VERIFIED_USER_COMPLETE)],
         components: [ComponentFactory.finishButtons()]
@@ -603,15 +630,20 @@ module.exports = {
         if (stepTypes.includes('image') && message.attachments.size > 0) {
           ticketState.stepData[stepIndex].hasImage = true;
         }
-        if (stepTypes.includes('text') && message.content && message.content.trim().length >= 5) {
+        if (stepTypes.includes('text') && message.content && message.content.trim().length > 0) {
           ticketState.stepData[stepIndex].hasText = true;
           ticketState.stepData[stepIndex].textContent = message.content.trim();
+        }
+        if (stepTypes.includes('ltcAdress') && message.content && message.content.trim().length > 0) {
+          ticketState.stepData[stepIndex].hasLtcAdress = true;
+          ticketState.stepData[stepIndex].ltcAdressContent = message.content.trim();
+          ticketState.ltcAddress = message.content.trim();
         }
 
         // Check if all required types are provided
         const allRequirementsMet = stepTypes.every(type => {
           if (type === 'image') return ticketState.stepData[stepIndex].hasImage;
-          if (type === 'text') return ticketState.stepData[stepIndex].hasText;
+          if (type === 'ltcAdress') return ticketState.stepData[stepIndex].hasLtcAdress;
           return false;
         });
 
@@ -628,7 +660,16 @@ module.exports = {
           // Show what's still missing
           const missing = [];
           if (stepTypes.includes('image') && !ticketState.stepData[stepIndex].hasImage) missing.push('**imagem**');
-          if (stepTypes.includes('text') && !ticketState.stepData[stepIndex].hasText) missing.push('**texto**');
+          if (stepTypes.includes('ltcAdress') && !ticketState.stepData[stepIndex].hasLtcAdress) missing.push('**endereço LTC**');
+          // Fallback para tipos desconhecidos
+          for (const type of stepTypes) {
+            if (
+              !['image', 'ltcAdress'].includes(type) &&
+              !(ticketState.stepData[stepIndex]['has' + type.charAt(0).toUpperCase() + type.slice(1)])
+            ) {
+              missing.push(`**${type}**`);
+            }
+          }
           
           return message.reply({
             embeds: [EmbedFactory.error(MESSAGES.CHECKLIST.MISSING_REQUIREMENTS.replace('{missing}', missing.join(' e ')))]
@@ -653,18 +694,19 @@ module.exports = {
         // Log checklist completion
         await client.db.logAction(message.channel.id, message.author.id, 'checklist_completed', `Casino: ${ticketState.casino}`);
 
-        // NOVO: Copiar texto do último passo para ltcAddress, se houver
+        // NOVO: Copiar endereço LTC do último passo se houver, mas só se ainda não estiver preenchido
         const lastStepIndex = casino.checklist.length - 1;
         const lastStep = casino.checklist[lastStepIndex];
         if (
+          !ticketState.ltcAddress &&
           Array.isArray(lastStep.type) &&
-          lastStep.type.includes('text') &&
+          lastStep.type.includes('ltcAdress') &&
           ticketState.stepData &&
           ticketState.stepData[lastStepIndex] &&
-          ticketState.stepData[lastStepIndex].textContent
+          ticketState.stepData[lastStepIndex].ltcAdressContent
         ) {
-          console.log('[CHECKLIST][LTC] Copiando LTC:', ticketState.stepData[lastStepIndex].textContent);
-          ticketState.ltcAddress = ticketState.stepData[lastStepIndex].textContent;
+          console.log('[CHECKLIST][LTC] Copiando LTC:', ticketState.stepData[lastStepIndex].ltcAdressContent);
+          ticketState.ltcAddress = ticketState.stepData[lastStepIndex].ltcAdressContent;
           await client.saveTicketState(message.channel.id, ticketState);
         }
 

@@ -13,6 +13,13 @@ const TicketStateSchema = new mongoose.Schema({
   vipId: { type: String, default: null },
   casino: { type: String, default: null },
   step: { type: Number, default: 0 },
+  stepData: {
+    type: [{
+      hasImage: { type: Boolean, default: false },
+      hasText: { type: Boolean, default: false },
+      textContent: { type: String, default: null }
+    }], default: []
+  },
   awaitConfirm: { type: Boolean, default: false },
   awaitProof: { type: Boolean, default: false },
   awaitDescription: { type: Boolean, default: false },
@@ -152,7 +159,7 @@ class DatabaseManager {
     try {
       this.connectionAttempts++;
       const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://franciscop2004:MendigoTVAPI@mendigoapi.b8mvaps.mongodb.net/mendigo?retryWrites=true&w=majority';
-      
+
       await mongoose.connect(mongoUri, {
         useNewUrlParser: true,
         useUnifiedTopology: true,
@@ -181,7 +188,7 @@ class DatabaseManager {
     } catch (error) {
       console.error('❌ MongoDB connection error:', error);
       this.connected = false;
-      
+
       // Retry connection after 5 seconds
       if (this.connectionAttempts < this.maxRetries) {
         console.log(`🔄 Retrying connection in 5 seconds... (${this.connectionAttempts}/${this.maxRetries})`);
@@ -195,7 +202,7 @@ class DatabaseManager {
   // === TELEGRAM CODES ===
   async checkTelegramCode(code) {
     if (!this.connected) return null;
-    
+
     try {
       const existingCode = await this.TelegramCode.findOne({ code: code.toLowerCase() });
       return existingCode ? {
@@ -217,7 +224,7 @@ class DatabaseManager {
 
   async saveTelegramCode(code, ticketChannelId, ticketNumber, userId, userTag, casino = null, prize = null) {
     if (!this.connected) return false;
-    
+
     try {
       const telegramCode = new this.TelegramCode({
         code: code.toLowerCase(),
@@ -228,7 +235,7 @@ class DatabaseManager {
         casino,
         prize
       });
-      
+
       await telegramCode.save();
       return true;
     } catch (error) {
@@ -239,11 +246,11 @@ class DatabaseManager {
 
   async markCodeAsDuplicateAttempt(code, attemptTicketId, attemptUserId, attemptUserTag) {
     if (!this.connected) return false;
-    
+
     try {
       await this.TelegramCode.findOneAndUpdate(
         { code: code.toLowerCase() },
-        { 
+        {
           status: 'duplicate_attempt'
         }
       );
@@ -257,13 +264,13 @@ class DatabaseManager {
   // === REDEEMS ===
   async getUserRedeems(twitchName) {
     if (!this.connected) return [];
-    
+
     try {
-      const redeems = await this.Redeem.find({ 
+      const redeems = await this.Redeem.find({
         twitchName: { $regex: new RegExp(`^${twitchName}$`, 'i') },
-        redeemed: false 
+        redeemed: false
       });
-      
+
       return redeems.map(redeem => ({
         id: redeem._id.toString(),
         itemName: redeem.itemName,
@@ -279,17 +286,17 @@ class DatabaseManager {
 
   async markRedeemAsCompleted(redeemId) {
     if (!this.connected) return false;
-    
+
     try {
       const result = await this.Redeem.findByIdAndUpdate(
         redeemId,
-        { 
+        {
           redeemed: true,
           updatedAt: new Date()
         },
         { new: true }
       );
-      
+
       return !!result;
     } catch (error) {
       console.error('Error marking redeem as completed:', error);
@@ -299,11 +306,11 @@ class DatabaseManager {
 
   async getRedeemById(redeemId) {
     if (!this.connected) return null;
-    
+
     try {
       const redeem = await this.Redeem.findById(redeemId);
       if (!redeem) return null;
-      
+
       return {
         id: redeem._id.toString(),
         itemName: redeem.itemName,
@@ -320,14 +327,14 @@ class DatabaseManager {
   // === CATEGORY COUNTERS ===
   async getNextTicketNumberForCategory(category) {
     if (!this.connected) return 1;
-    
+
     try {
       const counter = await this.CategoryCounter.findOneAndUpdate(
         { category },
         { $inc: { count: 1 } },
         { upsert: true, new: true }
       );
-      
+
       return counter.count;
     } catch (error) {
       console.error('Error getting next ticket number for category:', error);
@@ -338,7 +345,7 @@ class DatabaseManager {
   // === TICKET STATES ===
   async saveTicketState(channelId, state) {
     if (!this.connected) return;
-    
+
     try {
       await this.TicketState.findOneAndUpdate(
         { channelId },
@@ -354,6 +361,7 @@ class DatabaseManager {
           vipId: state.vipId || null,
           casino: state.casino || null,
           step: state.step || 0,
+          stepData: state.stepData || null,
           awaitConfirm: state.awaitConfirm || false,
           awaitProof: state.awaitProof || false,
           awaitDescription: state.awaitDescription || false,
@@ -380,11 +388,11 @@ class DatabaseManager {
 
   async getTicketState(channelId) {
     if (!this.connected) return null;
-    
+
     try {
       const doc = await this.TicketState.findOne({ channelId });
       if (!doc) return null;
-      
+
       return {
         ticketNumber: doc.ticketNumber,
         ownerTag: doc.ownerTag,
@@ -396,6 +404,7 @@ class DatabaseManager {
         vipId: doc.vipId,
         casino: doc.casino,
         step: doc.step,
+        stepData: doc.stepData,
         awaitConfirm: doc.awaitConfirm,
         awaitProof: doc.awaitProof,
         awaitDescription: doc.awaitDescription,
@@ -420,7 +429,7 @@ class DatabaseManager {
 
   async deleteTicketState(channelId) {
     if (!this.connected) return;
-    
+
     try {
       await this.TicketState.deleteOne({ channelId });
     } catch (error) {
@@ -430,11 +439,11 @@ class DatabaseManager {
 
   async getAllTicketStates() {
     if (!this.connected) return new Map();
-    
+
     try {
       const docs = await this.TicketState.find({});
       const states = new Map();
-      
+
       docs.forEach(doc => {
         states.set(doc.channelId, {
           ticketNumber: doc.ticketNumber,
@@ -447,6 +456,7 @@ class DatabaseManager {
           vipId: doc.vipId,
           casino: doc.casino,
           step: doc.step,
+          stepData: doc.stepData,
           awaitConfirm: doc.awaitConfirm,
           awaitProof: doc.awaitProof,
           awaitDescription: doc.awaitDescription,
@@ -464,7 +474,7 @@ class DatabaseManager {
           isVerified: doc.isVerified
         });
       });
-      
+
       return states;
     } catch (error) {
       console.error('Error getting all ticket states:', error);
@@ -475,10 +485,10 @@ class DatabaseManager {
   // === SUBMISSIONS ===
   async saveSubmission(ticketChannelId, ticketNumber, userId, userTag, gwType, casino = null, prize = null, ltcAddress = null, bcGameId = null) {
     if (!this.connected) return null;
-    
+
     try {
       const submissionId = require('crypto').randomUUID().slice(0, 12);
-      
+
       const submission = new this.Submission({
         submissionId,
         ticketChannelId,
@@ -491,7 +501,7 @@ class DatabaseManager {
         ltcAddress,
         bcGameId
       });
-      
+
       await submission.save();
       return submissionId;
     } catch (error) {
@@ -502,11 +512,11 @@ class DatabaseManager {
 
   async getSubmission(submissionId) {
     if (!this.connected) return null;
-    
+
     try {
       const doc = await this.Submission.findOne({ submissionId });
       if (!doc) return null;
-      
+
       return {
         submissionId: doc.submissionId,
         ticketChannelId: doc.ticketChannelId,
@@ -529,7 +539,7 @@ class DatabaseManager {
 
   async updateSubmission(submissionId, status = 'pending') {
     if (!this.connected) return;
-    
+
     try {
       await this.Submission.findOneAndUpdate(
         { submissionId },
@@ -544,10 +554,10 @@ class DatabaseManager {
   // === APPROVALS ===
   async saveApproval(ticketChannelId, ticketNumber, userId, userTag, casino, prize, ltcAddress, bcGameId = null) {
     if (!this.connected) return null;
-    
+
     try {
       const approvalId = `approval_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
+
       const approval = new this.Approval({
         approvalId,
         ticketChannelId,
@@ -559,7 +569,7 @@ class DatabaseManager {
         ltcAddress,
         bcGameId
       });
-      
+
       await approval.save();
       console.log('[DB][saveApproval] Salvo approvalId:', approvalId);
       return approvalId;
@@ -571,7 +581,7 @@ class DatabaseManager {
 
   async getApproval(approvalId) {
     if (!this.connected) return null;
-    
+
     try {
       console.log('[DB][getApproval] Buscando approvalId:', approvalId);
       const doc = await this.Approval.findOne({ approvalId });
@@ -580,7 +590,7 @@ class DatabaseManager {
         return null;
       }
       console.log('[DB][getApproval] Encontrado:', doc.approvalId);
-      
+
       return {
         approvalId: doc.approvalId,
         ticketChannelId: doc.ticketChannelId,
@@ -602,7 +612,7 @@ class DatabaseManager {
 
   async updateApproval(approvalId, status = 'pending') {
     if (!this.connected) return;
-    
+
     try {
       await this.Approval.findOneAndUpdate(
         { approvalId },
@@ -617,7 +627,7 @@ class DatabaseManager {
   // === STATISTICS ===
   async getTicketStatistics() {
     if (!this.connected) return null;
-    
+
     try {
       const now = new Date();
       const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
@@ -690,7 +700,7 @@ class DatabaseManager {
   // === PROMOTIONS ===
   async savePromotion(id, promo) {
     if (!this.connected) return;
-    
+
     try {
       await this.Promotion.findOneAndUpdate(
         { promoId: id },
@@ -712,11 +722,11 @@ class DatabaseManager {
 
   async getPromotions() {
     if (!this.connected) return {};
-    
+
     try {
       const docs = await this.Promotion.find({});
       const promos = {};
-      
+
       docs.forEach(doc => {
         promos[doc.promoId] = {
           name: doc.name,
@@ -728,7 +738,7 @@ class DatabaseManager {
           created: doc.createdAt.getTime()
         };
       });
-      
+
       return promos;
     } catch (error) {
       console.error('❌ Database: Error getting promotions:', error);
@@ -739,7 +749,7 @@ class DatabaseManager {
   // === CATEGORIES ===
   async saveCategory(id, category) {
     if (!this.connected) return;
-    
+
     try {
       await this.Category.findOneAndUpdate(
         { categoryId: id },
@@ -759,11 +769,11 @@ class DatabaseManager {
 
   async getCategories() {
     if (!this.connected) return {};
-    
+
     try {
       const docs = await this.Category.find({});
       const cats = {};
-      
+
       docs.forEach(doc => {
         cats[doc.categoryId] = {
           name: doc.name,
@@ -773,7 +783,7 @@ class DatabaseManager {
           created: doc.createdAt.getTime()
         };
       });
-      
+
       return cats;
     } catch (error) {
       console.error('❌ Database: Error getting categories:', error);
@@ -784,12 +794,12 @@ class DatabaseManager {
   // === TRANSCRIPTS ===
   async saveTranscript(channelId, channelName, ticketNumber, ownerTag, ownerId, category, content, expirationDays = 14) {
     if (!this.connected) return null;
-    
+
     try {
       const transcriptId = require('crypto').randomUUID().slice(0, 12);
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + expirationDays);
-      
+
       const transcript = new this.Transcript({
         transcriptId,
         channelId,
@@ -801,7 +811,7 @@ class DatabaseManager {
         content,
         expiresAt
       });
-      
+
       await transcript.save();
       return transcriptId;
     } catch (error) {
@@ -812,11 +822,11 @@ class DatabaseManager {
 
   async getTranscript(transcriptId) {
     if (!this.connected) return null;
-    
+
     try {
       const doc = await this.Transcript.findOne({ transcriptId });
       if (!doc) return null;
-      
+
       return {
         transcriptId: doc.transcriptId,
         channelId: doc.channelId,
@@ -837,7 +847,7 @@ class DatabaseManager {
 
   async getUserTranscripts(userId, limit = 10, offset = 0) {
     if (!this.connected) return { transcripts: [], total: 0 };
-    
+
     try {
       const [transcripts, total] = await Promise.all([
         this.Transcript.find({ ownerId: userId })
@@ -847,7 +857,7 @@ class DatabaseManager {
           .lean(),
         this.Transcript.countDocuments({ ownerId: userId })
       ]);
-      
+
       const formattedTranscripts = transcripts.map(doc => ({
         transcriptId: doc.transcriptId,
         channelId: doc.channelId,
@@ -860,7 +870,7 @@ class DatabaseManager {
         expiresAt: doc.expiresAt,
         contentPreview: doc.content ? doc.content.substring(0, 100) + '...' : 'Sem conteúdo'
       }));
-      
+
       return { transcripts: formattedTranscripts, total };
     } catch (error) {
       console.error('Error getting user transcripts:', error);
@@ -870,10 +880,10 @@ class DatabaseManager {
 
   async getAllTranscripts(limit = 20, offset = 0, category = null) {
     if (!this.connected) return { transcripts: [], total: 0 };
-    
+
     try {
       const query = category ? { category } : {};
-      
+
       const [transcripts, total] = await Promise.all([
         this.Transcript.find(query)
           .sort({ createdAt: -1 })
@@ -882,7 +892,7 @@ class DatabaseManager {
           .lean(),
         this.Transcript.countDocuments(query)
       ]);
-      
+
       const formattedTranscripts = transcripts.map(doc => ({
         transcriptId: doc.transcriptId,
         channelId: doc.channelId,
@@ -895,7 +905,7 @@ class DatabaseManager {
         expiresAt: doc.expiresAt,
         contentPreview: doc.content ? doc.content.substring(0, 100) + '...' : 'Sem conteúdo'
       }));
-      
+
       return { transcripts: formattedTranscripts, total };
     } catch (error) {
       console.error('Error getting all transcripts:', error);
@@ -905,12 +915,12 @@ class DatabaseManager {
 
   async cleanupExpiredTranscripts() {
     if (!this.connected) return 0;
-    
+
     try {
       const result = await this.Transcript.deleteMany({
         expiresAt: { $lt: new Date() }
       });
-      
+
       return result.deletedCount;
     } catch (error) {
       console.error('Error cleaning up expired transcripts:', error);
@@ -921,7 +931,7 @@ class DatabaseManager {
   // === LOGS ===
   async logAction(channelId, userId, action, details = null) {
     if (!this.connected) return;
-    
+
     try {
       const log = new this.ActionLog({
         channelId,
@@ -929,7 +939,7 @@ class DatabaseManager {
         action,
         details
       });
-      
+
       await log.save();
     } catch (error) {
       console.error('Error logging action:', error);
@@ -939,15 +949,15 @@ class DatabaseManager {
   // === CLEANUP ===
   async cleanupOldTickets(daysOld = 7) {
     if (!this.connected) return 0;
-    
+
     try {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - daysOld);
-      
+
       const result = await this.TicketState.deleteMany({
         createdAt: { $lt: cutoffDate }
       });
-      
+
       return result.deletedCount;
     } catch (error) {
       console.error('Error cleaning up old tickets:', error);

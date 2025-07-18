@@ -213,7 +213,6 @@ module.exports = {
           const ticketState = client.ticketStates.get(submission.ticketChannelId);
           bcGameId = ticketState?.vipId || ticketState?.bcGameId || null;
         }
-
         // Create approval
         console.log('[APPROVAL][SUBMIT] ltcAddress:', submission.ltcAddress);
         const approvalId = await client.db.saveApproval(
@@ -1231,10 +1230,8 @@ module.exports = {
     // Next Step Button - AUTOMÁTICO AGORA
     if (interaction.isButton() && interaction.customId === 'proof_next') {
       try { await interaction.deferUpdate(); } catch {}
-      console.log(interaction);
       
       const ticketState = client.ticketStates.get(interaction.channel.id);
-      console.log(ticketState);
    
       // Handle VIP tickets differently
       if (ticketState.vipType) {
