@@ -207,15 +207,9 @@ module.exports = {
         const member = await interaction.guild.members.fetch(submission.userId);
         const isVerified = isUserVerifiedForCasino(member, submission.casino);
 
-        // NOVO: Para BCGame, obter o ID do usuário
-        let bcGameId = null;
-        if (submission.casino === 'BCGame') {
-          const ticketState = client.ticketStates.get(submission.ticketChannelId);
-          bcGameId = ticketState?.vipId || ticketState?.bcGameId || null;
-        }
-
-        // NOVO: Buscar imagem do perfil BCGame se for BCGame
+        // NOVO: Buscar imagem do perfil BCGame e bcGameId se for BCGame
         let bcGameProfileImage = null;
+        let bcGameId = null;
         if (submission.casino === 'BCGame') {
           try {
             // Buscar o ticketState para verificar se há dados do checklist
@@ -228,7 +222,7 @@ module.exports = {
               // Como não temos a URL salva no stepData, vamos buscar nas mensagens
             }
             
-            // Buscar mensagens do canal para encontrar a imagem
+            // Buscar mensagens do canal para encontrar a imagem e bcGameId
             const messages = await interaction.channel.messages.fetch({ limit: 50 });
             const messagesArray = Array.from(messages.values()).reverse(); // Ordem cronológica
             
@@ -239,13 +233,28 @@ module.exports = {
                 if (attachment.contentType && attachment.contentType.startsWith('image/')) {
                   bcGameProfileImage = attachment.url;
                   console.log('[BCGAME][PROFILE_IMAGE] Imagem capturada:', bcGameProfileImage);
-                  break;
+                }
+              }
+              
+              // Procurar por bcGameId nas mensagens de texto do usuário
+              if (msg.content && !msg.author.bot && !msg.attachments.size) {
+                const content = msg.content.trim();
+                // Verificar se parece com um ID do BCGame (geralmente números)
+                if (/^\d+$/.test(content) && content.length >= 5 && content.length <= 15) {
+                  // Verificar se não é o ticket number (que geralmente é menor)
+                  if (content !== submission.ticketNumber?.toString()) {
+                    bcGameId = content;
+                    console.log('[BCGAME][ID] BCGame ID capturado:', bcGameId);
+                  }
                 }
               }
             }
             
             if (!bcGameProfileImage) {
               console.log('[BCGAME][PROFILE_IMAGE] Nenhuma imagem encontrada');
+            }
+            if (!bcGameId) {
+              console.log('[BCGAME][ID] Nenhum BCGame ID encontrado');
             }
           } catch (error) {
             console.error('[BCGAME][PROFILE_IMAGE] Erro ao buscar imagem:', error);
@@ -1619,9 +1628,19 @@ module.exports = {
       console.log(`[APPROVAL][${action.toUpperCase()}] Found approval:`, approval.approvalId);
 
       if (action === 'goto') {
+        const linkButton = ComponentFactory.createButtonRow(
+          ComponentFactory.createButton(
+            'goto_ticket',
+            `Ir para Ticket #${approval.ticketNumber}`,
+            'Link',
+            '🎫'
+          ).setURL(`https://discord.com/channels/${reaction.message.guild.id}/${approval.ticketChannelId}`)
+        );
+      
         // Redirect to ticket
         return interaction.reply({
           content: `🎫 **${MESSAGES.BUTTONS.GOTO_TICKET} #${approval.ticketNumber}:** <#${approval.ticketChannelId}>`,
+          components: [linkButton],
           flags: 64
         });
       }
