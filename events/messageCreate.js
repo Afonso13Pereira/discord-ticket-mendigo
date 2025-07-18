@@ -71,16 +71,27 @@ module.exports = {
       // Check current message for inputs
       if (message.attachments.size > 0) {
         ticketState.ltcData.hasImage = true;
+        console.log('[LTC_ONLY][DEBUG] Imagem detectada');
       }
       
       const ltcAddress = message.content.trim();
-      if (ltcAddress.length >= 25) {
+      console.log('[LTC_ONLY][DEBUG] Conteúdo da mensagem:', ltcAddress);
+      console.log('[LTC_ONLY][DEBUG] Tamanho do conteúdo:', ltcAddress.length);
+      
+      // Melhor validação de endereço LTC
+      if (ltcAddress.length >= 25 && (ltcAddress.startsWith('L') || ltcAddress.startsWith('M') || ltcAddress.startsWith('ltc1'))) {
         ticketState.ltcData.hasAddress = true;
         ticketState.ltcAddress = ltcAddress;
-        console.log('[LTC_ONLY] LTC address capturado:', ltcAddress);
+        console.log('[LTC_ONLY][DEBUG] LTC address capturado e salvo:', ltcAddress);
+      } else if (ltcAddress.length >= 10) {
+        // Fallback: qualquer texto com mais de 10 caracteres pode ser um endereço
+        ticketState.ltcData.hasAddress = true;
+        ticketState.ltcAddress = ltcAddress;
+        console.log('[LTC_ONLY][DEBUG] LTC address capturado (fallback):', ltcAddress);
       }
       
       await client.saveTicketState(message.channel.id, ticketState);
+      console.log('[LTC_ONLY][DEBUG] Estado salvo, ltcAddress no estado:', ticketState.ltcAddress);
       
       // Verificar se tem ambos
       if (!ticketState.ltcData.hasImage || !ticketState.ltcData.hasAddress) {

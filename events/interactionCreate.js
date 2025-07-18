@@ -1337,6 +1337,11 @@ module.exports = {
       console.log('[FINISH][DEBUG] Estado completo do ticket:', JSON.stringify(ticketState, null, 2));
       console.log('[FINISH][DEBUG] ltcAddress no estado:', ticketState.ltcAddress);
       
+      // DEBUG: Log completo do estado do ticket
+      console.log('[FINISH_TICKET][DEBUG] Estado completo do ticket:', JSON.stringify(ticketState, null, 2));
+      console.log('[FINISH_TICKET][DEBUG] ltcAddress no estado:', ticketState.ltcAddress);
+      console.log('[FINISH_TICKET][DEBUG] Tipo do ltcAddress:', typeof ticketState.ltcAddress);
+
         }
       }
 
@@ -1348,10 +1353,13 @@ module.exports = {
         ticketState.ownerTag,
         ticketState.gwType || ticketState.vipType || 'unknown',
         ticketState.casino || ticketState.vipCasino,
-        ticketState.ltcAddress || 'N/A',
+        ticketState.ltcAddress,
         ticketState.ltcAddress,
         ticketState.bcGameId
       );
+
+      console.log('[FINISH_TICKET][DEBUG] Submission criada com ID:', submissionId);
+      console.log('[FINISH_TICKET][DEBUG] ltcAddress enviado para submission:', ticketState.ltcAddress);
 
       console.log('[FINISH][DEBUG] Submission criada com ID:', submissionId);
       console.log('[FINISH][DEBUG] ltcAddress enviado:', ticketState.ltcAddress);
