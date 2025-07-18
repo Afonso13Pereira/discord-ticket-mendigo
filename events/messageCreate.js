@@ -608,16 +608,6 @@ module.exports = {
         if (stepTypes.includes('text') && message.content && message.content.trim().length >= 5) {
           ticketState.stepData[stepIndex].hasText = true;
           ticketState.stepData[stepIndex].textContent = message.content.trim();
-          
-          // Se é o último passo e contém 'text', pode ser o endereço LTC
-          if (stepIndex === casino.checklist.length - 1) {
-            const textContent = message.content.trim();
-            // Verificar se parece com endereço LTC (começa com L ou M e tem pelo menos 25 caracteres)
-            if ((textContent.startsWith('L') || textContent.startsWith('M')) && textContent.length >= 25) {
-              ticketState.ltcAddress = textContent;
-              console.log('[CHECKLIST][STEP] LTC address detectado no último passo:', textContent);
-            }
-          }
         }
 
         // Check if all required types are provided
@@ -675,9 +665,12 @@ module.exports = {
           ticketState.stepData[lastStepIndex] &&
           ticketState.stepData[lastStepIndex].textContent
         ) {
-          console.log('[CHECKLIST][LTC] Copiando LTC:', ticketState.stepData[lastStepIndex].textContent);
-          ticketState.ltcAddress = ticketState.stepData[lastStepIndex].textContent;
+          const ltcFromStep = ticketState.stepData[lastStepIndex].textContent.trim();
+          console.log('[CHECKLIST][LTC] Copiando LTC do último passo:', ltcFromStep);
+          ticketState.ltcAddress = ltcFromStep;
           await client.saveTicketState(message.channel.id, ticketState);
+        } else {
+          console.log('[CHECKLIST][LTC] LTC salvo no estado:', ticketState.ltcAddress);
         }
 
         return message.reply({
