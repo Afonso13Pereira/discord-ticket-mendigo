@@ -183,31 +183,34 @@ module.exports = {
       await client.db.logAction(message.channel.id, message.author.id, 'description_provided', ticketState.description.substring(0, 100));
 
       // Notify staff
-      const staffChannel = await message.guild.channels.fetch(CHANNELS.STAFF);
-      
-      let notificationText = '';
-      if (ticketState.category === 'Website' && ticketState.websiteType === 'bug') {
-        notificationText = MESSAGES.WEBSITE.BUG_NOTIFICATION
-          .replace('{number}', ticketState.ticketNumber)
-          .replace('{user}', ticketState.ownerTag)
-          .replace('{description}', ticketState.description)
-          .replace('{channel}', message.channel);
+      const ajudasChannel = await message.guild.channels.fetch(CHANNELS.AJUDAS).catch(() => null);
+      if (ajudasChannel && ajudasChannel.send) {
+        let notificationText = '';
+        if (ticketState.category === 'Website' && ticketState.websiteType === 'bug') {
+          notificationText = MESSAGES.WEBSITE.BUG_NOTIFICATION
+            .replace('{number}', ticketState.ticketNumber)
+            .replace('{user}', ticketState.ownerTag)
+            .replace('{description}', ticketState.description)
+            .replace('{channel}', message.channel);
+        } else {
+          notificationText = MESSAGES.QUESTIONS.NOTIFICATION
+            .replace('{category}', ticketState.category)
+            .replace('{number}', ticketState.ticketNumber)
+            .replace('{user}', ticketState.ownerTag)
+            .replace('{description}', ticketState.description)
+            .replace('{channel}', message.channel);
+        }
+        
+        const embed = EmbedFactory.warning(notificationText);
+        const components = ComponentFactory.supportCompletionButton(`description_${message.channel.id}`);
+        
+        await ajudasChannel.send({ 
+          embeds: [embed],
+          components: [components]
+        });
       } else {
-        notificationText = MESSAGES.QUESTIONS.NOTIFICATION
-          .replace('{category}', ticketState.category)
-          .replace('{number}', ticketState.ticketNumber)
-          .replace('{user}', ticketState.ownerTag)
-          .replace('{description}', ticketState.description)
-          .replace('{channel}', message.channel);
+        console.error('❌ AJUDAS_CHANNEL_ID not found, invalid, or not a text channel');
       }
-      
-      const embed = EmbedFactory.warning(notificationText);
-      const components = ComponentFactory.supportCompletionButton(`description_${message.channel.id}`);
-      
-      await staffChannel.send({ 
-        embeds: [embed],
-        components: [components]
-      });
 
       return message.reply({
         embeds: [EmbedFactory.success(MESSAGES.QUESTIONS.DESCRIPTION_RECEIVED)]
@@ -358,7 +361,8 @@ module.exports = {
           }
         }
         // Alertar suporte humano
-        const staffChannel = await message.guild.channels.fetch(CHANNELS.STAFF);
+        const giveawaysHelpChannel = await message.guild.channels.fetch(CHANNELS.GIVEAWAYSHELP).catch(() => null);
+        if (giveawaysHelpChannel && giveawaysHelpChannel.send) {
         const embed = EmbedFactory.warning([
           `**🚨 CÓDIGO TELEGRAM DUPLICADO DETECTADO**`,
           '',
@@ -408,12 +412,15 @@ module.exports = {
         
         const components = ComponentFactory.createButtonRow(...buttons);
         
-        await staffChannel.send({ 
-          embeds: [embed],
-          components: [components]
-        });
+                  await giveawaysHelpChannel.send({ 
+            embeds: [embed],
+            components: [components]
+          });
+      } else {
+        console.error('❌ GIVEAWAYSHELP_CHANNEL_ID not found, invalid, or not a text channel');
+      }
 
-        // Log da tentativa duplicada
+      // Log da tentativa duplicada
         await client.db.logAction(message.channel.id, message.author.id, 'duplicate_telegram_code', `Code: ${ticketState.telegramCode}, Original ticket: #${existingCode.ticketNumber}`);
 
         // NOVO: Pausar ticket atual

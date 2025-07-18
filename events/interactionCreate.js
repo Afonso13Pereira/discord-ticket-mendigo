@@ -349,14 +349,18 @@ module.exports = {
         }
 
         // Send to staff channel as support request
-        const staffChannel = await interaction.guild.channels.fetch(CHANNELS.STAFF);
-        const embed = EmbedFactory.reviewRequest(reason, approval.ticketNumber, approval.userTag);
-        const components = ComponentFactory.supportCompletionButton(`review_${approvalId}`);
+        const otherChannel = await interaction.guild.channels.fetch(CHANNELS.OTHER).catch(() => null);
+        if (otherChannel && otherChannel.send) {
+          const embed = EmbedFactory.reviewRequest(reason, approval.ticketNumber, approval.userTag);
+          const components = ComponentFactory.supportCompletionButton(`review_${approvalId}`);
 
-        const supportMessage = await staffChannel.send({ 
-          embeds: [embed],
-          components: [components]
-        });
+          const supportMessage = await otherChannel.send({ 
+            embeds: [embed],
+            components: [components]
+          });
+        } else {
+          console.error('❌ OTHER_CHANNEL_ID not found, invalid, or not a text channel');
+        }
 
         // Update approval status
         await client.db.updateApproval(approvalId, 'review');
@@ -420,18 +424,22 @@ module.exports = {
       await client.db.logAction(interaction.channel.id, interaction.user.id, 'redeem_selected', `Item: ${redeem.itemName}, ID: ${redeemId}`);
       
       // Notify staff
-      const staffChannel = await interaction.guild.channels.fetch(CHANNELS.STAFF);
-      const embed = EmbedFactory.warning(
-        `**Novo pedido de redeem**\n\n` +
-        `🎫 **Ticket:** #${ticketState.ticketNumber}\n` +
-        `👤 **Usuário:** ${ticketState.ownerTag}\n` +
-        `🎁 **Item:** ${redeem.itemName}\n` +
-        `📱 **Twitch:** ${redeem.twitchName}\n` +
-        `📅 **Data do Redeem:** ${new Date(redeem.createdAt).toLocaleDateString('pt-PT')}\n\n` +
-        `📍 **Canal:** ${interaction.channel}`
-      );
-      
-      await staffChannel.send({ embeds: [embed] });
+      const redeemsChannel = await interaction.guild.channels.fetch(CHANNELS.REDEEMS).catch(() => null);
+      if (redeemsChannel && redeemsChannel.send) {
+        const embed = EmbedFactory.warning(
+          `**Novo pedido de redeem**\n\n` +
+          `🎫 **Ticket:** #${ticketState.ticketNumber}\n` +
+          `👤 **Usuário:** ${ticketState.ownerTag}\n` +
+          `🎁 **Item:** ${redeem.itemName}\n` +
+          `📱 **Twitch:** ${redeem.twitchName}\n` +
+          `📅 **Data do Redeem:** ${new Date(redeem.createdAt).toLocaleDateString('pt-PT')}\n\n` +
+          `📍 **Canal:** ${interaction.channel}`
+        );
+        
+        await redeemsChannel.send({ embeds: [embed] });
+      } else {
+        console.error('❌ REDEEMS_CHANNEL_ID not found, invalid, or not a text channel');
+      }
       
       await interaction.channel.send({
         embeds: [EmbedFactory.websiteRedeemSelected(redeem)],
@@ -1453,20 +1461,49 @@ module.exports = {
       try { await interaction.deferUpdate(); } catch {}
       
       const ticketState = client.ticketStates.get(interaction.channel.id);
-      const staffChannel = await interaction.guild.channels.fetch(CHANNELS.STAFF);
       
-      const embed = EmbedFactory.supportRequest(
-        MESSAGES.SUPPORT.REQUEST_TITLE,
-        ticketState?.ticketNumber || 'N/A',
-        interaction.user.tag,
-        interaction.channel.id
-      );
-      const components = ComponentFactory.supportCompletionButton(`general_${interaction.channel.id}`);
+      // Determine which channel to use based on ticket type
+      let targetChannel;
+      let channelName;
       
-      await staffChannel.send({
-        embeds: [embed],
-        components: [components]
-      });
+      if (ticketState?.gwType || ticketState?.casino || ticketState?.category === 'Giveaways') {
+        // Giveaway-related ticket - use GIVEAWAYSHELP channel
+        targetChannel = await interaction.guild.channels.fetch(CHANNELS.GIVEAWAYSHELP).catch(() => null);
+        channelName = 'GIVEAWAYSHELP_CHANNEL_ID';
+      } else if (ticketState?.category === 'Website' && ticketState?.websiteType === 'redeem') {
+        // Website redeem ticket - use REDEEMS channel
+        targetChannel = await interaction.guild.channels.fetch(CHANNELS.REDEEMS).catch(() => null);
+        channelName = 'REDEEMS_CHANNEL_ID';
+      } else if (ticketState?.category === 'Website' && ticketState?.websiteType === 'bug') {
+        // Website bug ticket - use OTHER channel
+        targetChannel = await interaction.guild.channels.fetch(CHANNELS.OTHER).catch(() => null);
+        channelName = 'OTHER_CHANNEL_ID';
+      } else if (ticketState?.category === 'Dúvidas') {
+        // Questions ticket - use AJUDAS channel
+        targetChannel = await interaction.guild.channels.fetch(CHANNELS.AJUDAS).catch(() => null);
+        channelName = 'AJUDAS_CHANNEL_ID';
+      } else {
+        // Other ticket types - use OTHER channel
+        targetChannel = await interaction.guild.channels.fetch(CHANNELS.OTHER).catch(() => null);
+        channelName = 'OTHER_CHANNEL_ID';
+      }
+      
+      if (targetChannel && targetChannel.send) {
+        const embed = EmbedFactory.supportRequest(
+          MESSAGES.SUPPORT.REQUEST_TITLE,
+          ticketState?.ticketNumber || 'N/A',
+          interaction.user.tag,
+          interaction.channel.id
+        );
+        const components = ComponentFactory.supportCompletionButton(`general_${interaction.channel.id}`);
+        
+        await targetChannel.send({
+          embeds: [embed],
+          components: [components]
+        });
+      } else {
+        console.error(`❌ ${channelName} not found, invalid, or not a text channel`);
+      }
       
       // Log support request
       await client.db.logAction(interaction.channel.id, interaction.user.id, 'support_requested', null);

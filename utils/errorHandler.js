@@ -58,9 +58,9 @@ class ErrorHandler {
         return;
       }
 
-      const staffChannel = await this.client.channels.fetch(CHANNELS.STAFF).catch(() => null);
-      if (!staffChannel) {
-        console.error('❌ Staff channel not found, cannot send error');
+      const errosChannel = await this.client.channels.fetch(CHANNELS.ERROS).catch(() => null);
+      if (!errosChannel || !errosChannel.send) {
+        console.error('❌ ERROS_CHANNEL_ID not found, invalid, or not a text channel');
         return;
       }
 
@@ -84,7 +84,7 @@ class ErrorHandler {
         .setTimestamp()
         .setFooter({ text: 'Sistema de Monitorização de Erros' });
 
-      await staffChannel.send({ 
+      await errosChannel.send({ 
         embeds: [embed],
         content: isCritical ? '@here **ERRO CRÍTICO DETECTADO**' : undefined
       });
@@ -99,8 +99,8 @@ class ErrorHandler {
     try {
       if (!this.client.isReady()) return;
 
-      const staffChannel = await this.client.channels.fetch(CHANNELS.STAFF).catch(() => null);
-      if (!staffChannel) return;
+      const errosChannel = await this.client.channels.fetch(CHANNELS.ERROS).catch(() => null);
+      if (!errosChannel || !errosChannel.send) return;
 
       const timestamp = new Date().toLocaleString('pt-PT');
       
@@ -115,7 +115,7 @@ class ErrorHandler {
         .setTimestamp()
         .setFooter({ text: 'Sistema de Monitorização' });
 
-      await staffChannel.send({ embeds: [embed] });
+      await errosChannel.send({ embeds: [embed] });
     } catch (error) {
       console.error('❌ Failed to send warning to support:', error);
     }
@@ -254,8 +254,8 @@ class ErrorHandler {
     try {
       if (!this.client.isReady()) return;
 
-      const staffChannel = await this.client.channels.fetch(CHANNELS.STAFF).catch(() => null);
-      if (!staffChannel) return;
+      const otherChannel = await this.client.channels.fetch(CHANNELS.OTHER).catch(() => null);
+      if (!otherChannel || !otherChannel.send) return;
 
       const embed = new EmbedBuilder()
         .setColor(COLORS.INFO)
@@ -264,7 +264,7 @@ class ErrorHandler {
         .setTimestamp()
         .setFooter({ text: 'Sistema de Logs' });
 
-      await staffChannel.send({ embeds: [embed] });
+      await otherChannel.send({ embeds: [embed] });
     } catch (error) {
       console.error('❌ Failed to send log to support:', error);
     }
