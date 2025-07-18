@@ -1333,6 +1333,10 @@ module.exports = {
           console.log('[FINALIZAR][LTC] Copiando LTC na submissão:', ticketState.stepData[lastStepIndex].textContent);
           ticketState.ltcAddress = ticketState.stepData[lastStepIndex].textContent;
           await client.saveTicketState(interaction.channel.id, ticketState);
+      // Debug: Log do estado completo do ticket
+      console.log('[FINISH][DEBUG] Estado completo do ticket:', JSON.stringify(ticketState, null, 2));
+      console.log('[FINISH][DEBUG] ltcAddress no estado:', ticketState.ltcAddress);
+      
         }
       }
 
@@ -1345,10 +1349,13 @@ module.exports = {
         ticketState.gwType || ticketState.vipType || 'unknown',
         ticketState.casino || ticketState.vipCasino,
         ticketState.ltcAddress || 'N/A',
-        ticketState.ltcAddress || 'N/A',
+        ticketState.ltcAddress,
         ticketState.bcGameId
       );
 
+      console.log('[FINISH][DEBUG] Submission criada com ID:', submissionId);
+      console.log('[FINISH][DEBUG] ltcAddress enviado:', ticketState.ltcAddress);
+      
       // Send to mod channel
       const modChannel = await interaction.guild.channels.fetch(CHANNELS.MOD);
       const embed = EmbedFactory.submissionReady(ticketState.ticketNumber, ticketState.ownerTag, interaction.channel.id);
