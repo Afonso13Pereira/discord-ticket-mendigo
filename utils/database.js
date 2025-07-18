@@ -23,6 +23,7 @@ const TicketStateSchema = new mongoose.Schema({
   twitchNick: { type: String, default: null },
   selectedRedeem: { type: String, default: null },
   bcGameId: { type: String, default: null },
+  bcGameProfileImage: { type: String, default: null }, // NOVO: URL da imagem do perfil BCGame
   prize: { type: String, default: null },
   telegramCode: { type: String, default: null },
   ltcAddress: { type: String, default: null },
@@ -368,6 +369,7 @@ class DatabaseManager {
           twitchNick: state.twitchNick || null,
           selectedRedeem: state.selectedRedeem || null,
           bcGameId: state.bcGameId || null,
+          bcGameProfileImage: state.bcGameProfileImage || null, // Adicionado ao salvar
           prize: state.prize || null,
           telegramCode: state.telegramCode || null,
           ltcAddress: state.ltcAddress || null,
@@ -410,6 +412,7 @@ class DatabaseManager {
         twitchNick: doc.twitchNick,
         selectedRedeem: doc.selectedRedeem,
         bcGameId: doc.bcGameId,
+        bcGameProfileImage: doc.bcGameProfileImage, // Adicionado ao retornar
         prize: doc.prize,
         telegramCode: doc.telegramCode,
         ltcAddress: doc.ltcAddress,
@@ -461,6 +464,7 @@ class DatabaseManager {
           twitchNick: doc.twitchNick,
           selectedRedeem: doc.selectedRedeem,
           bcGameId: doc.bcGameId,
+          bcGameProfileImage: doc.bcGameProfileImage, // Adicionado ao retornar
           prize: doc.prize,
           telegramCode: doc.telegramCode,
           ltcAddress: doc.ltcAddress,

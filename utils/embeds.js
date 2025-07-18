@@ -390,9 +390,17 @@ class EmbedFactory {
   // === APPROVAL EMBEDS ===
   static approvalFinal(casino, prize, userTag, ticketNumber, ltcAddress, bcGameId = null, isVerified = false, bcGameProfileImage = null) {
     let description;
+    
+    console.log('[EMBED][DEBUG] approvalFinal chamado com:', {
+      casino,
+      bcGameId,
+      isVerified,
+      bcGameProfileImage
+    });
 
     // NOVO: Para BCGame verificado, mostrar status especial
     if (casino === 'BCGame' && isVerified) {
+      console.log('[EMBED][DEBUG] Usando FINAL_DESCRIPTION_VERIFIED');
       description = MESSAGES.APPROVALS.FINAL_DESCRIPTION_VERIFIED
         .replace('{casino}', casino || 'N/A')
         .replace('{prize}', prize || 'N/A')
@@ -400,6 +408,7 @@ class EmbedFactory {
         .replace('{number}', ticketNumber)
         .replace('{ltc}', ltcAddress || 'N/A');
     } else if (casino === 'BCGame' && bcGameId && !isVerified) {
+      console.log('[EMBED][DEBUG] Usando FINAL_DESCRIPTION_WITH_ID com bcGameId:', bcGameId);
       description = MESSAGES.APPROVALS.FINAL_DESCRIPTION_WITH_ID
         .replace('{casino}', casino || 'N/A')
         .replace('{prize}', prize || 'N/A')
@@ -408,6 +417,7 @@ class EmbedFactory {
         .replace('{id}', bcGameId)
         .replace('{ltc}', ltcAddress || 'N/A');
     } else {
+      console.log('[EMBED][DEBUG] Usando FINAL_DESCRIPTION_NORMAL');
       description = MESSAGES.APPROVALS.FINAL_DESCRIPTION_NORMAL
         .replace('{casino}', casino || 'N/A')
         .replace('{prize}', prize || 'N/A')

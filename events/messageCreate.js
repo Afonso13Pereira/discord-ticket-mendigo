@@ -640,6 +640,16 @@ module.exports = {
         // Check current message for inputs
         if (stepTypes.includes('image') && message.attachments.size > 0) {
           ticketState.stepData[stepIndex].hasImage = true;
+          
+          // NOVO: Capturar URL da imagem se for BCGame
+          if (ticketState.casino === 'BCGame' && stepIndex === 1) { // Passo 2 do BCGame é o perfil
+            const attachment = message.attachments.first();
+            if (attachment.contentType && attachment.contentType.startsWith('image/')) {
+              ticketState.bcGameProfileImage = attachment.url;
+              console.log(`[BCGAME][PROFILE_IMAGE][STEP_${stepIndex}] Imagem do perfil capturada:`, attachment.url);
+              await client.saveTicketState(message.channel.id, ticketState);
+            }
+          }
         }
         if (stepTypes.includes('text') && message.content && message.content.trim().length >= 5) {
           ticketState.stepData[stepIndex].hasText = true;
@@ -659,6 +669,30 @@ module.exports = {
             ticketState.ltcAddress = textContent;
             console.log(`[LTC][CAPTURE][STEP_${stepIndex}] LTC fallback capturado:`, textContent);
             await client.saveTicketState(message.channel.id, ticketState);
+          }
+          
+          // NOVO: Capturar BCGame ID se for BCGame e o texto parece com um ID
+          if (ticketState.casino === 'BCGame' && !ticketState.bcGameId) {
+            // Verificar se parece com um ID do BCGame (geralmente números)
+            if (/^\d+$/.test(textContent) && textContent.length >= 5 && textContent.length <= 15) {
+              // Verificar se não é o ticket number (que geralmente é menor)
+              if (textContent !== ticketState.ticketNumber?.toString()) {
+                ticketState.bcGameId = textContent;
+                console.log(`[BCGAME][CAPTURE][STEP_${stepIndex}] BCGame ID capturado:`, textContent);
+                await client.saveTicketState(message.channel.id, ticketState);
+              }
+            }
+            
+            // Também procurar por padrões como "ID: 123456" ou "BCGame ID: 123456"
+            const idMatch = textContent.match(/(?:bcgame\s*id|id)\s*:?\s*(\d{5,15})/i);
+            if (idMatch && !ticketState.bcGameId) {
+              const extractedId = idMatch[1];
+              if (extractedId !== ticketState.ticketNumber?.toString()) {
+                ticketState.bcGameId = extractedId;
+                console.log(`[BCGAME][CAPTURE][STEP_${stepIndex}] BCGame ID capturado via regex:`, extractedId);
+                await client.saveTicketState(message.channel.id, ticketState);
+              }
+            }
           }
         }
 

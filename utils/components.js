@@ -384,10 +384,10 @@ class ComponentFactory {
   }
 
   // === APPROVAL BUTTONS ===
-  static approvalButtons(approvalId) {
+  static approvalButtons(approvalId, ticketChannelId) {
     return this.createButtonRow(
       this.createLinkButton(
-        `https://discord.com/channels/${process.env.GUILD_ID || '@me'}/${approvalId}`,
+        `https://discord.com/channels/${process.env.GUILD_ID || '@me'}/${ticketChannelId}`,
         MESSAGES.BUTTONS.GOTO_TICKET,
         '🎫'
       ),

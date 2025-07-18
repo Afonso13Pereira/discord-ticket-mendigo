@@ -36,9 +36,17 @@ const CATEGORY_PREFIXES = {
 // NOVO: Função para verificar se o usuário tem cargo de verificação para um casino
 function isUserVerifiedForCasino(member, casino) {
   const casinoData = CASINOS[casino];
-  if (!casinoData || !casinoData.cargoafiliado) return false;
+  console.log('[VERIFICATION][DEBUG] Verificando casino:', casino, 'casinoData:', casinoData);
   
-  return member.roles.cache.has(casinoData.cargoafiliado);
+  if (!casinoData || !casinoData.cargoafiliado) {
+    console.log('[VERIFICATION][DEBUG] Casino não configurado ou sem cargo afiliado');
+    return false;
+  }
+  
+  const hasRole = member.roles.cache.has(casinoData.cargoafiliado);
+  console.log('[VERIFICATION][DEBUG] Usuário tem cargo', casinoData.cargoafiliado, ':', hasRole);
+  
+  return hasRole;
 }
 
 // NOVO: Função para obter todos os casinos para os quais o usuário está verificado
@@ -206,14 +214,26 @@ module.exports = {
         // NOVO: Verificar se o usuário tem cargo de verificação para este casino
         const member = await interaction.guild.members.fetch(submission.userId);
         const isVerified = isUserVerifiedForCasino(member, submission.casino);
+        console.log('[APPROVAL][VERIFICATION] Usuário verificado para', submission.casino, ':', isVerified);
 
         // NOVO: Buscar imagem do perfil BCGame e bcGameId se for BCGame
         let bcGameProfileImage = null;
-        let bcGameId = null;
+        let bcGameId = submission.bcGameId; // Usar o bcGameId da submissão primeiro
+        console.log('[APPROVAL][BCGAME] bcGameId da submissão:', bcGameId);
+        
         if (submission.casino === 'BCGame') {
           try {
             // Buscar o ticketState para verificar se há dados do checklist
             const ticketState = client.ticketStates.get(submission.ticketChannelId);
+            console.log('[BCGAME][DEBUG] ticketState encontrado:', !!ticketState);
+            console.log('[BCGAME][DEBUG] bcGameId no ticketState:', ticketState?.bcGameId);
+            console.log('[BCGAME][DEBUG] bcGameProfileImage no ticketState:', ticketState?.bcGameProfileImage);
+            
+            // Usar a imagem do perfil salva no ticketState se disponível
+            if (ticketState && ticketState.bcGameProfileImage) {
+              bcGameProfileImage = ticketState.bcGameProfileImage;
+              console.log('[BCGAME][PROFILE_IMAGE] Usando imagem do ticketState:', bcGameProfileImage);
+            }
             
             // Se temos stepData, procurar pela imagem no passo 1 (índice 0)
             if (ticketState && ticketState.stepData && ticketState.stepData[0] && ticketState.stepData[0].hasImage) {
@@ -222,42 +242,79 @@ module.exports = {
               // Como não temos a URL salva no stepData, vamos buscar nas mensagens
             }
             
-            // Buscar mensagens do canal para encontrar a imagem e bcGameId
-            const messages = await interaction.channel.messages.fetch({ limit: 50 });
-            const messagesArray = Array.from(messages.values()).reverse(); // Ordem cronológica
-            
-            // Procurar por qualquer imagem enviada pelo usuário (não pelo bot)
-            for (const msg of messagesArray) {
-              if (msg.attachments.size > 0 && !msg.author.bot) {
-                const attachment = msg.attachments.first();
-                if (attachment.contentType && attachment.contentType.startsWith('image/')) {
-                  bcGameProfileImage = attachment.url;
-                  console.log('[BCGAME][PROFILE_IMAGE] Imagem capturada:', bcGameProfileImage);
-                }
-              }
+            // Se não temos imagem do ticketState, procurar nas mensagens
+            if (!bcGameProfileImage) {
+              console.log('[BCGAME][DEBUG] Procurando imagem do perfil nas mensagens...');
+              const messages = await interaction.channel.messages.fetch({ limit: 50 });
+              const messagesArray = Array.from(messages.values()).reverse(); // Ordem cronológica
               
-              // Procurar por bcGameId nas mensagens de texto do usuário
-              if (msg.content && !msg.author.bot && !msg.attachments.size) {
-                const content = msg.content.trim();
-                // Verificar se parece com um ID do BCGame (geralmente números)
-                if (/^\d+$/.test(content) && content.length >= 5 && content.length <= 15) {
-                  // Verificar se não é o ticket number (que geralmente é menor)
-                  if (content !== submission.ticketNumber?.toString()) {
-                    bcGameId = content;
-                    console.log('[BCGAME][ID] BCGame ID capturado:', bcGameId);
+              // Procurar por qualquer imagem enviada pelo usuário (não pelo bot)
+              for (const msg of messagesArray) {
+                if (msg.attachments.size > 0 && !msg.author.bot) {
+                  const attachment = msg.attachments.first();
+                  if (attachment.contentType && attachment.contentType.startsWith('image/')) {
+                    bcGameProfileImage = attachment.url;
+                    console.log('[BCGAME][PROFILE_IMAGE] Imagem capturada das mensagens:', bcGameProfileImage);
+                    break; // Parar na primeira imagem encontrada
                   }
                 }
               }
             }
-            
-            if (!bcGameProfileImage) {
-              console.log('[BCGAME][PROFILE_IMAGE] Nenhuma imagem encontrada');
-            }
-            if (!bcGameId) {
-              console.log('[BCGAME][ID] Nenhum BCGame ID encontrado');
-            }
           } catch (error) {
             console.error('[BCGAME][PROFILE_IMAGE] Erro ao buscar imagem:', error);
+          }
+          
+          // Se já temos bcGameId da submissão, não precisamos procurar nas mensagens
+          if (bcGameId) {
+            console.log('[BCGAME][DEBUG] Usando bcGameId da submissão:', bcGameId);
+          } else {
+            console.log('[BCGAME][DEBUG] Procurando bcGameId nas mensagens...');
+            
+            try {
+              // Buscar mensagens do canal para encontrar bcGameId
+              const messages = await interaction.channel.messages.fetch({ limit: 50 });
+              const messagesArray = Array.from(messages.values()).reverse(); // Ordem cronológica
+              
+              // Procurar por bcGameId nas mensagens de texto do usuário
+              for (const msg of messagesArray) {
+                if (msg.content && !msg.author.bot && !msg.attachments.size) {
+                  const content = msg.content.trim();
+                  console.log('[BCGAME][DEBUG] Verificando mensagem:', content, 'Ticket number:', submission.ticketNumber);
+                  
+                  // Verificar se parece com um ID do BCGame (geralmente números)
+                  if (/^\d+$/.test(content) && content.length >= 5 && content.length <= 15) {
+                    // Verificar se não é o ticket number (que geralmente é menor)
+                    if (content !== submission.ticketNumber?.toString()) {
+                      bcGameId = content;
+                      console.log('[BCGAME][ID] BCGame ID capturado:', bcGameId);
+                      break; // Parar na primeira ocorrência válida
+                    } else {
+                      console.log('[BCGAME][DEBUG] Ignorando ticket number:', content);
+                    }
+                  }
+                  
+                  // NOVO: Também procurar por padrões como "ID: 123456" ou "BCGame ID: 123456"
+                  const idMatch = content.match(/(?:bcgame\s*id|id)\s*:?\s*(\d{5,15})/i);
+                  if (idMatch && !bcGameId) {
+                    const extractedId = idMatch[1];
+                    if (extractedId !== submission.ticketNumber?.toString()) {
+                      bcGameId = extractedId;
+                      console.log('[BCGAME][ID] BCGame ID capturado via regex:', bcGameId);
+                      break;
+                    }
+                  }
+                }
+              }
+            } catch (error) {
+              console.error('[BCGAME][ID] Erro ao buscar bcGameId:', error);
+            }
+          }
+          
+          if (!bcGameProfileImage) {
+            console.log('[BCGAME][PROFILE_IMAGE] Nenhuma imagem encontrada');
+          }
+          if (!bcGameId) {
+            console.log('[BCGAME][ID] Nenhum BCGame ID encontrado');
           }
         }
 
@@ -288,6 +345,7 @@ module.exports = {
 
         // Send to approval channel
         const approveChannel = await interaction.guild.channels.fetch(CHANNELS.APPROVE);
+        console.log('[APPROVAL][EMBED] Criando embed com bcGameId:', bcGameId, 'isVerified:', isVerified);
         const embed = EmbedFactory.approvalFinal(
           submission.casino,
           prize,
@@ -298,7 +356,7 @@ module.exports = {
           isVerified,
           bcGameProfileImage
         );
-        const components = ComponentFactory.approvalButtons(approvalId);
+        const components = ComponentFactory.approvalButtons(approvalId, submission.ticketChannelId);
 
         const approvalMessage = await approveChannel.send({
           embeds: [embed],
@@ -1494,6 +1552,7 @@ module.exports = {
       const finalState = await client.db.getTicketState(interaction.channel.id);
       console.log('[FINISH_TICKET][DB_CHECK] Estado final na DB:', finalState?.ltcAddress);
 
+      console.log('[FINISH_TICKET][DEBUG] bcGameId no ticketState:', ticketState.bcGameId);
       const submissionId = await client.db.saveSubmission(
         interaction.channel.id,
         ticketState.ticketNumber,
