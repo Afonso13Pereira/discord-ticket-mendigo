@@ -569,7 +569,7 @@ class DatabaseManager {
   }
 
   // === APPROVALS ===
-  async saveApproval(ticketChannelId, ticketNumber, userId, userTag, casino, prize, ltcAddress, bcGameId = null, bcGameProfileImage = null) {
+  async saveApproval(ticketChannelId, ticketNumber, userId, userTag, casino, prize, ltcAddress, bcGameId = null, bcGameProfileImage = null, messageId = null) {
     if (!this.connected) return null;
     
     try {
@@ -611,7 +611,8 @@ class DatabaseManager {
             prize,
             ltcAddress: finalLtcAddress,
             bcGameId,
-            bcGameProfileImage
+            bcGameProfileImage,
+            messageId
           });
           
           await approval.save();
@@ -657,7 +658,8 @@ class DatabaseManager {
             prize,
             ltcAddress: finalLtcAddress,
             bcGameId,
-            bcGameProfileImage
+            bcGameProfileImage,
+            messageId: messageId || `manual_${Date.now()}` // Garantir que não seja null
           });
           
           await retryApproval.save();

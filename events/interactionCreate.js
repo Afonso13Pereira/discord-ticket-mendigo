@@ -217,29 +217,35 @@ module.exports = {
         // NOVO: Buscar imagem do perfil BCGame se for BCGame
         let bcGameProfileImage = null;
         if (submission.casino === 'BCGame') {
-          // Buscar mensagens do canal para encontrar a imagem do 2º passo
           try {
+            // Buscar o ticketState para verificar se há dados do checklist
+            const ticketState = client.ticketStates.get(submission.ticketChannelId);
+            
+            // Se temos stepData, procurar pela imagem no passo 1 (índice 0)
+            if (ticketState && ticketState.stepData && ticketState.stepData[0] && ticketState.stepData[0].hasImage) {
+              // A imagem foi capturada durante o checklist
+              console.log('[BCGAME][PROFILE_IMAGE] Imagem encontrada no stepData');
+              // Como não temos a URL salva no stepData, vamos buscar nas mensagens
+            }
+            
+            // Buscar mensagens do canal para encontrar a imagem
             const messages = await interaction.channel.messages.fetch({ limit: 50 });
             const messagesArray = Array.from(messages.values()).reverse(); // Ordem cronológica
             
-            // Procurar por mensagem com anexo após o 2º passo ser mencionado
-            let foundStep2 = false;
+            // Procurar por qualquer imagem enviada pelo usuário (não pelo bot)
             for (const msg of messagesArray) {
-              // Verificar se é uma mensagem do bot mencionando "Passo 2"
-              if (msg.author.bot && msg.embeds.length > 0) {
-                const embedTitle = msg.embeds[0].title;
-                if (embedTitle && embedTitle.includes('Passo 2')) {
-                  foundStep2 = true;
-                  continue;
+              if (msg.attachments.size > 0 && !msg.author.bot) {
+                const attachment = msg.attachments.first();
+                if (attachment.contentType && attachment.contentType.startsWith('image/')) {
+                  bcGameProfileImage = attachment.url;
+                  console.log('[BCGAME][PROFILE_IMAGE] Imagem capturada:', bcGameProfileImage);
+                  break;
                 }
               }
-              
-              // Se encontrou o passo 2 e esta mensagem tem anexo, capturar
-              if (foundStep2 && msg.attachments.size > 0 && !msg.author.bot) {
-                bcGameProfileImage = msg.attachments.first().url;
-                console.log('[BCGAME][PROFILE_IMAGE] Imagem capturada:', bcGameProfileImage);
-                break;
-              }
+            }
+            
+            if (!bcGameProfileImage) {
+              console.log('[BCGAME][PROFILE_IMAGE] Nenhuma imagem encontrada');
             }
           } catch (error) {
             console.error('[BCGAME][PROFILE_IMAGE] Erro ao buscar imagem:', error);
@@ -257,7 +263,8 @@ module.exports = {
           prize,
           submission.ltcAddress,
           bcGameId,
-          bcGameProfileImage
+          bcGameProfileImage,
+          null // messageId será atualizado depois quando a mensagem for enviada
         );
         
         if (!approvalId) {
