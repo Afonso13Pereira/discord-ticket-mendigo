@@ -103,6 +103,7 @@ const ApprovalSchema = new mongoose.Schema({
   prize: { type: String, required: true },
   ltcAddress: { type: String, required: true },
   bcGameId: { type: String, default: null },
+  bcGameProfileImage: { type: String, default: null }, // NOVO: URL da imagem do perfil BCGame
   messageId: { type: String, default: null }, // NOVO: Campo para ID da mensagem de aprovação
   status: { type: String, default: 'pending' },
   createdAt: { type: Date, default: Date.now }
@@ -568,7 +569,7 @@ class DatabaseManager {
   }
 
   // === APPROVALS ===
-  async saveApproval(ticketChannelId, ticketNumber, userId, userTag, casino, prize, ltcAddress, bcGameId = null, messageId = null) {
+  async saveApproval(ticketChannelId, ticketNumber, userId, userTag, casino, prize, ltcAddress, bcGameId = null, bcGameProfileImage = null) {
     if (!this.connected) return null;
     
     try {
@@ -588,6 +589,7 @@ class DatabaseManager {
       console.log('  - ltcAddress original:', ltcAddress);
       console.log('  - ltcAddress final:', finalLtcAddress);
       console.log('  - bcGameId:', bcGameId);
+      console.log('  - bcGameProfileImage:', bcGameProfileImage);
       console.log('  - messageId:', messageId);
       console.log('  - approvalId gerado:', approvalId);
       
@@ -609,7 +611,7 @@ class DatabaseManager {
             prize,
             ltcAddress: finalLtcAddress,
             bcGameId,
-            messageId
+            bcGameProfileImage
           });
           
           await approval.save();
@@ -639,7 +641,7 @@ class DatabaseManager {
         try {
           // Try to remove any problematic entries with null messageId
           await this.Approval.deleteMany({ 
-            messageId: null,
+            approvalId: { $regex: /^temp_/ }, // Remove temporary entries
             status: 'pending'
           });
           
@@ -655,7 +657,7 @@ class DatabaseManager {
             prize,
             ltcAddress: finalLtcAddress,
             bcGameId,
-            messageId: messageId || `manual_${Date.now()}` // Garantir que não seja null
+            bcGameProfileImage
           });
           
           await retryApproval.save();
@@ -695,6 +697,7 @@ class DatabaseManager {
         prize: doc.prize,
         ltcAddress: doc.ltcAddress,
         bcGameId: doc.bcGameId,
+        bcGameProfileImage: doc.bcGameProfileImage,
         status: doc.status,
         createdAt: doc.createdAt
       };

@@ -217,12 +217,44 @@ module.exports = {
         // Create approval
         console.log('[APPROVAL][SUBMIT] ltcAddress:', submission.ltcAddress);
         const approvalId = await client.db.saveApproval(
+        // NOVO: Buscar imagem do perfil BCGame se for BCGame
+        let bcGameProfileImage = null;
+        if (submission.casino === 'BCGame') {
+          // Buscar mensagens do canal para encontrar a imagem do 2º passo
+          try {
+            const messages = await interaction.channel.messages.fetch({ limit: 50 });
+            const messagesArray = Array.from(messages.values()).reverse(); // Ordem cronológica
+            
+            // Procurar por mensagem com anexo após o 2º passo ser mencionado
+            let foundStep2 = false;
+            for (const msg of messagesArray) {
+              // Verificar se é uma mensagem do bot mencionando "Passo 2"
+              if (msg.author.bot && msg.embeds.length > 0) {
+                const embedTitle = msg.embeds[0].title;
+                if (embedTitle && embedTitle.includes('Passo 2')) {
+                  foundStep2 = true;
+                  continue;
+                }
+              }
+              
+              // Se encontrou o passo 2 e esta mensagem tem anexo, capturar
+              if (foundStep2 && msg.attachments.size > 0 && !msg.author.bot) {
+                bcGameProfileImage = msg.attachments.first().url;
+                console.log('[BCGAME][PROFILE_IMAGE] Imagem capturada:', bcGameProfileImage);
+                break;
+              }
+            }
+          } catch (error) {
+            console.error('[BCGAME][PROFILE_IMAGE] Erro ao buscar imagem:', error);
+          }
+        }
+        
           submission.ticketChannelId,
           submission.ticketNumber,
           submission.userId,
           submission.userTag,
           submission.casino,
-          prize,
+        const approvalId = await client.db.saveApproval(submission.ticketChannelId, submission.ticketNumber, submission.userId, submission.userTag, submission.casino, submission.prize, submission.ltcAddress, submission.bcGameId, bcGameProfileImage);
           submission.ltcAddress,
           bcGameId
         );

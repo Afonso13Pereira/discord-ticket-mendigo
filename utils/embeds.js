@@ -388,7 +388,7 @@ class EmbedFactory {
   }
 
   // === APPROVAL EMBEDS ===
-  static approvalFinal(casino, prize, userTag, ticketNumber, ltcAddress, bcGameId = null, isVerified = false) {
+  static approvalFinal(casino, prize, userTag, ticketNumber, ltcAddress, bcGameId = null, isVerified = false, bcGameProfileImage = null) {
     let description;
 
     // NOVO: Para BCGame verificado, mostrar status especial
@@ -416,12 +416,19 @@ class EmbedFactory {
         .replace('{ltc}', ltcAddress || 'N/A');
     }
 
-    return new EmbedBuilder()
+    const embed = new EmbedBuilder()
       .setColor(COLORS.SUCCESS)
       .setTitle(`${EMOJIS.GIFT} ${MESSAGES.APPROVALS.FINAL_TITLE}`)
       .setDescription(description)
       .setTimestamp()
       .setFooter({ text: MESSAGES.FOOTERS.APPROVALS_SYSTEM });
+    
+    // NOVO: Adicionar imagem do perfil BCGame se disponível
+    if (casino === 'BCGame' && bcGameProfileImage) {
+      embed.setImage(bcGameProfileImage);
+    }
+    
+    return embed;
   }
 
   static giveawayPaid() {
