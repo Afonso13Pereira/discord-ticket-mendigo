@@ -1683,10 +1683,10 @@ async function findOrCreateCategoryWithOverflow(guild, categoryName) {
     }
   }
 
-  // All categories are full, create a new one
-  const nextNumber = existingCategories.size + 1;
-  const newCategoryName = nextNumber === 1 ? categoryName : `${categoryName} ${nextNumber}`;
+  // Handle approval_goto buttons (REMOVIDO - agora usa link direto)
   
+  // Handle duplicate code resolution
+  if (interaction.customId.startsWith('duplicate_resolved_')) {
   console.log(`📁 Creating new category: ${newCategoryName} (overflow from full categories)`);
   
   const newCategory = await guild.channels.create({
