@@ -75,15 +75,8 @@ module.exports = {
     loading: 'https://media.giphy.com/media/3oEjI6SIIHBdRxXI40/giphy.gif'
   },
 
-  VIP_TYPES: {
-    SEMANAL: 'semanal',
-    LEADERBOARD: 'leaderboard'
-  },
-
-  VIP_CASINOS: [
-    { id: 'BCGame', label: 'BC.Game', emoji: '🎲' }
-    // Adicionar mais casinos VIP aqui conforme necessário
-  ],
+  // VIPs agora são carregados dinamicamente de events/vips/
+  // VIP_TYPES e VIP_CASINOS foram removidos - use a pasta events/vips/ em vez disso
 
   // NOVO: Mapeamento de casinos para cargos
   CASINO_ROLES: {

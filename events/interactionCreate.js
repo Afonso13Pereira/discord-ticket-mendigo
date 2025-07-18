@@ -12,7 +12,8 @@ const { cats, create: createCat, refreshCategories, ensureInitialized } = requir
 const EmbedFactory = require('../utils/embeds');
 const ComponentFactory = require('../utils/components');
 const TranscriptManager = require('../utils/transcripts');
-const { CHANNELS, ROLES, EMOJIS, VIP_TYPES, VIP_CASINOS } = require('../config/constants');
+const { CHANNELS, ROLES, EMOJIS } = require('../config/constants');
+const VIPS = require('./vips');
 const { updateTicketMessage } = require('../commands/atualizartickets');
 const MESSAGES = require('../config/messages');
 
@@ -21,19 +22,7 @@ const CONFIRM_RX = /^sim[, ]*eu confirmo$/i;
 const findCasinoId = name =>
   Object.keys(CASINOS).find(id => id.toLowerCase() === name.toLowerCase()) || null;
 
-const VIP_CHECKLISTS = {
-  semanal: [
-    "📱 Envia **print do perfil** com ID visível **e** o **ID em texto**",
-    "💰 Envia **prints dos depósitos**",
-    "💸 Envia **prints dos levantamentos**",
-    "🏦 Envia **prints dos cofres**",
-    "📥 Envia **print do depósito LTC** com QR visível **e** o **endereço LTC em texto**"
-  ],
-  leaderboard: [
-    "📱 Envia **print da conta** com ID visível **e** o **ID em texto**",
-    "📥 Envia **print do depósito LTC** com QR visível **e** o **endereço LTC em texto**"
-  ]
-};
+// VIP_CHECKLISTS removido - agora carregado dinamicamente de events/vips/
 
 // Category prefixes for ticket naming
 const CATEGORY_PREFIXES = {
@@ -226,6 +215,7 @@ module.exports = {
         }
 
         // Create approval
+        console.log('[APPROVAL][SUBMIT] ltcAddress:', submission.ltcAddress);
         const approvalId = await client.db.saveApproval(
           submission.ticketChannelId,
           submission.ticketNumber,
@@ -236,6 +226,7 @@ module.exports = {
           submission.ltcAddress,
           bcGameId
         );
+        console.log('[APPROVAL][criação] approvalId para botões:', approvalId);
 
         // Send to approval channel
         const approveChannel = await interaction.guild.channels.fetch(CHANNELS.APPROVE);
@@ -1003,8 +994,8 @@ module.exports = {
         });
       } else if (category.name === 'VIPS') {
         await ticketChannel.send({
-          embeds: [EmbedFactory.vipCasinoSelection()],
-          components: [ComponentFactory.vipCasinoButtons(), supportRow]
+          embeds: [EmbedFactory.vipTypeSelection()],
+          components: [ComponentFactory.vipTypeButtons(), supportRow]
         });
       } else if (category.name === 'Dúvidas') {
         const currentState = client.ticketStates.get(ticketChannel.id);
@@ -1049,12 +1040,17 @@ module.exports = {
       const ticketState = client.ticketStates.get(interaction.channel.id);
       
       ticketState.vipCasino = casinoId;
+      ticketState.step = 0;
+      ticketState.awaitProof = true;
       await client.saveTicketState(interaction.channel.id, ticketState);
       
       await interaction.channel.send({
-        embeds: [EmbedFactory.vipTypeSelection()],
-        components: [ComponentFactory.vipTypeButtons()]
+        embeds: [EmbedFactory.success(MESSAGES.VIP.TYPE_SELECTED
+          .replace('{type}', ticketState.vipType.toUpperCase())
+          .replace('{casino}', casinoId))]
       });
+      
+      return askVipChecklist(interaction.channel, ticketState);
     }
 
     // VIP Type Selection
@@ -1065,17 +1061,39 @@ module.exports = {
       const ticketState = client.ticketStates.get(interaction.channel.id);
       
       ticketState.vipType = vipType;
-      ticketState.step = 0;
-      ticketState.awaitProof = true;
       await client.saveTicketState(interaction.channel.id, ticketState);
+
+      // NOVO: Deletar a última mensagem de seleção de tipo de VIP
+      const messages = await interaction.channel.messages.fetch({ limit: 10 });
+      const lastVipTypeMsg = messages.find(m => m.author.id === interaction.client.user.id && m.embeds?.[0]?.title === '💎 Tipo de VIP');
+      if (lastVipTypeMsg) {
+        try { await lastVipTypeMsg.delete(); } catch (e) { console.error('Erro ao deletar mensagem de seleção de tipo de VIP:', e); }
+      }
       
-      await interaction.channel.send({
-        embeds: [EmbedFactory.success(MESSAGES.VIP.TYPE_SELECTED
-          .replace('{type}', vipType.toUpperCase())
-          .replace('{casino}', ticketState.vipCasino))]
-      });
-      
-      return askVipChecklist(interaction.channel, ticketState);
+      // NOVO: Verificar se há apenas 1 casino disponível para este VIP
+      const vip = VIPS[vipType];
+      if (vip && vip.casinos && vip.casinos.length === 1) {
+        // Apenas 1 casino disponível - selecionar automaticamente
+        const casinoId = vip.casinos[0];
+        ticketState.vipCasino = casinoId;
+        ticketState.step = 0;
+        ticketState.awaitProof = true;
+        await client.saveTicketState(interaction.channel.id, ticketState);
+        
+        await interaction.channel.send({
+          embeds: [EmbedFactory.success(MESSAGES.VIP.TYPE_SELECTED
+            .replace('{type}', vipType.toUpperCase())
+            .replace('{casino}', casinoId))]
+        });
+        
+        return askVipChecklist(interaction.channel, ticketState);
+      } else {
+        // Múltiplos casinos - mostrar seleção
+        await interaction.channel.send({
+          embeds: [EmbedFactory.vipCasinoSelection()],
+          components: [ComponentFactory.vipCasinoButtons(vipType)]
+        });
+      }
     }
 
     // Giveaway Type and Promo Buttons
@@ -1218,9 +1236,55 @@ module.exports = {
       const ticketState = client.ticketStates.get(interaction.channel.id);
       console.log(ticketState);
    
+      // Handle VIP tickets differently
+      if (ticketState.vipType) {
+        console.log('🔍 VIP Next Step - Step:', ticketState.step, 'VIP Type:', ticketState.vipType);
+        
+        const vip = VIPS[ticketState.vipType];
+        if (!vip || !vip.checklist) {
+          return interaction.followUp({
+            embeds: [EmbedFactory.error(`VIP type '${ticketState.vipType}' não configurado corretamente`)],
+            flags: 64
+          });
+        }
 
-      // Check if current step requires any input
+        const stepIndex = ticketState.step;
+        const currentStep = vip.checklist[stepIndex];
+        console.log('🔍 VIP Current step:', currentStep);
+        
+        // Check if current step requires any input
+        let stepTypes = [];
+        if (typeof currentStep === 'object' && currentStep !== null && Array.isArray(currentStep.type)) {
+          stepTypes = currentStep.type;
+        }
+        console.log('🔍 VIP Step types:', stepTypes);
+
+        // If step has no requirements (empty type array), advance automatically
+        if (stepTypes.length === 0) {
+          console.log('✅ VIP Step has no requirements, advancing...');
+          ticketState.step++;
+          ticketState.awaitProof = true;
+          await client.saveTicketState(interaction.channel.id, ticketState);
+          return askVipChecklist(interaction.channel, ticketState);
+        } else {
+          // Step requires input, show error
+          console.log('❌ VIP Step requires input, showing error');
+          return interaction.followUp({
+            embeds: [EmbedFactory.error(MESSAGES.CHECKLIST.IMAGE_REQUIRED)],
+            flags: 64
+          });
+        }
+      }
+
+      // For regular casino tickets, check if current step requires any input
       const casino = CASINOS[ticketState.casino];
+      if (!casino || !casino.checklist) {
+        return interaction.followUp({
+          embeds: [EmbedFactory.error('Casino não configurado corretamente')],
+          flags: 64
+        });
+      }
+
       const stepIndex = ticketState.step;
       const currentStep = casino.checklist[stepIndex];
       
@@ -1234,12 +1298,7 @@ module.exports = {
         ticketState.step++;
         ticketState.awaitProof = true;
         await client.saveTicketState(interaction.channel.id, ticketState);
-        
-        if (ticketState.vipType) {
-          return askVipChecklist(interaction.channel, ticketState);
-        } else {
-          return askChecklist(interaction.channel, ticketState);
-        }
+        return askChecklist(interaction.channel, ticketState);
       } else {
         // Step requires input, show error
         return interaction.followUp({
@@ -1255,6 +1314,28 @@ module.exports = {
       
       const ticketState = client.ticketStates.get(interaction.channel.id);
       
+      // Garante que ltcAddress será preenchido no momento da submissão
+      if (
+        ticketState &&
+        ticketState.casino &&
+        CASINOS[ticketState.casino]
+      ) {
+        const casino = CASINOS[ticketState.casino];
+        const lastStepIndex = casino.checklist.length - 1;
+        const lastStep = casino.checklist[lastStepIndex];
+        if (
+          Array.isArray(lastStep.type) &&
+          lastStep.type.includes('text') &&
+          ticketState.stepData &&
+          ticketState.stepData[lastStepIndex] &&
+          ticketState.stepData[lastStepIndex].textContent
+        ) {
+          console.log('[FINALIZAR][LTC] Copiando LTC na submissão:', ticketState.stepData[lastStepIndex].textContent);
+          ticketState.ltcAddress = ticketState.stepData[lastStepIndex].textContent;
+          await client.saveTicketState(interaction.channel.id, ticketState);
+        }
+      }
+
       // Create submission
       const submissionId = await client.db.saveSubmission(
         interaction.channel.id,
@@ -1351,8 +1432,9 @@ module.exports = {
 
     // Approval Buttons
     if (interaction.isButton() && interaction.customId.startsWith('approval_')) {
-      const action = interaction.customId.split('_')[1];
-      const approvalId = interaction.customId.split('_')[2];
+      // Corrigido: suporta approvalId com underscores
+      const [_, action, ...approvalIdParts] = interaction.customId.split('_');
+      const approvalId = approvalIdParts.join('_');
       
       const approval = await client.db.getApproval(approvalId);
       if (!approval) {
@@ -1636,31 +1718,61 @@ function askChecklist(channel, ticketState) {
 }
 
 function askVipChecklist(channel, ticketState) {
-  const checklist = VIP_CHECKLISTS[ticketState.vipType];
-  if (!checklist) {
+  const vip = VIPS[ticketState.vipType];
+  if (!vip || !vip.checklist) {
     return channel.send({
-      embeds: [EmbedFactory.error(MESSAGES.VIP.TYPE_NOT_CONFIGURED)]
+      embeds: [EmbedFactory.error(`VIP type '${ticketState.vipType}' não configurado corretamente`)]
     });
   }
 
   const stepIndex = ticketState.step ?? 0;
   
-  if (stepIndex >= checklist.length) {
+  if (stepIndex >= vip.checklist.length) {
     return channel.send({
-      embeds: [EmbedFactory.success(MESSAGES.VIP.COMPLETED)],
+      embeds: [EmbedFactory.success(`Checklist do VIP ${vip.label} completado!`)],
       components: [ComponentFactory.finishButtons()]
     });
   }
 
-  const embed = EmbedFactory.vipChecklist(
+  const currentStep = vip.checklist[stepIndex];
+  
+  // Handle new checklist structure (objects with title, description, type, image)
+  let stepDescription, stepImage;
+  if (typeof currentStep === 'object' && currentStep !== null) {
+    // New structure: object with title, description, type, image
+    stepDescription = currentStep.description;
+    stepImage = currentStep.image;
+  } else {
+    // Old structure: just a string
+    stepDescription = currentStep;
+    stepImage = null;
+  }
+  
+  const embed = EmbedFactory.checklist(
     stepIndex + 1,
-    checklist.length,
-    checklist[stepIndex],
-    ticketState.vipType
+    vip.checklist.length,
+    stepDescription,
+    stepImage
   );
+
+  // Check if current step requires any input
+  let stepTypes = [];
+  if (typeof currentStep === 'object' && currentStep !== null && Array.isArray(currentStep.type)) {
+    stepTypes = currentStep.type;
+  }
+
+  // Show different buttons based on step requirements
+  let components;
+  if (stepTypes.length === 0) {
+    // Step has no requirements - show next step button (for info steps)
+    components = [ComponentFactory.infoStepButtons()];
+  } else {
+    // Step has requirements - show next step button
+    components = [ComponentFactory.stepButtons()];
+  }
 
   channel.send({
     embeds: [embed],
-    components: [ComponentFactory.stepButtons()]
+    components: components
   });
 }

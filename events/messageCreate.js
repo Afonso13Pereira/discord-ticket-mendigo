@@ -6,22 +6,11 @@ const EmbedFactory = require('../utils/embeds');
 const ComponentFactory = require('../utils/components');
 const { CHANNELS, EMOJIS } = require('../config/constants');
 const MESSAGES = require('../config/messages');
+const VIPS = require('./vips');
 
 const CONFIRM_RX = /^sim[, ]*eu confirmo$/i;
 
-const VIP_CHECKLISTS = {
-  semanal: [
-    "📱 Envia **print do perfil** com ID visível **e** o **ID em texto**",
-    "💰 Envia **prints dos depósitos**",
-    "💸 Envia **prints dos levantamentos**",
-    "🏦 Envia **prints dos cofres**",
-    "📥 Envia **print do depósito LTC** com QR visível **e** o **endereço LTC em texto**"
-  ],
-  leaderboard: [
-    "📱 Envia **print da conta** com ID visível **e** o **ID em texto**",
-    "📥 Envia **print do depósito LTC** com QR visível **e** o **endereço LTC em texto**"
-  ]
-};
+// VIP_CHECKLISTS removido - agora carregado dinamicamente de events/vips/
 
 // Função para verificar se o usuário tem cargo de verificação para um casino
 function isUserVerifiedForCasino(member, casino) {
@@ -219,80 +208,96 @@ module.exports = {
 
     // VIP Checklist Validation
     if (ticketState.vipType && ticketState.awaitProof) {
-      const checklist = VIP_CHECKLISTS[ticketState.vipType];
-      const stepIndex = ticketState.step;
+      console.log('🔍 VIP Validation - Step:', ticketState.step, 'VIP Type:', ticketState.vipType);
+      
+      const vip = VIPS[ticketState.vipType];
+      if (!vip || !vip.checklist) {
+        return message.reply({
+          embeds: [EmbedFactory.error(`VIP type '${ticketState.vipType}' não configurado corretamente`)]
+        });
+      }
 
-      // Handle combined steps (image + text)
-      if (stepIndex === 0 || (ticketState.vipType === 'semanal' && stepIndex === 4) || (ticketState.vipType === 'leaderboard' && stepIndex === 1)) {
-        // These steps require both image and text
+      const stepIndex = ticketState.step;
+      const currentStep = vip.checklist[stepIndex];
+      console.log('🔍 VIP Step:', currentStep);
+
+      // Check if current step requires any input
+      let stepTypes = [];
+      if (typeof currentStep === 'object' && currentStep !== null && Array.isArray(currentStep.type)) {
+        stepTypes = currentStep.type;
+      }
+      console.log('🔍 VIP Step Types:', stepTypes);
+
+      // If step has no requirements (empty type array), advance automatically
+      if (stepTypes.length === 0) {
+        ticketState.awaitProof = false;
+        await client.saveTicketState(message.channel.id, ticketState);
+      } else {
         // Initialize step data if not exists
         if (!ticketState.stepData) ticketState.stepData = {};
         if (!ticketState.stepData[stepIndex]) ticketState.stepData[stepIndex] = {};
 
         // Check current message for inputs
-        if (message.attachments.size > 0) {
+        if (stepTypes.includes('image') && message.attachments.size > 0) {
           ticketState.stepData[stepIndex].hasImage = true;
         }
-        if (message.content && message.content.trim().length >= 5) {
+        if (stepTypes.includes('text') && message.content && message.content.trim().length >= 5) {
           ticketState.stepData[stepIndex].hasText = true;
           ticketState.stepData[stepIndex].textContent = message.content.trim();
-          
-          // Save specific data based on step
-          if (stepIndex === 0) {
-            ticketState.vipId = message.content.trim();
-          } else {
-            ticketState.ltcAddress = message.content.trim();
-          }
         }
-        
-        await client.saveTicketState(message.channel.id, ticketState);
-        
-        // Check if both requirements are met
-        if (!ticketState.stepData[stepIndex].hasImage || !ticketState.stepData[stepIndex].hasText) {
+
+        // Check if all required types are provided
+        const allRequirementsMet = stepTypes.every(type => {
+          if (type === 'image') return ticketState.stepData[stepIndex].hasImage;
+          if (type === 'text') return ticketState.stepData[stepIndex].hasText;
+          return false;
+        });
+
+        if (allRequirementsMet) {
+          // All requirements met, advance to next step
+          ticketState.awaitProof = false;
+          // Clear step data for this step
+          delete ticketState.stepData[stepIndex];
+          await client.saveTicketState(message.channel.id, ticketState);
+        } else {
+          // Still missing requirements, save state and wait for more input
+          await client.saveTicketState(message.channel.id, ticketState);
+          
+          // Show what's still missing
           const missing = [];
-          if (!ticketState.stepData[stepIndex].hasImage) missing.push('**imagem**');
-          if (!ticketState.stepData[stepIndex].hasText) missing.push(stepIndex === 0 ? '**ID em texto**' : '**endereço LTC em texto**');
+          if (stepTypes.includes('image') && !ticketState.stepData[stepIndex].hasImage) missing.push('**imagem**');
+          if (stepTypes.includes('text') && !ticketState.stepData[stepIndex].hasText) missing.push('**texto**');
           
           return message.reply({
             embeds: [EmbedFactory.error(MESSAGES.CHECKLIST.MISSING_REQUIREMENTS.replace('{missing}', missing.join(' e ')))]
           });
         }
-        
-        // Reset flags for next step
-        delete ticketState.stepData[stepIndex];
-        ticketState.awaitProof = false;
-        await client.saveTicketState(message.channel.id, ticketState);
-      } else {
-        // Other steps require only images
-        if (message.attachments.size === 0) {
-          return message.reply({
-            embeds: [EmbedFactory.error(MESSAGES.CHECKLIST.IMAGE_REQUIRED)]
-          });
+      }
+
+      if (!ticketState.awaitProof) {
+        console.log('✅ VIP Step completed, advancing...');
+        // Log step completion
+        await client.db.logAction(message.channel.id, message.author.id, 'vip_step_completed', `${ticketState.vipType} Step ${stepIndex + 1}`);
+
+        // AUTOMÁTICO: Avançar para próximo passo
+        if (stepIndex + 1 < vip.checklist.length) {
+          console.log('🔄 VIP Moving to next step:', stepIndex + 1);
+          ticketState.step++;
+          ticketState.awaitProof = true;
+          await client.saveTicketState(message.channel.id, ticketState);
+          
+          // Mostrar próximo passo automaticamente
+          return askVipChecklist(message.channel, ticketState);
         }
-        ticketState.awaitProof = false;
-        await client.saveTicketState(message.channel.id, ticketState);
-      }
-
-      // Log step completion
-      await client.db.logAction(message.channel.id, message.author.id, 'vip_step_completed', `${ticketState.vipType} Step ${stepIndex + 1}`);
-
-      // AUTOMÁTICO: Avançar para próximo passo
-      if (stepIndex + 1 < checklist.length) {
-        ticketState.step++;
-        ticketState.awaitProof = true;
-        await client.saveTicketState(message.channel.id, ticketState);
         
-        // Mostrar próximo passo automaticamente
-        return askVipChecklist(message.channel, ticketState);
+        // VIP checklist completed
+        await client.db.logAction(message.channel.id, message.author.id, 'vip_checklist_completed', `Type: ${ticketState.vipType}, Casino: ${ticketState.vipCasino}`);
+        
+        return message.reply({
+          embeds: [EmbedFactory.success(`Checklist do VIP ${vip.label} completado!`)],
+          components: [ComponentFactory.finishButtons()]
+        });
       }
-      
-      // VIP checklist completed
-      await client.db.logAction(message.channel.id, message.author.id, 'vip_checklist_completed', `Type: ${ticketState.vipType}, Casino: ${ticketState.vipCasino}`);
-      
-      return message.reply({
-        embeds: [EmbedFactory.success(MESSAGES.VIP.COMPLETED)],
-        components: [ComponentFactory.finishButtons()]
-      });
     }
 
     // Telegram Code + Screenshot
@@ -498,9 +503,10 @@ module.exports = {
           embeds: [EmbedFactory.success(MESSAGES.GIVEAWAYS.TELEGRAM_CODE_VALIDATED.replace('{casino}', logsCasino))]
         });
         return askCasino(message.channel);
-      } else if (logsCasino.includes(';')) {
-        // Separar e filtrar casinos válidos
-        const allowedCasinoNames = logsCasino.split(';').map(c => c.trim()).filter(Boolean);
+      } else if (logsCasino.includes(';') || logsCasino.includes(',')) {
+        // Separar e filtrar casinos válidos (suporta ; e ,)
+        const separator = logsCasino.includes(';') ? ';' : ',';
+        const allowedCasinoNames = logsCasino.split(separator).map(c => c.trim()).filter(Boolean);
         const allowedCasinos = {};
         for (const name of allowedCasinoNames) {
           const id = Object.keys(CASINOS).find(id => 
@@ -646,7 +652,22 @@ module.exports = {
         
         // Log checklist completion
         await client.db.logAction(message.channel.id, message.author.id, 'checklist_completed', `Casino: ${ticketState.casino}`);
-        
+
+        // NOVO: Copiar texto do último passo para ltcAddress, se houver
+        const lastStepIndex = casino.checklist.length - 1;
+        const lastStep = casino.checklist[lastStepIndex];
+        if (
+          Array.isArray(lastStep.type) &&
+          lastStep.type.includes('text') &&
+          ticketState.stepData &&
+          ticketState.stepData[lastStepIndex] &&
+          ticketState.stepData[lastStepIndex].textContent
+        ) {
+          console.log('[CHECKLIST][LTC] Copiando LTC:', ticketState.stepData[lastStepIndex].textContent);
+          ticketState.ltcAddress = ticketState.stepData[lastStepIndex].textContent;
+          await client.saveTicketState(message.channel.id, ticketState);
+        }
+
         return message.reply({
           embeds: [EmbedFactory.success(MESSAGES.CHECKLIST.COMPLETED)],
           components: [ComponentFactory.finishButtons()]
@@ -663,9 +684,10 @@ module.exports = {
 
 // Helper Functions
 function findCasinoId(name) {
-  // CASO TENHA ; TEM QUE SEPARAR E PERCORRER O ARRAY E VERIFICAR SE O CASINO EXISTE
-  if (name.includes(';')) {
-    const casinos = name.split(';');
+  // CASO TENHA ; OU , TEM QUE SEPARAR E PERCORRER O ARRAY E VERIFICAR SE O CASINO EXISTE
+  if (name.includes(';') || name.includes(',')) {
+    const separator = name.includes(';') ? ';' : ',';
+    const casinos = name.split(separator);
     for (const casino of casinos) {
       const id = Object.keys(CASINOS).find(id => id.toLowerCase() === casino.toLowerCase() || CASINOS[id].label.toLowerCase() === casino.toLowerCase());
       if (id) return id;
@@ -741,31 +763,61 @@ function askChecklist(channel, ticketState) {
 }
 
 function askVipChecklist(channel, ticketState) {
-  const checklist = VIP_CHECKLISTS[ticketState.vipType];
-  if (!checklist) {
+  const vip = VIPS[ticketState.vipType];
+  if (!vip || !vip.checklist) {
     return channel.send({
-      embeds: [EmbedFactory.error(MESSAGES.VIP.TYPE_NOT_CONFIGURED)]
+      embeds: [EmbedFactory.error(`VIP type '${ticketState.vipType}' não configurado corretamente`)]
     });
   }
 
   const stepIndex = ticketState.step ?? 0;
   
-  if (stepIndex >= checklist.length) {
+  if (stepIndex >= vip.checklist.length) {
     return channel.send({
-      embeds: [EmbedFactory.success(MESSAGES.VIP.COMPLETED)],
+      embeds: [EmbedFactory.success(`Checklist do VIP ${vip.label} completado!`)],
       components: [ComponentFactory.finishButtons()]
     });
   }
 
-  const embed = EmbedFactory.vipChecklist(
+  const currentStep = vip.checklist[stepIndex];
+  
+  // Handle new checklist structure (objects with title, description, type, image)
+  let stepDescription, stepImage;
+  if (typeof currentStep === 'object' && currentStep !== null) {
+    // New structure: object with title, description, type, image
+    stepDescription = currentStep.description;
+    stepImage = currentStep.image;
+  } else {
+    // Old structure: just a string
+    stepDescription = currentStep;
+    stepImage = null;
+  }
+  
+  const embed = EmbedFactory.checklist(
     stepIndex + 1,
-    checklist.length,
-    checklist[stepIndex],
-    ticketState.vipType
+    vip.checklist.length,
+    stepDescription,
+    stepImage
   );
+
+  // Check if current step requires any input
+  let stepTypes = [];
+  if (typeof currentStep === 'object' && currentStep !== null && Array.isArray(currentStep.type)) {
+    stepTypes = currentStep.type;
+  }
+
+  // Show different buttons based on step requirements
+  let components;
+  if (stepTypes.length === 0) {
+    // Step has no requirements - show next step button (for info steps)
+    components = [ComponentFactory.infoStepButtons()];
+  } else {
+    // Step has requirements - show next step button
+    components = [ComponentFactory.stepButtons()];
+  }
 
   channel.send({
     embeds: [embed],
-    components: [ComponentFactory.stepButtons()]
+    components: components
   });
 }

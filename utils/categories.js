@@ -64,6 +64,8 @@ async function create(name, color, emoji) {
   // Force refresh to ensure consistency
   await refreshCategories();
   
+      // Note: Ticket message update is handled by the command that calls this function
+  
   return id;
 }
 
@@ -76,6 +78,8 @@ async function close(id) {
     
     // Force refresh to ensure consistency
     await refreshCategories();
+    
+    // Note: Ticket message update is handled by the command that calls this function
   }
 }
 

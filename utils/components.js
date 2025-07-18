@@ -1,6 +1,8 @@
 // utils/components.js
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
-const { EMOJIS, VIP_CASINOS } = require('../config/constants');
+const { EMOJIS } = require('../config/constants');
+const VIPS = require('../events/vips');
+const CASINOS = require('../events/casinos');
 const MESSAGES = require('../config/messages');
 
 class ComponentFactory {
@@ -230,8 +232,17 @@ class ComponentFactory {
     );
   }
 
-  static vipCasinoButtons() {
-    const buttons = VIP_CASINOS.map(casino => 
+  static vipCasinoButtons(vipType = null) {
+    let availableCasinos = Object.values(CASINOS);
+    
+    // Se um tipo de VIP foi especificado, filtrar apenas os casinos disponíveis
+    if (vipType && VIPS[vipType] && VIPS[vipType].casinos) {
+      availableCasinos = Object.values(CASINOS).filter(casino => 
+        VIPS[vipType].casinos.includes(casino.id)
+      );
+    }
+    
+    const buttons = availableCasinos.map(casino => 
       this.createButton(`vip_casino_${casino.id}`, casino.label, ButtonStyle.Primary, casino.emoji)
     );
     
@@ -239,10 +250,11 @@ class ComponentFactory {
   }
 
   static vipTypeButtons() {
-    return this.createButtonRow(
-      this.createButton('vip_type_semanal', 'Semanal', ButtonStyle.Primary, EMOJIS.STAR),
-      this.createButton('vip_type_leaderboard', 'Leaderboard', ButtonStyle.Success, EMOJIS.CROWN)
+    const buttons = Object.values(VIPS).map(vip => 
+      this.createButton(`vip_type_${vip.id}`, vip.label, ButtonStyle.Primary, vip.emoji)
     );
+    
+    return this.createButtonRow(...buttons);
   }
 
   static casinoSelectMenu(casinos) {

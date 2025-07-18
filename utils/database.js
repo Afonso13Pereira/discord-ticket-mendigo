@@ -561,6 +561,7 @@ class DatabaseManager {
       });
       
       await approval.save();
+      console.log('[DB][saveApproval] Salvo approvalId:', approvalId);
       return approvalId;
     } catch (error) {
       console.error('Error saving approval:', error);
@@ -572,8 +573,13 @@ class DatabaseManager {
     if (!this.connected) return null;
     
     try {
+      console.log('[DB][getApproval] Buscando approvalId:', approvalId);
       const doc = await this.Approval.findOne({ approvalId });
-      if (!doc) return null;
+      if (!doc) {
+        console.log('[DB][getApproval] Não encontrado:', approvalId);
+        return null;
+      }
+      console.log('[DB][getApproval] Encontrado:', doc.approvalId);
       
       return {
         approvalId: doc.approvalId,

@@ -24,7 +24,7 @@ module.exports = {
     {
       title: 'Passo 3',
       description: '👤 Envia **screenshot** do perfil da Hexabet com email visível',
-      type: ['image'],
+      type: ['image', 'text'],
       image: 'https://i.imgur.com/F6TbNZr.png'
     },
     {

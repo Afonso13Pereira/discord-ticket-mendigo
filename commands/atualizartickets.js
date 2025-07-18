@@ -75,16 +75,45 @@ async function updateTicketMessage(guild, client) {
     const components = ComponentFactory.categoryButtons(STATIC_CATEGORIES, cats);
     console.log(`📋 Created ${components.length} component rows for ticket message`);
 
-    // Clear channel and send new message
-    const messages = await ticketChannel.messages.fetch({ limit: 100 });
-    if (messages.size > 0) {
-      await ticketChannel.bulkDelete(messages);
+    // Try to find existing ticket message to edit
+    const messages = await ticketChannel.messages.fetch({ limit: 10 });
+    console.log(`🔍 Searching for existing ticket message in ${messages.size} messages`);
+    
+    let existingMessage = messages.find(msg => 
+      msg.author.id === client.user.id && 
+      msg.embeds.length > 0 && 
+      msg.components.length > 0 && // Must have buttons
+      msg.embeds[0].title && 
+      msg.embeds[0].title.includes('Sistema de Suporte')
+    );
+
+    // Fallback: look for any message with buttons from the bot
+    if (!existingMessage) {
+      existingMessage = messages.find(msg => 
+        msg.author.id === client.user.id && 
+        msg.components.length > 0
+      );
+      if (existingMessage) {
+        console.log('🔍 Found message with buttons, will edit it');
+      }
     }
 
-    await ticketChannel.send({
-      embeds: [embed],
-      components: components
-    });
+    if (existingMessage) {
+      // Edit existing message
+      await existingMessage.edit({
+        embeds: [embed],
+        components: components
+      });
+      console.log('✅ Ticket message edited in channel:', ticketChannel.name);
+    } else {
+      // Send new message if no existing message found
+      console.log('📝 No existing ticket message found, sending new one');
+      await ticketChannel.send({
+        embeds: [embed],
+        components: components
+      });
+      console.log('✅ New ticket message sent in channel:', ticketChannel.name);
+    }
 
     console.log('✅ Ticket message updated in channel:', ticketChannel.name);
   } catch (error) {

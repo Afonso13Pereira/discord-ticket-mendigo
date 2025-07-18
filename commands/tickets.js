@@ -113,6 +113,16 @@ module.exports = {
         }
 
         await close(id);
+        
+        // Update ticket message after closing category
+        try {
+          const { updateTicketMessage } = require('./atualizartickets');
+          await updateTicketMessage(interaction.guild, interaction.client);
+          console.log('✅ Ticket message updated after closing category via command');
+        } catch (error) {
+          console.error('❌ Error updating ticket message after closing category:', error);
+        }
+        
         return interaction.reply({
           embeds: [EmbedFactory.success(`Categoria \`${cats[id].name}\` (ID: \`${id}\`) foi fechada com sucesso`)],
           flags: 64

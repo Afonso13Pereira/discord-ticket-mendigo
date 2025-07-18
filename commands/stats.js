@@ -51,15 +51,26 @@ module.exports = {
 
         const embed = EmbedFactory.ticketStatistics(stats);
         
-        // Clear channel and send new stats
-        const messages = await statsChannel.messages.fetch({ limit: 100 });
-        if (messages.size > 0) {
-          await statsChannel.bulkDelete(messages);
+        // Try to find existing stats message to edit
+        const messages = await statsChannel.messages.fetch({ limit: 10 });
+        const existingMessage = messages.find(msg => 
+          msg.author.id === client.user.id && 
+          msg.embeds.length > 0 && 
+          msg.embeds[0].title && 
+          msg.embeds[0].title.includes('Estatísticas')
+        );
+
+        if (existingMessage) {
+          // Edit existing message
+          await existingMessage.edit({
+            embeds: [embed]
+          });
+        } else {
+          // Send new message if no existing message found
+          await statsChannel.send({
+            embeds: [embed]
+          });
         }
-        
-        await statsChannel.send({
-          embeds: [embed]
-        });
 
         return interaction.reply({
           embeds: [EmbedFactory.success(`Estatísticas atualizadas no canal ${statsChannel}`)],
