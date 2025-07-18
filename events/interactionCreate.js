@@ -226,7 +226,15 @@ module.exports = {
           submission.ltcAddress,
           bcGameId
         );
-        console.log('[APPROVAL][criação] approvalId para botões:', approvalId);
+        if (!approvalId) {
+          console.error('[APPROVAL][ERROR] Falha ao criar approval');
+          return interaction.reply({
+            embeds: [EmbedFactory.error('Erro ao criar aprovação. Tente novamente.')],
+            flags: 64
+          });
+        }
+        
+        console.log('[APPROVAL][SUCCESS] approvalId criado:', approvalId);
 
         // Send to approval channel
         const approveChannel = await interaction.guild.channels.fetch(CHANNELS.APPROVE);

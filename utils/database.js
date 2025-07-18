@@ -107,6 +107,8 @@ const ApprovalSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
+// Remove any existing messageId index that might be causing conflicts
+ApprovalSchema.index({ messageId: 1 }, { sparse: true, background: true });
 const RedeemSchema = new mongoose.Schema({
   itemName: { type: String, required: true },
   twitchName: { type: String, required: true },
@@ -569,7 +571,8 @@ class DatabaseManager {
     if (!this.connected) return null;
     
     try {
-      const approvalId = `approval_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      // Generate a more unique ID to avoid conflicts
+      const approvalId = require('crypto').randomUUID().slice(0, 12);
       
       // CRÍTICO: Garantir que ltcAddress nunca seja null
       const finalLtcAddress = ltcAddress || 'N/A - Não fornecido';
@@ -584,24 +587,83 @@ class DatabaseManager {
       console.log('  - ltcAddress original:', ltcAddress);
       console.log('  - ltcAddress final:', finalLtcAddress);
       console.log('  - bcGameId:', bcGameId);
+      console.log('  - approvalId gerado:', approvalId);
       
-      const approval = new this.Approval({
-        approvalId,
-        ticketChannelId,
-        ticketNumber,
-        userId,
-        userTag,
-        casino,
-        prize,
-        ltcAddress: finalLtcAddress,
-        bcGameId
-      });
+      // Try to create approval with retry mechanism
+      let attempts = 0;
+      let approval = null;
       
-      await approval.save();
-      console.log('[DB][saveApproval] Approval salva com sucesso, ID:', approvalId);
-      return approvalId;
+      while (attempts < 3 && !approval) {
+        try {
+          const currentApprovalId = attempts > 0 ? require('crypto').randomUUID().slice(0, 12) : approvalId;
+          
+          approval = new this.Approval({
+            approvalId: currentApprovalId,
+            ticketChannelId,
+            ticketNumber,
+            userId,
+            userTag,
+            casino,
+            prize,
+            ltcAddress: finalLtcAddress,
+            bcGameId
+          });
+          
+          await approval.save();
+          console.log('[DB][saveApproval] Approval salva com sucesso, ID:', currentApprovalId);
+          return currentApprovalId;
+          
+        } catch (saveError) {
+          attempts++;
+          console.log(`[DB][saveApproval] Tentativa ${attempts} falhou:`, saveError.message);
+          
+          if (attempts >= 3) {
+            throw saveError;
+          }
+          
+          // Wait a bit before retry
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+      
+      return null;
     } catch (error) {
       console.error('Error saving approval:', error);
+      
+      // If it's a duplicate key error, try to clean up and retry once more
+      if (error.code === 11000) {
+        console.log('[DB][saveApproval] Duplicate key error, tentando limpeza...');
+        try {
+          // Try to remove any problematic entries
+          await this.Approval.deleteMany({ 
+            ticketChannelId, 
+            ticketNumber,
+            status: 'pending'
+          });
+          
+          // Retry once more
+          const retryApprovalId = require('crypto').randomUUID().slice(0, 12);
+          const retryApproval = new this.Approval({
+            approvalId: retryApprovalId,
+            ticketChannelId,
+            ticketNumber,
+            userId,
+            userTag,
+            casino,
+            prize,
+            ltcAddress: ltcAddress || 'N/A - Não fornecido',
+            bcGameId
+          });
+          
+          await retryApproval.save();
+          console.log('[DB][saveApproval] Retry bem-sucedido, ID:', retryApprovalId);
+          return retryApprovalId;
+          
+        } catch (retryError) {
+          console.error('[DB][saveApproval] Retry também falhou:', retryError);
+        }
+      }
+      
       return null;
     }
   }
