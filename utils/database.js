@@ -479,12 +479,6 @@ class DatabaseManager {
     try {
       const submissionId = require('crypto').randomUUID().slice(0, 12);
       
-      // Debug logs
-      console.log('[DB][saveSubmission] Dados recebidos:');
-      console.log('  - ltcAddress:', ltcAddress);
-      console.log('  - casino:', casino);
-      console.log('  - prize:', prize);
-      
       const submission = new this.Submission({
         submissionId,
         ticketChannelId,
@@ -499,7 +493,6 @@ class DatabaseManager {
       });
       
       await submission.save();
-      console.log('[DB][saveSubmission] Submission salva com ltcAddress:', ltcAddress || 'N/A');
       return submissionId;
     } catch (error) {
       console.error('Error saving submission:', error);
