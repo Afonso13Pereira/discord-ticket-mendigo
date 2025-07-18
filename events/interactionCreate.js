@@ -214,18 +214,20 @@ module.exports = {
           bcGameId = ticketState?.vipId || ticketState?.bcGameId || null;
         }
 
-        // NOVO: Buscar imagem do perfil BCGame se for BCGame
+        // Create approval
+        console.log('[APPROVAL][SUBMIT] ltcAddress:', submission.ltcAddress);
+        
+        // NOVO: Para BCGame, buscar imagem do perfil do passo 2
         let bcGameProfileImage = null;
         if (submission.casino === 'BCGame') {
-          // Buscar mensagens do canal para encontrar a imagem do 2º passo
           try {
+            // Buscar mensagens do canal para encontrar a imagem do passo 2
             const messages = await interaction.channel.messages.fetch({ limit: 50 });
             const messagesArray = Array.from(messages.values()).reverse(); // Ordem cronológica
             
-            // Procurar por mensagem com anexo após o 2º passo ser mencionado
             let foundStep2 = false;
             for (const msg of messagesArray) {
-              // Verificar se é uma mensagem do bot mencionando "Passo 2"
+              // Procurar por mensagem que indica passo 2
               if (msg.author.bot && msg.embeds.length > 0) {
                 const embedTitle = msg.embeds[0].title;
                 if (embedTitle && embedTitle.includes('Passo 2')) {
@@ -234,31 +236,34 @@ module.exports = {
                 }
               }
               
-              // Se encontrou o passo 2 e esta mensagem tem anexo, capturar
-              if (foundStep2 && msg.attachments.size > 0 && !msg.author.bot) {
-                bcGameProfileImage = msg.attachments.first().url;
-                console.log('[BCGAME][PROFILE_IMAGE] Imagem capturada:', bcGameProfileImage);
-                break;
+              // Se encontrou passo 2, procurar próxima imagem do usuário
+              if (foundStep2 && msg.author.id === submission.userId && msg.attachments.size > 0) {
+                const attachment = msg.attachments.first();
+                if (attachment.contentType && attachment.contentType.startsWith('image/')) {
+                  bcGameProfileImage = attachment.url;
+                  console.log('[BCGAME][PROFILE] Imagem do perfil capturada:', bcGameProfileImage);
+                  break;
+                }
               }
             }
           } catch (error) {
-            console.error('[BCGAME][PROFILE_IMAGE] Erro ao buscar imagem:', error);
+            console.error('[BCGAME][PROFILE] Erro ao buscar imagem:', error);
           }
         }
-
-        // Create approval
-        console.log('[APPROVAL][SUBMIT] ltcAddress:', submission.ltcAddress);
+        
         const approvalId = await client.db.saveApproval(
           submission.ticketChannelId,
           submission.ticketNumber,
           submission.userId,
           submission.userTag,
           submission.casino,
-          prize,
+          submission.prize,
           submission.ltcAddress,
-          bcGameId,
+          submission.bcGameId,
           bcGameProfileImage
         );
+        
+        console.log('[APPROVAL][criação] approvalId para botões:', approvalId);
         
         if (!approvalId) {
           console.error('[APPROVAL][ERROR] Falha ao criar approval');
@@ -279,8 +284,7 @@ module.exports = {
           submission.ticketNumber,
           submission.ltcAddress,
           bcGameId,
-          isVerified,
-          bcGameProfileImage
+          isVerified
         );
         const components = ComponentFactory.approvalButtons(approvalId);
 
