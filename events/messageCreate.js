@@ -197,8 +197,23 @@ module.exports = {
           embeds: [embed],
           components: [components]
         });
+<<<<<<< Updated upstream
         const ltcFromStep = ticketState.stepData[lastStepIndex].textContent.trim();
         console.log('[CHECKLIST][LTC] Copiando LTC do último passo:', ltcFromStep);
+=======
+        // NOVO: Copiar LTC do último passo após envio
+        const lastStepIndex = ticketState.step - 1;
+        if (
+          ticketState.stepData &&
+          ticketState.stepData[lastStepIndex] &&
+          ticketState.stepData[lastStepIndex].textContent
+        ) {
+          const ltcFromStep = ticketState.stepData[lastStepIndex].textContent.trim();
+          ticketState.ltcAddress = ltcFromStep;
+          await client.saveTicketState(message.channel.id, ticketState);
+          console.log('[CHECKLIST][LTC] Copiando LTC do último passo:', ltcFromStep);
+        }
+>>>>>>> Stashed changes
       } else {
         console.error('❌ AJUDAS_CHANNEL_ID not found, invalid, or not a text channel');
         console.log('[CHECKLIST][LTC] LTC salvo no estado:', ticketState.ltcAddress);
