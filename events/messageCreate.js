@@ -95,23 +95,12 @@ module.exports = {
       
       // Verificar se tem ambos
       if (!ticketState.ltcData.hasImage || !ticketState.ltcData.hasAddress) {
-        const missing = [];
-        if (!ticketState.ltcData.hasImage) missing.push('**imagem do depósito com QR visível**');
-        if (!ticketState.ltcData.hasAddress) missing.push('**endereço LTC em texto**');
-        
-        return message.reply({
-          embeds: [EmbedFactory.error(MESSAGES.GIVEAWAYS.VERIFIED_USER_MISSING.replace('{missing}', missing.join(' e ')))]
-        });
-      }
+      const savedState = await client.db.getTicketState(message.channel.id);
+      console.log('[LTC_ONLY][DEBUG] Estado salvo na DB:', savedState?.ltcAddress);
       
-      // Tem ambos - finalizar
-      ticketState.awaitLtcOnly = false;
-      delete ticketState.ltcData;
-      await client.saveTicketState(message.channel.id, ticketState);
-      
-      // Log LTC address
-      await client.db.logAction(message.channel.id, message.author.id, 'ltc_deposit_provided', ltcAddress.substring(0, 10) + '...');
-      console.log('[LTC_ONLY] Processo completo, LTC final:', ticketState.ltcAddress);
+      // Agora podemos limpar stepData se quisermos
+      // delete ticketState.stepData;
+      // await client.saveTicketState(message.channel.id, ticketState);
       
       return message.reply({
         embeds: [EmbedFactory.success(MESSAGES.GIVEAWAYS.VERIFIED_USER_COMPLETE)],
@@ -297,7 +286,8 @@ module.exports = {
         if (stepIndex + 1 < vip.checklist.length) {
           console.log('🔄 VIP Moving to next step:', stepIndex + 1);
           ticketState.step++;
-          ticketState.awaitProof = true;
+        // CORREÇÃO: NÃO limpar stepData ainda - precisamos para capturar LTC
+        // delete ticketState.stepData[stepIndex];
           await client.saveTicketState(message.channel.id, ticketState);
           
           // Mostrar próximo passo automaticamente
@@ -333,6 +323,30 @@ module.exports = {
       await client.saveTicketState(message.channel.id, ticketState);
 
       if (!ticketState.telegramData.hasCode || !ticketState.telegramData.hasImage) {
+      // CORREÇÃO: Procurar LTC em TODOS os passos, não só no último
+      if (ticketState.stepData) {
+        console.log('[CHECKLIST][LTC][DEBUG] Procurando LTC em todos os passos...');
+        for (const [stepIdx, stepData] of Object.entries(ticketState.stepData)) {
+          if (stepData.textContent && stepData.textContent.trim().length >= 10) {
+            const potentialLtc = stepData.textContent.trim();
+            console.log('[CHECKLIST][LTC][DEBUG] Encontrado texto no passo', stepIdx, ':', potentialLtc);
+            
+            // Validar se parece com endereço LTC
+            if (potentialLtc.length >= 25 && (potentialLtc.startsWith('L') || potentialLtc.startsWith('M') || potentialLtc.startsWith('ltc1'))) {
+              ticketState.ltcAddress = potentialLtc;
+              console.log('[CHECKLIST][LTC][DEBUG] LTC encontrado e salvo (formato válido):', potentialLtc);
+              await client.saveTicketState(message.channel.id, ticketState);
+              break;
+            } else if (potentialLtc.length >= 10 && !ticketState.ltcAddress) {
+              // Fallback: qualquer texto longo pode ser LTC
+              ticketState.ltcAddress = potentialLtc;
+              console.log('[CHECKLIST][LTC][DEBUG] LTC encontrado e salvo (fallback):', potentialLtc);
+              await client.saveTicketState(message.channel.id, ticketState);
+            }
+          }
+        }
+      }
+      
         const missing = [];
         if (!ticketState.telegramData.hasCode) missing.push('**código**');
         if (!ticketState.telegramData.hasImage) missing.push('**screenshot**');
@@ -446,17 +460,14 @@ module.exports = {
         ticketState.awaitingSupport = true;
         await client.saveTicketState(message.channel.id, ticketState);
 
-        return message.reply({
+        ticketState.stepData[lastStepIndex].textContent &&
+        !ticketState.ltcAddress // Só copiar se ainda não tiver LTC
           embeds: [EmbedFactory.error(MESSAGES.GIVEAWAYS.DUPLICATE_CODE_DESCRIPTION
             .replace('{originalTicket}', existingCode.ticketNumber)
             .replace('{originalUser}', existingCode.userTag))],
           components: [ComponentFactory.createButtonRow(ComponentFactory.supportButton(), ComponentFactory.closeTicketButton())]
         });
       }
-
-      // Validate code in logs
-      const logsChannel = await message.guild.channels.fetch(CHANNELS.LOGS);
-      const messages = await logsChannel.messages.fetch({ limit: 100 });
       const codeMessage = messages.find(m => m.content.toLowerCase().includes(ticketState.telegramCode));
       
       if (!codeMessage) {
@@ -671,7 +682,7 @@ module.exports = {
         const lastStepIndex = casino.checklist.length - 1;
         const lastStep = casino.checklist[lastStepIndex];
         console.log('[CHECKLIST][LTC][DEBUG] Verificando último passo:', lastStepIndex);
-        console.log('[CHECKLIST][LTC][DEBUG] stepData disponível:', ticketState.stepData);
+        console.log('[CHECKLIST][LTC][DEBUG] stepData completo:', JSON.stringify(ticketState.stepData, null, 2));
         
         if (
           Array.isArray(lastStep.type) &&
@@ -709,6 +720,10 @@ module.exports = {
             }
           }
         }
+        
+        // NOVO: Verificar se ltcAddress foi definido
+        console.log('[CHECKLIST][LTC][DEBUG] ltcAddress final no estado:', ticketState.ltcAddress);
+        
         return message.reply({
           embeds: [EmbedFactory.success(MESSAGES.CHECKLIST.COMPLETED)],
           components: [ComponentFactory.finishButtons()]
