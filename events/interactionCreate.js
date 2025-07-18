@@ -1344,8 +1344,8 @@ module.exports = {
         ticketState.ownerTag,
         ticketState.gwType || ticketState.vipType || 'unknown',
         ticketState.casino || ticketState.vipCasino,
-        ticketState.prize,
-        ticketState.ltcAddress,
+        ticketState.ltcAddress || 'N/A',
+        ticketState.ltcAddress || 'N/A',
         ticketState.bcGameId
       );
 
@@ -1436,13 +1436,18 @@ module.exports = {
       const [_, action, ...approvalIdParts] = interaction.customId.split('_');
       const approvalId = approvalIdParts.join('_');
       
+      console.log(`[APPROVAL][${action.toUpperCase()}] Looking for approvalId:`, approvalId);
+      
       const approval = await client.db.getApproval(approvalId);
       if (!approval) {
+        console.log(`[APPROVAL][${action.toUpperCase()}] Approval not found:`, approvalId);
         return interaction.reply({
           embeds: [EmbedFactory.error('Aprovação não encontrada')],
           flags: 64
         });
       }
+      
+      console.log(`[APPROVAL][${action.toUpperCase()}] Found approval:`, approval.approvalId);
 
       if (action === 'goto') {
         // Redirect to ticket
