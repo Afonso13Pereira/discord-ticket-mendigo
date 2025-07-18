@@ -670,6 +670,9 @@ module.exports = {
         // NOVO: Copiar texto do último passo para ltcAddress, se houver
         const lastStepIndex = casino.checklist.length - 1;
         const lastStep = casino.checklist[lastStepIndex];
+        console.log('[CHECKLIST][LTC][DEBUG] Verificando último passo:', lastStepIndex);
+        console.log('[CHECKLIST][LTC][DEBUG] stepData disponível:', ticketState.stepData);
+        
         if (
           Array.isArray(lastStep.type) &&
           lastStep.type.includes('text') &&
@@ -677,11 +680,35 @@ module.exports = {
           ticketState.stepData[lastStepIndex] &&
           ticketState.stepData[lastStepIndex].textContent
         ) {
-          console.log('[CHECKLIST][LTC] Copiando LTC:', ticketState.stepData[lastStepIndex].textContent);
-          ticketState.ltcAddress = ticketState.stepData[lastStepIndex].textContent;
+          const ltcFromStep = ticketState.stepData[lastStepIndex].textContent.trim();
+          console.log('[CHECKLIST][LTC][DEBUG] Copiando LTC do passo:', ltcFromStep);
+          ticketState.ltcAddress = ltcFromStep;
           await client.saveTicketState(message.channel.id, ticketState);
+          console.log('[CHECKLIST][LTC][DEBUG] LTC salvo no estado:', ticketState.ltcAddress);
+        } else {
+          console.log('[CHECKLIST][LTC][DEBUG] Não foi possível copiar LTC do último passo');
+          console.log('[CHECKLIST][LTC][DEBUG] lastStep.type:', lastStep.type);
+          console.log('[CHECKLIST][LTC][DEBUG] stepData[lastStepIndex]:', ticketState.stepData?.[lastStepIndex]);
         }
-
+        
+        // NOVO: Tentar encontrar qualquer texto que possa ser LTC em qualquer passo
+        if (!ticketState.ltcAddress && ticketState.stepData) {
+          console.log('[CHECKLIST][LTC][DEBUG] Procurando LTC em todos os passos...');
+          for (const [stepIdx, stepData] of Object.entries(ticketState.stepData)) {
+            if (stepData.textContent && stepData.textContent.trim().length >= 10) {
+              const potentialLtc = stepData.textContent.trim();
+              console.log('[CHECKLIST][LTC][DEBUG] Encontrado texto no passo', stepIdx, ':', potentialLtc);
+              
+              // Se parece com endereço LTC, usar
+              if (potentialLtc.startsWith('L') || potentialLtc.startsWith('M') || potentialLtc.startsWith('ltc1') || potentialLtc.length >= 25) {
+                ticketState.ltcAddress = potentialLtc;
+                console.log('[CHECKLIST][LTC][DEBUG] LTC encontrado e salvo:', potentialLtc);
+                await client.saveTicketState(message.channel.id, ticketState);
+                break;
+              }
+            }
+          }
+        }
         return message.reply({
           embeds: [EmbedFactory.success(MESSAGES.CHECKLIST.COMPLETED)],
           components: [ComponentFactory.finishButtons()]

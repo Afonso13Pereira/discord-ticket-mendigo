@@ -548,6 +548,22 @@ class DatabaseManager {
     try {
       const approvalId = `approval_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
+      // DEBUG: Log todos os dados recebidos
+      console.log('[DB][saveApproval][DEBUG] Dados recebidos:');
+      console.log('  - ticketChannelId:', ticketChannelId);
+      console.log('  - ticketNumber:', ticketNumber);
+      console.log('  - userId:', userId);
+      console.log('  - userTag:', userTag);
+      console.log('  - casino:', casino);
+      console.log('  - prize:', prize);
+      console.log('  - ltcAddress:', ltcAddress);
+      console.log('  - ltcAddress tipo:', typeof ltcAddress);
+      console.log('  - bcGameId:', bcGameId);
+      
+      // Garantir que ltcAddress nunca seja null
+      const finalLtcAddress = ltcAddress || 'N/A';
+      console.log('[DB][saveApproval][DEBUG] ltcAddress final:', finalLtcAddress);
+      
       const approval = new this.Approval({
         approvalId,
         ticketChannelId,
@@ -556,12 +572,12 @@ class DatabaseManager {
         userTag,
         casino,
         prize,
-        ltcAddress,
+        ltcAddress: finalLtcAddress,
         bcGameId
       });
       
       await approval.save();
-      console.log('[DB][saveApproval] Salvo approvalId:', approvalId);
+      console.log('[DB][saveApproval][DEBUG] Approval salva com sucesso, ID:', approvalId);
       return approvalId;
     } catch (error) {
       console.error('Error saving approval:', error);
