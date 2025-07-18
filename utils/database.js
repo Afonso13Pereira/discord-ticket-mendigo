@@ -103,12 +103,13 @@ const ApprovalSchema = new mongoose.Schema({
   prize: { type: String, required: true },
   ltcAddress: { type: String, required: true },
   bcGameId: { type: String, default: null },
+  messageId: { type: String, default: null }, // NOVO: Campo para ID da mensagem de aprovação
   status: { type: String, default: 'pending' },
   createdAt: { type: Date, default: Date.now }
 });
 
-// Remove any existing messageId index that might be causing conflicts
-ApprovalSchema.index({ messageId: 1 }, { sparse: true, background: true });
+// NOVO: Remover índice problemático e criar um mais seguro
+// ApprovalSchema.index({ messageId: 1 }, { sparse: true, background: true });
 const RedeemSchema = new mongoose.Schema({
   itemName: { type: String, required: true },
   twitchName: { type: String, required: true },
@@ -567,7 +568,7 @@ class DatabaseManager {
   }
 
   // === APPROVALS ===
-  async saveApproval(ticketChannelId, ticketNumber, userId, userTag, casino, prize, ltcAddress, bcGameId = null) {
+  async saveApproval(ticketChannelId, ticketNumber, userId, userTag, casino, prize, ltcAddress, bcGameId = null, messageId = null) {
     if (!this.connected) return null;
     
     try {
@@ -587,6 +588,7 @@ class DatabaseManager {
       console.log('  - ltcAddress original:', ltcAddress);
       console.log('  - ltcAddress final:', finalLtcAddress);
       console.log('  - bcGameId:', bcGameId);
+      console.log('  - messageId:', messageId);
       console.log('  - approvalId gerado:', approvalId);
       
       // Try to create approval with retry mechanism
@@ -606,7 +608,8 @@ class DatabaseManager {
             casino,
             prize,
             ltcAddress: finalLtcAddress,
-            bcGameId
+            bcGameId,
+            messageId
           });
           
           await approval.save();
@@ -634,10 +637,9 @@ class DatabaseManager {
       if (error.code === 11000) {
         console.log('[DB][saveApproval] Duplicate key error, tentando limpeza...');
         try {
-          // Try to remove any problematic entries
+          // Try to remove any problematic entries with null messageId
           await this.Approval.deleteMany({ 
-            ticketChannelId, 
-            ticketNumber,
+            messageId: null,
             status: 'pending'
           });
           
@@ -651,8 +653,9 @@ class DatabaseManager {
             userTag,
             casino,
             prize,
-            ltcAddress: ltcAddress || 'N/A - Não fornecido',
-            bcGameId
+            ltcAddress: finalLtcAddress,
+            bcGameId,
+            messageId: messageId || `manual_${Date.now()}` // Garantir que não seja null
           });
           
           await retryApproval.save();
@@ -701,13 +704,18 @@ class DatabaseManager {
     }
   }
 
-  async updateApproval(approvalId, status = 'pending') {
+  async updateApproval(approvalId, status = 'pending', messageId = null) {
     if (!this.connected) return;
     
     try {
+      const updateData = { status };
+      if (messageId) {
+        updateData.messageId = messageId;
+      }
+      
       await this.Approval.findOneAndUpdate(
         { approvalId },
-        { status },
+        updateData,
         { new: true }
       );
     } catch (error) {

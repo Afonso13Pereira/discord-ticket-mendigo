@@ -255,7 +255,7 @@ module.exports = {
         });
 
         // Update approval with message info
-        await client.db.updateApproval(approvalId, 'pending');
+        await client.db.updateApproval(approvalId, 'pending', approvalMessage.id);
 
         // Update submission status
         await client.db.updateSubmission(submissionId, 'approved');
@@ -1365,34 +1365,63 @@ module.exports = {
       if (!ticketState.ltcAddress) {
         console.log('[FINISH_TICKET][SEARCH] ltcAddress não definido, buscando nos stepData...');
         
-        // Primeiro: buscar por formato válido de LTC
-        for (const [stepIdx, stepData] of Object.entries(ticketState.stepData)) {
-          if (stepData.textContent && stepData.textContent.trim().length >= 10) {
-            const potentialLtc = stepData.textContent.trim();
-            console.log('[FINISH][DEBUG] Texto encontrado no passo', stepIdx, ':', potentialLtc);
-            
-            // Fallback: qualquer texto longo pode ser LTC
-            finalLtcAddress = potentialLtc;
-            console.log('[FINISH][DEBUG] LTC encontrado nos stepData:', finalLtcAddress);
-            ticketState.ltcAddress = finalLtcAddress;
-            await client.saveTicketState(interaction.channel.id, ticketState);
-            break;
-            console.log(`[FINISH_TICKET][SEARCH] LTC válido encontrado no passo ${stepIdx}:`, text);
-          }
-        }
-        
-        // Segundo: se não encontrou formato válido, usar qualquer texto longo
-        if (!ticketState.ltcAddress) {
+        // Verificar se stepData existe antes de usar Object.entries
+        if (ticketState.stepData && typeof ticketState.stepData === 'object') {
+          // Primeiro: buscar por formato válido de LTC
           for (const [stepIdx, stepData] of Object.entries(ticketState.stepData)) {
-            if (stepData.textContent && stepData.textContent.trim().length >= 10) {
-              const text = stepData.textContent.trim();
-              ticketState.ltcAddress = text;
-              // Salvar no estado
-              console.log(`[FINISH_TICKET][SEARCH] LTC fallback encontrado no passo ${stepIdx}:`, text);
+            if (stepData && stepData.textContent && stepData.textContent.trim().length >= 10) {
+              const potentialLtc = stepData.textContent.trim();
+              console.log('[FINISH][DEBUG] Texto encontrado no passo', stepIdx, ':', potentialLtc);
+              
+              // Fallback: qualquer texto longo pode ser LTC
+              finalLtcAddress = potentialLtc;
+              console.log('[FINISH][DEBUG] LTC encontrado nos stepData:', finalLtcAddress);
+              ticketState.ltcAddress = finalLtcAddress;
               await client.saveTicketState(interaction.channel.id, ticketState);
               break;
             }
           }
+          
+          // Segundo: se não encontrou formato válido, usar qualquer texto longo
+          if (!ticketState.ltcAddress) {
+            for (const [stepIdx, stepData] of Object.entries(ticketState.stepData)) {
+              if (stepData && stepData.textContent && stepData.textContent.trim().length >= 10) {
+                const text = stepData.textContent.trim();
+                ticketState.ltcAddress = text;
+                // Salvar no estado
+                console.log(`[FINISH_TICKET][SEARCH] LTC fallback encontrado no passo ${stepIdx}:`, text);
+                await client.saveTicketState(interaction.channel.id, ticketState);
+                break;
+              }
+            }
+          }
+        } else {
+          console.log('[FINISH_TICKET][WARNING] stepData não existe ou não é um objeto válido');
+        }
+      }
+      
+      // NOVO: Verificar se o usuário enviou os requisitos obrigatórios
+      if (ticketState.awaitLtcOnly) {
+        // Verificar se tem imagem e LTC
+        let hasImage = false;
+        let hasLtc = false;
+        
+        if (ticketState.stepData && typeof ticketState.stepData === 'object') {
+          for (const [stepIdx, stepData] of Object.entries(ticketState.stepData)) {
+            if (stepData && stepData.hasImage) hasImage = true;
+            if (stepData && stepData.hasLtcAdress) hasLtc = true;
+          }
+        }
+        
+        if (!hasImage || !hasLtc) {
+          console.log('[FINISH_TICKET][ERROR] Usuário não enviou todos os requisitos obrigatórios');
+          return interaction.followUp({
+            embeds: [EmbedFactory.error('❌ **Requisitos obrigatórios não preenchidos!**\n\nVocê precisa enviar:\n' + 
+              (!hasImage ? '📷 **Uma imagem**\n' : '') +
+              (!hasLtc ? '💳 **O endereço LTC**\n' : '') +
+              '\nPor favor, envie todos os requisitos antes de finalizar.')],
+            flags: 64
+          });
         }
       }
       
@@ -1651,6 +1680,53 @@ module.exports = {
       let targetChannel;
       let channelName;
       
+      if (ticketState?.gwType || ticketState?.casino || ticketState?.category === 'Giveaways') {
+        // Giveaway-related ticket - use GIVEAWAYSHELP channel
+        targetChannel = await interaction.guild.channels.fetch(CHANNELS.GIVEAWAYSHELP).catch(() => null);
+        channelName = 'GIVEAWAYSHELP_CHANNEL_ID';
+      } else if (ticketState?.category === 'Website' && ticketState?.websiteType === 'redeem') {
+        // Website redeem ticket - use REDEEMS channel
+        targetChannel = await interaction.guild.channels.fetch(CHANNELS.REDEEMS).catch(() => null);
+        channelName = 'REDEEMS_CHANNEL_ID';
+      } else if (ticketState?.category === 'Website' && ticketState?.websiteType === 'bug') {
+        // Website bug ticket - use OTHER channel
+        targetChannel = await interaction.guild.channels.fetch(CHANNELS.OTHER).catch(() => null);
+        channelName = 'OTHER_CHANNEL_ID';
+      } else if (ticketState?.category === 'Dúvidas') {
+        // Questions ticket - use AJUDAS channel
+        targetChannel = await interaction.guild.channels.fetch(CHANNELS.AJUDAS).catch(() => null);
+        channelName = 'AJUDAS_CHANNEL_ID';
+      } else {
+        // Other ticket types - use OTHER channel
+        targetChannel = await interaction.guild.channels.fetch(CHANNELS.OTHER).catch(() => null);
+        channelName = 'OTHER_CHANNEL_ID';
+      }
+      
+      if (targetChannel && targetChannel.send) {
+        const embed = EmbedFactory.supportRequest(
+          MESSAGES.SUPPORT.REQUEST_TITLE,
+          ticketState?.ticketNumber || 'N/A',
+          interaction.user.tag,
+          interaction.channel.id
+        );
+        const components = ComponentFactory.supportCompletionButton(`general_${interaction.channel.id}`);
+        
+        await targetChannel.send({
+          embeds: [embed],
+          components: [components]
+        });
+      } else {
+        console.error(`❌ ${channelName} not found, invalid, or not a text channel`);
+      }
+      
+      // Log support request
+      await client.db.logAction(interaction.channel.id, interaction.user.id, 'support_requested', null);
+      
+      return interaction.followUp({
+        embeds: [EmbedFactory.success(MESSAGES.SUPPORT.TEAM_NOTIFIED)],
+        flags: 64
+      });
+    }
   }
 };
 
@@ -1683,10 +1759,10 @@ async function findOrCreateCategoryWithOverflow(guild, categoryName) {
     }
   }
 
-  // Handle approval_goto buttons (REMOVIDO - agora usa link direto)
+  // All categories are full, create a new one
+  const nextNumber = existingCategories.size + 1;
+  const newCategoryName = nextNumber === 1 ? categoryName : `${categoryName} ${nextNumber}`;
   
-  // Handle duplicate code resolution
-  if (interaction.customId.startsWith('duplicate_resolved_')) {
   console.log(`📁 Creating new category: ${newCategoryName} (overflow from full categories)`);
   
   const newCategory = await guild.channels.create({

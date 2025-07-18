@@ -68,9 +68,15 @@ module.exports = {
       // Initialize LTC data if not exists
       if (!ticketState.ltcData) ticketState.ltcData = {};
       
+      // NOVO: Garantir que stepData existe para evitar erro de Object.entries()
+      if (!ticketState.stepData) ticketState.stepData = {};
+      
       // Check current message for inputs
       if (message.attachments.size > 0) {
         ticketState.ltcData.hasImage = true;
+        // NOVO: Também marcar no stepData para consistência
+        if (!ticketState.stepData[0]) ticketState.stepData[0] = {};
+        ticketState.stepData[0].hasImage = true;
         console.log('[LTC_ONLY][DEBUG] Imagem detectada');
       }
       
@@ -82,12 +88,20 @@ module.exports = {
       if (ltcAddress.length >= 25 && (ltcAddress.startsWith('L') || ltcAddress.startsWith('M') || ltcAddress.startsWith('ltc1'))) {
         ticketState.ltcData.hasAddress = true;
         ticketState.ltcAddress = ltcAddress;
+        // NOVO: Também marcar no stepData para consistência
+        if (!ticketState.stepData[0]) ticketState.stepData[0] = {};
+        ticketState.stepData[0].hasLtcAdress = true;
+        ticketState.stepData[0].ltcAdressContent = ltcAddress;
         console.log('[LTC_ONLY][DEBUG] LTC address capturado e salvo:', ltcAddress);
         await client.saveTicketState(message.channel.id, ticketState);
       } else if (ltcAddress.length >= 10) {
         // Fallback: qualquer texto com mais de 10 caracteres pode ser um endereço
         ticketState.ltcData.hasAddress = true;
         ticketState.ltcAddress = ltcAddress;
+        // NOVO: Também marcar no stepData para consistência
+        if (!ticketState.stepData[0]) ticketState.stepData[0] = {};
+        ticketState.stepData[0].hasLtcAdress = true;
+        ticketState.stepData[0].ltcAdressContent = ltcAddress;
         console.log('[LTC_ONLY][DEBUG] LTC address capturado (fallback):', ltcAddress);
         await client.saveTicketState(message.channel.id, ticketState);
       }
