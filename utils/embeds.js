@@ -83,7 +83,10 @@ class EmbedFactory {
       .setTitle(`${EMOJIS.GIFT} ${title}`)
       .setDescription(description)
       .setTimestamp()
-      .setFooter({ text: 'Sistema de Giveaways' });
+      .setFooter({ 
+        text: 'MENDIGOTV.COM | 18+ GAMBLEAWARE',
+        iconURL: 'https://i.imgur.com/Zkymy68.png'
+      });
   }
 
   static vip(title, description) {
@@ -92,7 +95,10 @@ class EmbedFactory {
       .setTitle(`${EMOJIS.VIP} ${title}`)
       .setDescription(description)
       .setTimestamp()
-      .setFooter({ text: 'Sistema VIP' });
+      .setFooter({ 
+        text: 'MENDIGOTV.COM | 18+ GAMBLEAWARE',
+        iconURL: 'https://i.imgur.com/Zkymy68.png'
+      });
   }
 
   static question(title, description) {
@@ -110,7 +116,10 @@ class EmbedFactory {
       .setTitle(`${EMOJIS.FIRE} ${promo.name}`)
       .setDescription(`**Casino:** ${promo.casino}\n**Termina:** <t:${Math.floor(new Date(promo.end)/1000)}:R>`)
       .setTimestamp()
-      .setFooter({ text: 'Promoção Limitada' });
+      .setFooter({ 
+        text: 'MENDIGOTV.COM | 18+ GAMBLEAWARE',
+        iconURL: 'https://i.imgur.com/Zkymy68.png'
+      });
     
     if (promo.emoji) embed.setTitle(`${promo.emoji} ${promo.name}`);
     return embed;
@@ -328,7 +337,10 @@ class EmbedFactory {
         .replace('{category}', category)
         .replace('{expires}', Math.floor((Date.now() + 14 * 24 * 60 * 60 * 1000) / 1000)))
       .setTimestamp()
-      .setFooter({ text: MESSAGES.FOOTERS.TRANSCRIPT_EXPIRES });
+      .setFooter({ 
+        text: 'MENDIGOTV.COM | 18+ GAMBLEAWARE',
+        iconURL: 'https://i.imgur.com/Zkymy68.png'
+      });
   }
 
   static transcriptView(transcript) {
@@ -426,7 +438,10 @@ class EmbedFactory {
         .replace(/{number}/g, ticketNumber)
         .replace('{user}', userTag))
       .setTimestamp()
-      .setFooter({ text: MESSAGES.FOOTERS.SUBMISSIONS_SYSTEM });
+      .setFooter({ 
+        text: 'MENDIGOTV.COM | 18+ GAMBLEAWARE',
+        iconURL: 'https://i.imgur.com/Zkymy68.png'
+      });
   }
 
   // === APPROVAL EMBEDS ===
@@ -473,7 +488,10 @@ class EmbedFactory {
       .setTitle(`${EMOJIS.GIFT} ${MESSAGES.APPROVALS.FINAL_TITLE}`)
       .setDescription(description)
       .setTimestamp()
-      .setFooter({ text: MESSAGES.FOOTERS.APPROVALS_SYSTEM });
+      .setFooter({ 
+        text: 'MENDIGOTV.COM | 18+ GAMBLEAWARE',
+        iconURL: 'https://i.imgur.com/Zkymy68.png'
+      });
     
     // NOVO: Adicionar imagem do perfil BCGame se disponível, exceto se for afiliado
     if (casino === 'BCGame' && bcGameProfileImage && !isVerified) {
@@ -489,7 +507,10 @@ class EmbedFactory {
       .setTitle(`${EMOJIS.SUCCESS} ${MESSAGES.APPROVALS.PAID_TITLE}`)
       .setDescription(MESSAGES.APPROVALS.PAID_DESCRIPTION)
       .setTimestamp()
-      .setFooter({ text: MESSAGES.FOOTERS.CONGRATULATIONS });
+      .setFooter({ 
+        text: 'MENDIGOTV.COM | 18+ GAMBLEAWARE',
+        iconURL: 'https://i.imgur.com/Zkymy68.png'
+      });
   }
 
   static rejectionReason(reason) {
@@ -498,7 +519,10 @@ class EmbedFactory {
       .setTitle(`${EMOJIS.ERROR} ${MESSAGES.APPROVALS.REJECTION_TITLE}`)
       .setDescription(MESSAGES.APPROVALS.REJECTION_DESCRIPTION.replace('{reason}', reason))
       .setTimestamp()
-      .setFooter({ text: MESSAGES.FOOTERS.APPROVALS_SYSTEM });
+      .setFooter({ 
+        text: 'MENDIGOTV.COM | 18+ GAMBLEAWARE',
+        iconURL: 'https://i.imgur.com/Zkymy68.png'
+      });
   }
 
   static reviewRequest(reason, ticketNumber, userTag) {
@@ -510,7 +534,10 @@ class EmbedFactory {
         .replace('{user}', userTag)
         .replace('{reason}', reason))
       .setTimestamp()
-      .setFooter({ text: MESSAGES.FOOTERS.REVIEWS_SYSTEM });
+      .setFooter({ 
+        text: 'MENDIGOTV.COM | 18+ GAMBLEAWARE',
+        iconURL: 'https://i.imgur.com/Zkymy68.png'
+      });
   }
 
   // NOVO: Support request with completion button
@@ -524,7 +551,10 @@ class EmbedFactory {
         .replace('{channel}', channelId)
         .replace('{reason}', reason || 'Suporte geral'))
       .setTimestamp()
-      .setFooter({ text: MESSAGES.FOOTERS.SUPPORT_SYSTEM });
+      .setFooter({ 
+        text: 'MENDIGOTV.COM | 18+ GAMBLEAWARE',
+        iconURL: 'https://i.imgur.com/Zkymy68.png'
+      });
   }
 
   static duplicateCodeAlert(originalTicket, currentTicket, code) {
@@ -541,7 +571,10 @@ class EmbedFactory {
         .replace('{currentUser}', currentTicket.userTag)
         .replace('{currentChannel}', `<#${currentTicket.channelId}>`))
       .setTimestamp()
-      .setFooter({ text: MESSAGES.FOOTERS.ANTI_FRAUD });
+      .setFooter({ 
+        text: 'MENDIGOTV.COM | 18+ GAMBLEAWARE',
+        iconURL: 'https://i.imgur.com/Zkymy68.png'
+      });
   }
 
   // === STATISTICS EMBED ===
@@ -581,7 +614,10 @@ class EmbedFactory {
         }
       )
       .setTimestamp()
-      .setFooter({ text: MESSAGES.FOOTERS.STATS_AUTO_UPDATE });
+      .setFooter({ 
+        text: 'MENDIGOTV.COM | 18+ GAMBLEAWARE',
+        iconURL: 'https://i.imgur.com/Zkymy68.png'
+      });
 
     return embed;
   }
