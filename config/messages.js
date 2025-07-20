@@ -632,7 +632,6 @@ module.exports = {
   },
 
 
-
   // === PERMISSÕES ===
   PERMISSIONS: {
     NO_PERMISSION: 'Naõ tens permissão para usar o botão',
