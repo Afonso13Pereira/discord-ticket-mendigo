@@ -58,24 +58,7 @@ async function updateTicketMessage(guild, client) {
     const activeCats = Object.entries(cats).filter(([id, cat]) => cat.active);
     console.log(`📋 Active categories:`, activeCats.map(([id, cat]) => `${cat.name} (${id})`));
     
-    const embed = EmbedFactory.ticket(
-      'Sistema de Ticket',
-      [
-        '**Bem-vindo ao nosso sistema de tickets!**',
-        '',
-        `${EMOJIS.STAR} Clica no botão que melhor descreve o seu pedido`,
-        '',
-        '**📋 Categorias disponíveis:**',
-        '',
-        '🎁 **Giveaways** - Para resgatar prémios, giveaways do Telegram, GTB, etc.',
-        '👑 **VIPS** - Leadboard e VIP semanal',
-        '❓ **Dúvidas** - Perguntas gerais, esclarecimentos, ajuda',
-        '🌐 **Website** - Bugs no site, problemas técnicos, redeems',
-        '📌 **Outros** - Outros assuntos',
-        '',
-        '*Escolha uma categoria abaixo para começar:*'
-      ].join('\n')
-    );
+    const embed = EmbedFactory.ticket();
 
     // CORREÇÃO: Passar as categorias atualizadas diretamente
     const components = ComponentFactory.categoryButtons(STATIC_CATEGORIES, cats);

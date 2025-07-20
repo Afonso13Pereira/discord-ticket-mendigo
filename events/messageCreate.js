@@ -50,10 +50,7 @@ module.exports = {
         components.push(...promoButtons);
 
         return message.channel.send({
-          embeds: [EmbedFactory.giveaway(
-            'Tipo de Giveaway',
-            `${EMOJIS.STAR} **Parabéns!** Escolha o tipo de giveaway:\n\n${EMOJIS.GIFT} **Tipos Disponíveis:**\n• Telegram - Prêmios do bot\n• GTB - Giveaway tradicional\n• Promoções especiais em destaque`
-          )],
+          embeds: [EmbedFactory.giveaway()],
           components: components
         });
       }
