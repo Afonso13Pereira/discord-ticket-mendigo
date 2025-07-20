@@ -381,7 +381,7 @@ class EmbedFactory {
       .setColor(COLORS.WARNING)
       .setTitle(`${EMOJIS.GIFT} ${MESSAGES.APPROVALS.READY_TITLE}`)
       .setDescription(MESSAGES.APPROVALS.READY_DESCRIPTION
-        .replace('{number}', ticketNumber)
+        .replace(/{number}/g, ticketNumber)
         .replace('{user}', userTag))
       .setTimestamp()
       .setFooter({ text: MESSAGES.FOOTERS.SUBMISSIONS_SYSTEM });

@@ -544,7 +544,12 @@ module.exports = {
           `📍 **Canal:** ${interaction.channel}`
         );
         
-        await redeemsChannel.send({ embeds: [embed] });
+        const components = ComponentFactory.supportCompletionButton(`redeem_${interaction.channel.id}`);
+        
+        await redeemsChannel.send({ 
+          embeds: [embed],
+          components: [components]
+        });
       } else {
         console.error('❌ REDEEMS_CHANNEL_ID not found, invalid, or not a text channel');
       }
@@ -1852,18 +1857,21 @@ module.exports = {
 
 // Helper function to find or create category with overflow support
 async function findOrCreateCategoryWithOverflow(guild, categoryName) {
+  // Convert category name to uppercase for consistency
+  const upperCategoryName = categoryName.toUpperCase();
+  
   // Find all categories with this base name (including numbered ones)
   const existingCategories = guild.channels.cache
     .filter(c => c.type === ChannelType.GuildCategory)
     .filter(c => {
-      const name = c.name.toLowerCase();
-      return name === categoryName.toLowerCase() || 
-             name.startsWith(categoryName.toLowerCase() + ' ');
+      const name = c.name.toUpperCase();
+      return name === upperCategoryName || 
+             name.startsWith(upperCategoryName + ' ');
     })
     .sort((a, b) => {
-      // Sort by number (Giveaways, Giveaways 2, Giveaways 3, etc.)
-      const aNum = extractCategoryNumber(a.name, categoryName);
-      const bNum = extractCategoryNumber(b.name, categoryName);
+      // Sort by number (GIVEAWAYS, GIVEAWAYS 2, GIVEAWAYS 3, etc.)
+      const aNum = extractCategoryNumber(a.name, upperCategoryName);
+      const bNum = extractCategoryNumber(b.name, upperCategoryName);
       return aNum - bNum;
     });
 
@@ -1881,7 +1889,7 @@ async function findOrCreateCategoryWithOverflow(guild, categoryName) {
 
   // All categories are full, create a new one
   const nextNumber = existingCategories.size + 1;
-  const newCategoryName = nextNumber === 1 ? categoryName : `${categoryName} ${nextNumber}`;
+  const newCategoryName = nextNumber === 1 ? upperCategoryName : `${upperCategoryName} ${nextNumber}`;
   
   console.log(`📁 Creating new category: ${newCategoryName} (overflow from full categories)`);
   
@@ -1895,8 +1903,8 @@ async function findOrCreateCategoryWithOverflow(guild, categoryName) {
 
 // Helper function to extract number from category name
 function extractCategoryNumber(categoryName, baseName) {
-  const name = categoryName.toLowerCase();
-  const base = baseName.toLowerCase();
+  const name = categoryName.toUpperCase();
+  const base = baseName.toUpperCase();
   
   if (name === base) {
     return 1; // Base category is number 1

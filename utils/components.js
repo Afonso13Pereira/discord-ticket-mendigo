@@ -398,7 +398,16 @@ class ComponentFactory {
 
   // === SUPPORT COMPLETION BUTTON ===
   static supportCompletionButton(supportId) {
+    // Extrair o channelId do supportId (formato: "type_channelId")
+    const parts = supportId.split('_');
+    const channelId = parts[parts.length - 1]; // Pega o último elemento
+    
     return this.createButtonRow(
+      this.createLinkButton(
+        `https://discord.com/channels/${process.env.GUILD_ID || '@me'}/${channelId}`,
+        'Ir para Ticket',
+        '🎫'
+      ),
       this.createButton(`support_complete_${supportId}`, MESSAGES.BUTTONS.MARK_COMPLETE, ButtonStyle.Success, '✅')
     );
   }
