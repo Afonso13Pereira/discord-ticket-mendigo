@@ -65,11 +65,11 @@ class EmbedFactory {
     return embed;
   }
 
-  static ticket(title, description, color = COLORS.PRIMARY) {
+  static ticket(color = COLORS.PRIMARY) {
     return new EmbedBuilder()
       .setColor(color)
-      .setTitle(`${EMOJIS.TICKET} ${title}`)
-      .setDescription(description)
+      .setTitle(MESSAGES.TICKETS.SYSTEM_TITLE)
+      .setDescription(MESSAGES.TICKETS.SYSTEM_DESCRIPTION)
       .setTimestamp()
       .setFooter({ 
         text: 'MENDIGOTV.COM | 18+ GAMBLEAWARE',
@@ -77,11 +77,11 @@ class EmbedFactory {
       });
   }
 
-  static giveaway(title, description) {
+  static giveaway() {
     return new EmbedBuilder()
       .setColor(COLORS.GOLD)
-      .setTitle(`${EMOJIS.GIFT} ${title}`)
-      .setDescription(description)
+      .setTitle(MESSAGES.GIVEAWAYS.TYPE_SELECTION_TITLE)
+      .setDescription(MESSAGES.GIVEAWAYS.TYPE_SELECTION_DESCRIPTION)
       .setTimestamp()
       .setFooter({ 
         text: 'MENDIGOTV.COM | 18+ GAMBLEAWARE',
@@ -89,11 +89,11 @@ class EmbedFactory {
       });
   }
 
-  static vip(title, description) {
+  static vip() {
     return new EmbedBuilder()
       .setColor(COLORS.PURPLE)
-      .setTitle(`${EMOJIS.VIP} ${title}`)
-      .setDescription(description)
+      .setTitle(MESSAGES.VIP.TYPE_SELECTION_TITLE)
+      .setDescription(MESSAGES.VIP.TYPE_SELECTION_DESCRIPTION)
       .setTimestamp()
       .setFooter({ 
         text: 'MENDIGOTV.COM | 18+ GAMBLEAWARE',
@@ -101,34 +101,22 @@ class EmbedFactory {
       });
   }
 
-  static question(title, description) {
+  static question() {
     return new EmbedBuilder()
       .setColor(COLORS.INFO)
-      .setTitle(`${EMOJIS.QUESTION} ${title}`)
-      .setDescription(description)
-      .setTimestamp()
-      .setFooter({ text: 'Sistema de Dúvidas' });
-  }
-
-  static promo(promo) {
-    const embed = new EmbedBuilder()
-      .setColor(COLORS.PURPLE)
-      .setTitle(`${EMOJIS.FIRE} ${promo.name}`)
-      .setDescription(`**Casino:** ${promo.casino}\n**Termina:** <t:${Math.floor(new Date(promo.end)/1000)}:R>`)
+      .setTitle(MESSAGES.QUESTIONS.DESCRIPTION_TITLE)
+      .setDescription(MESSAGES.QUESTIONS.DESCRIPTION_DESCRIPTION)
       .setTimestamp()
       .setFooter({ 
         text: 'MENDIGOTV.COM | 18+ GAMBLEAWARE',
         iconURL: 'https://i.imgur.com/Zkymy68.png'
       });
-    
-    if (promo.emoji) embed.setTitle(`${promo.emoji} ${promo.name}`);
-    return embed;
   }
 
   static welcome() {
     return new EmbedBuilder()
       .setColor(COLORS.PRIMARY)
-      .setTitle(`${EMOJIS.ROBOT} ${MESSAGES.TICKETS.WELCOME_TITLE}`)
+      .setTitle(MESSAGES.TICKETS.WELCOME_TITLE)
       .setDescription(MESSAGES.TICKETS.WELCOME_DESCRIPTION)
       .setImage('https://media.giphy.com/media/3oKIPnAiaMCws8nOsE/giphy.gif')
       .setTimestamp()
@@ -141,7 +129,7 @@ class EmbedFactory {
   static confirmation() {
     return new EmbedBuilder()
       .setColor(COLORS.WARNING)
-      .setTitle(`${EMOJIS.WARNING} ${MESSAGES.CONFIRMATION.TITLE}`)
+      .setTitle(MESSAGES.CONFIRMATION.TITLE)
       .setDescription(MESSAGES.CONFIRMATION.DESCRIPTION)
       .setThumbnail('https://media.giphy.com/media/l0HlBO7eyXzSZkJri/giphy.gif')
       .setTimestamp()
@@ -155,7 +143,7 @@ class EmbedFactory {
   static websiteTypeSelection() {
     return new EmbedBuilder()
       .setColor(COLORS.INFO)
-      .setTitle(`🌐 ${MESSAGES.WEBSITE.TYPE_SELECTION_TITLE}`)
+      .setTitle(MESSAGES.WEBSITE.TYPE_SELECTION_TITLE)
       .setDescription(MESSAGES.WEBSITE.TYPE_SELECTION_DESCRIPTION)
       .setTimestamp()
       .setFooter({ 
@@ -167,7 +155,7 @@ class EmbedFactory {
   static websiteBugReport() {
     return new EmbedBuilder()
       .setColor(COLORS.WARNING)
-      .setTitle(`🐛 ${MESSAGES.WEBSITE.BUG_REPORT_TITLE}`)
+      .setTitle(MESSAGES.WEBSITE.BUG_REPORT_TITLE)
       .setDescription(MESSAGES.WEBSITE.BUG_REPORT_DESCRIPTION)
       .setTimestamp()
       .setFooter({ 
@@ -179,7 +167,7 @@ class EmbedFactory {
   static websiteRedeemNick() {
     return new EmbedBuilder()
       .setColor(COLORS.SUCCESS)
-      .setTitle(`🎁 ${MESSAGES.WEBSITE.REDEEM_NICK_TITLE}`)
+      .setTitle(MESSAGES.WEBSITE.REDEEM_NICK_TITLE)
       .setDescription(MESSAGES.WEBSITE.REDEEM_NICK_DESCRIPTION)
       .setTimestamp()
       .setFooter({ 
@@ -191,7 +179,7 @@ class EmbedFactory {
   static websiteNoRedeems(twitchNick) {
     return new EmbedBuilder()
       .setColor(COLORS.WARNING)
-      .setTitle(`${EMOJIS.WARNING} ${MESSAGES.WEBSITE.REDEEM_NO_REDEEMS_TITLE}`)
+      .setTitle(MESSAGES.WEBSITE.REDEEM_NO_REDEEMS_TITLE)
       .setDescription(MESSAGES.WEBSITE.REDEEM_NO_REDEEMS_DESCRIPTION.replace('{nick}', twitchNick))
       .setTimestamp()
       .setFooter({ 
@@ -207,7 +195,7 @@ class EmbedFactory {
 
     return new EmbedBuilder()
       .setColor(COLORS.SUCCESS)
-      .setTitle(`🎁 ${MESSAGES.WEBSITE.REDEEM_LIST_TITLE.replace('{nick}', twitchNick)}`)
+      .setTitle(MESSAGES.WEBSITE.REDEEM_LIST_TITLE.replace('{nick}', twitchNick))
       .setDescription(MESSAGES.WEBSITE.REDEEM_LIST_DESCRIPTION
         .replace('{count}', redeems.length)
         .replace('{list}', redeemList))
@@ -221,7 +209,7 @@ class EmbedFactory {
   static websiteRedeemSelected(redeem) {
     return new EmbedBuilder()
       .setColor(COLORS.SUCCESS)
-      .setTitle(`✅ ${MESSAGES.WEBSITE.REDEEM_SELECTED_TITLE}`)
+      .setTitle(MESSAGES.WEBSITE.REDEEM_SELECTED_TITLE)
       .setDescription(MESSAGES.WEBSITE.REDEEM_SELECTED_DESCRIPTION
         .replace('{item}', redeem.itemName)
         .replace('{nick}', redeem.twitchName)
@@ -236,7 +224,7 @@ class EmbedFactory {
   static vipCasinoSelection() {
     return new EmbedBuilder()
       .setColor(COLORS.PURPLE)
-      .setTitle(`${EMOJIS.VIP} ${MESSAGES.VIP.CASINO_SELECTION_TITLE}`)
+      .setTitle(MESSAGES.VIP.CASINO_SELECTION_TITLE)
       .setDescription(MESSAGES.VIP.CASINO_SELECTION_DESCRIPTION)
       .setTimestamp()
       .setFooter({ 
@@ -248,7 +236,7 @@ class EmbedFactory {
   static vipTypeSelection() {
     return new EmbedBuilder()
       .setColor(COLORS.PURPLE)
-      .setTitle(`${EMOJIS.VIP} ${MESSAGES.VIP.TYPE_SELECTION_TITLE}`)
+      .setTitle(MESSAGES.VIP.TYPE_SELECTION_TITLE)
       .setDescription(MESSAGES.VIP.TYPE_SELECTION_DESCRIPTION)
       .setTimestamp()
       .setFooter({ 
@@ -276,7 +264,7 @@ class EmbedFactory {
   static questionDescription() {
     return new EmbedBuilder()
       .setColor(COLORS.INFO)
-      .setTitle(`${EMOJIS.QUESTION} ${MESSAGES.QUESTIONS.DESCRIPTION_TITLE}`)
+      .setTitle(MESSAGES.QUESTIONS.DESCRIPTION_TITLE)
       .setDescription(MESSAGES.QUESTIONS.DESCRIPTION_DESCRIPTION)
       .setTimestamp()
       .setFooter({ 
@@ -288,7 +276,7 @@ class EmbedFactory {
   static otherHelp() {
     return new EmbedBuilder()
       .setColor(COLORS.SECONDARY)
-      .setTitle(`${EMOJIS.INFO} ${MESSAGES.OTHER.HELP_TITLE}`)
+      .setTitle(MESSAGES.OTHER.HELP_TITLE)
       .setDescription(MESSAGES.OTHER.HELP_DESCRIPTION)
       .setTimestamp()
       .setFooter({ 
@@ -316,7 +304,7 @@ class EmbedFactory {
   static ticketClose() {
     return new EmbedBuilder()
       .setColor(COLORS.WARNING)
-      .setTitle(`${EMOJIS.WARNING} ${MESSAGES.TICKETS.CLOSE_TITLE}`)
+      .setTitle(MESSAGES.TICKETS.CLOSE_TITLE)
       .setDescription(MESSAGES.TICKETS.CLOSE_DESCRIPTION)
       .setTimestamp()
       .setFooter({ 
