@@ -17,7 +17,7 @@ module.exports = {
     {
       title: 'Passo 2',
       description: '📧 Envia **screenshot** do email de registro no  com as informações visiveis',
-      type: ['image', 'text'],
+      type: ['image'],
       image: 'https://i.imgur.com/oL3fLZz.png'
     },
     {

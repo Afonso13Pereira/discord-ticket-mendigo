@@ -433,8 +433,8 @@ class EmbedFactory {
       .setTimestamp()
       .setFooter({ text: MESSAGES.FOOTERS.APPROVALS_SYSTEM });
     
-    // NOVO: Adicionar imagem do perfil BCGame se disponível
-    if (casino === 'BCGame' && bcGameProfileImage) {
+    // NOVO: Adicionar imagem do perfil BCGame se disponível, exceto se for afiliado
+    if (casino === 'BCGame' && bcGameProfileImage && !isVerified) {
       embed.setImage(bcGameProfileImage);
     }
     
