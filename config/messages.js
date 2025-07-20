@@ -631,27 +631,7 @@ module.exports = {
     REVIEW_REASON: 'Explique o motivo da revisão...'
   },
 
-  // === FOOTERS ===
-  FOOTERS: {
-    TICKET_SYSTEM: 'Sistema de Tickets',
-    GIVEAWAY_SYSTEM: 'Sistema de Giveaways',
-    VIP_SYSTEM: 'Sistema VIP',
-    QUESTIONS_SYSTEM: 'Sistema de Dúvidas',
-    WEBSITE_SUPPORT: 'Suporte do Website',
-    REDEEM_SYSTEM: 'Sistema de Redeems',
-    REDEEM_PROCESSING: 'Redeem em Processamento',
-    LIMITED_PROMO: 'Promoção Limitada',
-    AUTOMATED_SUPPORT: 'Sistema Automatizado de Suporte',
-    MANDATORY_18: 'Confirmação Obrigatória +18',
-    SUBMISSIONS_SYSTEM: 'Sistema de Submissões',
-    APPROVALS_SYSTEM: 'Sistema de Aprovações',
-    REVIEWS_SYSTEM: 'Sistema de Revisões',
-    SUPPORT_SYSTEM: 'Sistema de Suporte',
-    ANTI_FRAUD: 'Sistema de Alerta',
-    TRANSCRIPT_EXPIRES: 'Transcript • Expira em 2 semanas',
-    STATS_AUTO_UPDATE: 'Estatísticas atualizadas automaticamente',
-    CONGRATULATIONS: 'Parabéns pelo prémio!'
-  },
+
 
   // === PERMISSÕES ===
   PERMISSIONS: {

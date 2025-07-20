@@ -71,7 +71,7 @@ class EmbedFactory {
       .setTitle(`${EMOJIS.TICKET} ${title}`)
       .setDescription(description)
       .setTimestamp()
-      .setFooter({ text: 'Sistema de Tickets • Suporte 24/7' });
+      .setFooter({ text: ':logo: MENDIGOTV.COM | 18+ GAMBLEAWARE' });
   }
 
   static giveaway(title, description) {
@@ -120,7 +120,7 @@ class EmbedFactory {
       .setDescription(MESSAGES.TICKETS.WELCOME_DESCRIPTION)
       .setImage('https://media.giphy.com/media/3oKIPnAiaMCws8nOsE/giphy.gif')
       .setTimestamp()
-      .setFooter({ text: MESSAGES.FOOTERS.AUTOMATED_SUPPORT });
+      .setFooter({ text: ':logo: MENDIGOTV.COM | 18+ GAMBLEAWARE' });
   }
 
   static confirmation() {
@@ -130,7 +130,7 @@ class EmbedFactory {
       .setDescription(MESSAGES.CONFIRMATION.DESCRIPTION)
       .setThumbnail('https://media.giphy.com/media/l0HlBO7eyXzSZkJri/giphy.gif')
       .setTimestamp()
-      .setFooter({ text: MESSAGES.FOOTERS.MANDATORY_18 });
+      .setFooter({ text: ':logo: MENDIGOTV.COM | 18+ GAMBLEAWARE' });
   }
 
   // === WEBSITE EMBEDS ===
@@ -140,7 +140,7 @@ class EmbedFactory {
       .setTitle(`🌐 ${MESSAGES.WEBSITE.TYPE_SELECTION_TITLE}`)
       .setDescription(MESSAGES.WEBSITE.TYPE_SELECTION_DESCRIPTION)
       .setTimestamp()
-      .setFooter({ text: MESSAGES.FOOTERS.WEBSITE_SUPPORT });
+      .setFooter({ text: ':logo: MENDIGOTV.COM | 18+ GAMBLEAWARE' });
   }
 
   static websiteBugReport() {
@@ -149,7 +149,7 @@ class EmbedFactory {
       .setTitle(`🐛 ${MESSAGES.WEBSITE.BUG_REPORT_TITLE}`)
       .setDescription(MESSAGES.WEBSITE.BUG_REPORT_DESCRIPTION)
       .setTimestamp()
-      .setFooter({ text: MESSAGES.WEBSITE.BUG_REPORT_TITLE });
+      .setFooter({ text: ':logo: MENDIGOTV.COM | 18+ GAMBLEAWARE' });
   }
 
   static websiteRedeemNick() {
@@ -158,7 +158,7 @@ class EmbedFactory {
       .setTitle(`🎁 ${MESSAGES.WEBSITE.REDEEM_NICK_TITLE}`)
       .setDescription(MESSAGES.WEBSITE.REDEEM_NICK_DESCRIPTION)
       .setTimestamp()
-      .setFooter({ text: MESSAGES.FOOTERS.REDEEM_SYSTEM });
+      .setFooter({ text: ':logo: MENDIGOTV.COM | 18+ GAMBLEAWARE' });
   }
 
   static websiteNoRedeems(twitchNick) {
@@ -167,7 +167,7 @@ class EmbedFactory {
       .setTitle(`${EMOJIS.WARNING} ${MESSAGES.WEBSITE.REDEEM_NO_REDEEMS_TITLE}`)
       .setDescription(MESSAGES.WEBSITE.REDEEM_NO_REDEEMS_DESCRIPTION.replace('{nick}', twitchNick))
       .setTimestamp()
-      .setFooter({ text: MESSAGES.FOOTERS.REDEEM_SYSTEM });
+      .setFooter({ text: ':logo: MENDIGOTV.COM | 18+ GAMBLEAWARE' });
   }
 
   static websiteRedeemList(twitchNick, redeems) {
@@ -182,7 +182,7 @@ class EmbedFactory {
         .replace('{count}', redeems.length)
         .replace('{list}', redeemList))
       .setTimestamp()
-      .setFooter({ text: MESSAGES.FOOTERS.REDEEM_SYSTEM });
+      .setFooter({ text: ':logo: MENDIGOTV.COM | 18+ GAMBLEAWARE' });
   }
 
   static websiteRedeemSelected(redeem) {
@@ -194,7 +194,7 @@ class EmbedFactory {
         .replace('{nick}', redeem.twitchName)
         .replace('{date}', new Date(redeem.createdAt).toLocaleDateString('pt-PT')))
       .setTimestamp()
-      .setFooter({ text: MESSAGES.FOOTERS.REDEEM_PROCESSING });
+      .setFooter({ text: ':logo: MENDIGOTV.COM | 18+ GAMBLEAWARE' });
   }
 
   static vipCasinoSelection() {
@@ -203,7 +203,7 @@ class EmbedFactory {
       .setTitle(`${EMOJIS.VIP} ${MESSAGES.VIP.CASINO_SELECTION_TITLE}`)
       .setDescription(MESSAGES.VIP.CASINO_SELECTION_DESCRIPTION)
       .setTimestamp()
-      .setFooter({ text: MESSAGES.FOOTERS.VIP_SYSTEM });
+      .setFooter({ text: ':logo: MENDIGOTV.COM | 18+ GAMBLEAWARE' });
   }
 
   static vipTypeSelection() {
@@ -212,7 +212,7 @@ class EmbedFactory {
       .setTitle(`${EMOJIS.VIP} ${MESSAGES.VIP.TYPE_SELECTION_TITLE}`)
       .setDescription(MESSAGES.VIP.TYPE_SELECTION_DESCRIPTION)
       .setTimestamp()
-      .setFooter({ text: MESSAGES.FOOTERS.VIP_SYSTEM });
+      .setFooter({ text: ':logo: MENDIGOTV.COM | 18+ GAMBLEAWARE' });
   }
 
   static vipChecklist(step, total, description, type) {
@@ -237,7 +237,7 @@ class EmbedFactory {
       .setTitle(`${EMOJIS.QUESTION} ${MESSAGES.QUESTIONS.DESCRIPTION_TITLE}`)
       .setDescription(MESSAGES.QUESTIONS.DESCRIPTION_DESCRIPTION)
       .setTimestamp()
-      .setFooter({ text: MESSAGES.FOOTERS.QUESTIONS_SYSTEM });
+      .setFooter({ text: ':logo: MENDIGOTV.COM | 18+ GAMBLEAWARE' });
   }
 
   static otherHelp() {
@@ -246,7 +246,7 @@ class EmbedFactory {
       .setTitle(`${EMOJIS.INFO} ${MESSAGES.OTHER.HELP_TITLE}`)
       .setDescription(MESSAGES.OTHER.HELP_DESCRIPTION)
       .setTimestamp()
-      .setFooter({ text: MESSAGES.FOOTERS.AUTOMATED_SUPPORT });
+      .setFooter({ text: ':logo: MENDIGOTV.COM | 18+ GAMBLEAWARE' });
   }
 
   static checklist(step, total, description, image = null) {
@@ -271,7 +271,7 @@ class EmbedFactory {
       .setTitle(`${EMOJIS.WARNING} ${MESSAGES.TICKETS.CLOSE_TITLE}`)
       .setDescription(MESSAGES.TICKETS.CLOSE_DESCRIPTION)
       .setTimestamp()
-      .setFooter({ text: MESSAGES.GENERAL.PLEASE_WAIT });
+      .setFooter({ text: ':logo: MENDIGOTV.COM | 18+ GAMBLEAWARE' });
   }
 
   static transcriptCreated(transcriptId, channelName, ticketNumber, ownerTag, category) {
