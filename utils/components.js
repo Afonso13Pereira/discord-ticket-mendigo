@@ -113,6 +113,7 @@ class ComponentFactory {
 
   static finishButtons() {
     return this.createButtonRow(
+      this.finishButton(),
       this.supportButton(),
       this.closeTicketButton()
     );

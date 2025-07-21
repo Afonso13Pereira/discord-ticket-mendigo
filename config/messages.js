@@ -113,6 +113,7 @@ module.exports = {
     VERIFIED_USER_SKIP: '✅ **Utilizador verificado** - envia **imagem do depósito com QR visível** + **endereço LTC em texto**.',
     VERIFIED_USER_MISSING: 'Ainda falta: {missing}',
     VERIFIED_USER_COMPLETE: 'Depósito e endereço LTC recebidos! Clique em **Finalizar** para completar.',
+    APPROVAL_CONFIRMATION: '✅ **Foste aprovado para receber o prémio, agora só tens que aguardar que a prenda seja enviada!**',
 
     SUBMISSION_SENT: 'Solicitação enviada para aprovação! Aguarda a análise da equipa.',
     APPROVED: 'Giveaway aprovado com prémio de **{prize}** e enviado para aprovações finais!',
@@ -571,7 +572,13 @@ module.exports = {
     CATEGORY_CLOSE_ERROR: 'Erro ao fechar categoria',
     
     PROMO_LIST_ERROR: 'Erro ao obter lista de promoções',
-    CATEGORY_LIST_ERROR: 'Erro ao obter lista de categorias'
+    CATEGORY_LIST_ERROR: 'Erro ao obter lista de categorias',
+    
+    GIVEAWAY_CREATED: 'Giveaway criado com sucesso para **{user}**',
+    GIVEAWAY_ERROR: 'Erro ao criar giveaway',
+    GIVEAWAY_INVALID_CASINO: 'Casino inválido',
+    GIVEAWAY_INVALID_PRIZE: 'Prêmio deve ser um número',
+    GIVEAWAY_BCGAME_ID_REQUIRED: 'ID BCGame é obrigatório para BCGame'
   },
 
   // === BOTÕES ===

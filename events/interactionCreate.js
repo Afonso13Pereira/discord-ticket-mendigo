@@ -369,6 +369,17 @@ module.exports = {
         // Update submission status
         await client.db.updateSubmission(submissionId, 'approved');
 
+        // NOVO: Enviar mensagem de confirmação para o ticket
+        try {
+          const ticketChannel = await interaction.guild.channels.fetch(submission.ticketChannelId);
+          await ticketChannel.send({
+            embeds: [EmbedFactory.success(MESSAGES.GIVEAWAYS.APPROVAL_CONFIRMATION)]
+          });
+          console.log(`✅ Sent approval confirmation to ticket #${submission.ticketNumber}`);
+        } catch (error) {
+          console.error('Error sending approval confirmation to ticket:', error);
+        }
+
         // NOVO: Apagar mensagem de submissão pendente
         try {
           const modChannel = await interaction.guild.channels.fetch(CHANNELS.MOD);
@@ -385,6 +396,14 @@ module.exports = {
           }
         } catch (error) {
           console.error('Error deleting submission message:', error);
+        }
+
+        // NOVO: Apagar mensagem de aprovação também
+        try {
+          await approvalMessage.delete();
+          console.log(`🗑️ Deleted approval message for ticket #${submission.ticketNumber}`);
+        } catch (error) {
+          console.error('Error deleting approval message:', error);
         }
 
         return interaction.reply({
