@@ -1073,6 +1073,88 @@ class DatabaseManager {
     }
   }
 
+  // === RESET DATABASE ===
+  async resetDatabase() {
+    if (!this.connected) {
+      console.log('❌ Database not connected, cannot reset');
+      return false;
+    }
+    
+    try {
+      console.log('🔄 Starting database reset...');
+      
+      // Delete all collections
+      const collections = [
+        this.TicketState,
+        this.Promotion,
+        this.Category,
+        this.ActionLog,
+        this.Transcript,
+        this.CategoryCounter,
+        this.Submission,
+        this.Approval,
+        this.Redeem,
+        this.TelegramCode
+      ];
+      
+      let totalDeleted = 0;
+      
+      for (const collection of collections) {
+        try {
+          const result = await collection.deleteMany({});
+          totalDeleted += result.deletedCount;
+          console.log(`✅ Deleted ${result.deletedCount} documents from ${collection.collection.name}`);
+        } catch (error) {
+          console.error(`❌ Error deleting from ${collection.collection.name}:`, error);
+        }
+      }
+      
+      console.log(`✅ Database reset completed! Total documents deleted: ${totalDeleted}`);
+      return true;
+    } catch (error) {
+      console.error('❌ Error resetting database:', error);
+      return false;
+    }
+  }
+
+  // === CLEAN TICKETS ONLY ===
+  async cleanTicketsOnly() {
+    if (!this.connected) {
+      console.log('❌ Database not connected, cannot clean tickets');
+      return false;
+    }
+    
+    try {
+      console.log('🔄 Starting tickets cleanup...');
+      
+      // Delete only ticket-related collections
+      const ticketCollections = [
+        this.TicketState,
+        this.Submission,
+        this.Approval,
+        this.Transcript
+      ];
+      
+      let totalDeleted = 0;
+      
+      for (const collection of ticketCollections) {
+        try {
+          const result = await collection.deleteMany({});
+          totalDeleted += result.deletedCount;
+          console.log(`✅ Deleted ${result.deletedCount} documents from ${collection.collection.name}`);
+        } catch (error) {
+          console.error(`❌ Error deleting from ${collection.collection.name}:`, error);
+        }
+      }
+      
+      console.log(`✅ Tickets cleanup completed! Total documents deleted: ${totalDeleted}`);
+      return true;
+    } catch (error) {
+      console.error('❌ Error cleaning tickets:', error);
+      return false;
+    }
+  }
+
   async close() {
     if (this.connected) {
       await mongoose.connection.close();
