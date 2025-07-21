@@ -286,7 +286,7 @@ module.exports = {
       if (!ticketState.stepData) ticketState.stepData = {};
       if (!ticketState.stepData[stepIndex]) ticketState.stepData[stepIndex] = {};
 
-      // NOVO: Salvar inputs assim que forem enviados
+      // Salvar inputs assim que forem enviados (igual ao checklist dos casinos)
       if (stepTypes.includes('image') && message.attachments.size > 0) {
         ticketState.stepData[stepIndex].hasImage = true;
         await client.saveTicketState(message.channel.id, ticketState);
@@ -297,7 +297,7 @@ module.exports = {
         await client.saveTicketState(message.channel.id, ticketState);
       }
 
-      // Check if all required types are provided
+      // Verificar se todos os requisitos do passo já foram cumpridos
       const allRequirementsMet = stepTypes.every(type => {
         if (type === 'image') return ticketState.stepData[stepIndex].hasImage;
         if (type === 'text') return ticketState.stepData[stepIndex].hasText;
@@ -305,48 +305,29 @@ module.exports = {
       });
 
       if (allRequirementsMet) {
-        // All requirements met, advance to next step
+        // Todos os requisitos cumpridos, avançar para o próximo passo
         ticketState.awaitProof = false;
-        // Clear step data for this step
-        delete ticketState.stepData[stepIndex];
         await client.saveTicketState(message.channel.id, ticketState);
-      } else {
-        // Still missing requirements, save state and wait for more input
-        await client.saveTicketState(message.channel.id, ticketState);
-        
-        // Show what's still missing
-        const missing = [];
-        if (stepTypes.includes('image') && !ticketState.stepData[stepIndex].hasImage) missing.push('**imagem**');
-        if (stepTypes.includes('text') && !ticketState.stepData[stepIndex].hasText) missing.push('**texto**');
-        
-        return message.reply({
-          embeds: [EmbedFactory.error(MESSAGES.CHECKLIST.MISSING_REQUIREMENTS.replace('{missing}', missing.join(' e ')))]
-        });
-      }
-
-      if (!ticketState.awaitProof) {
-        console.log('✅ VIP Step completed, advancing...');
-        // Log step completion
-        await client.db.logAction(message.channel.id, message.author.id, 'vip_step_completed', `${ticketState.vipType} Step ${stepIndex + 1}`);
-
-        // AUTOMÁTICO: Avançar para próximo passo
+        // Avançar para o próximo passo automaticamente
         if (stepIndex + 1 < vip.checklist.length) {
-          console.log('🔄 VIP Moving to next step:', stepIndex + 1);
           ticketState.step++;
-        // CORREÇÃO: NÃO limpar stepData ainda - precisamos para capturar LTC
-        // delete ticketState.stepData[stepIndex];
+          ticketState.awaitProof = true;
           await client.saveTicketState(message.channel.id, ticketState);
-          
-          // Mostrar próximo passo automaticamente
           return askVipChecklist(message.channel, ticketState);
         }
-        
-        // VIP checklist completed
+        // Checklist VIP completo
         await client.db.logAction(message.channel.id, message.author.id, 'vip_checklist_completed', `Type: ${ticketState.vipType}, Casino: ${ticketState.vipCasino}`);
-        
         return message.reply({
           embeds: [EmbedFactory.success(`Checklist do VIP ${vip.label} completado!`)],
           components: [ComponentFactory.finishButtons()]
+        });
+      } else {
+        // Se ainda falta algo, mostrar o que falta
+        const missing = [];
+        if (stepTypes.includes('image') && !ticketState.stepData[stepIndex].hasImage) missing.push('**imagem**');
+        if (stepTypes.includes('text') && !ticketState.stepData[stepIndex].hasText) missing.push('**texto**');
+        return message.reply({
+          embeds: [EmbedFactory.error(MESSAGES.CHECKLIST.MISSING_REQUIREMENTS.replace('{missing}', missing.join(' e ')))]
         });
       }
     }
