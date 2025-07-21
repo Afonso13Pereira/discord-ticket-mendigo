@@ -268,8 +268,6 @@ module.exports = {
 
     // VIP Checklist Validation
     if (ticketState.vipType && ticketState.awaitProof) {
-      console.log('🔍 VIP Validation - Step:', ticketState.step, 'VIP Type:', ticketState.vipType);
-      
       const vip = VIPS[ticketState.vipType];
       if (!vip || !vip.checklist) {
         return message.reply({
@@ -279,59 +277,51 @@ module.exports = {
 
       const stepIndex = ticketState.step;
       const currentStep = vip.checklist[stepIndex];
-      console.log('🔍 VIP Step:', currentStep);
-
-      // Check if current step requires any input
       let stepTypes = [];
       if (typeof currentStep === 'object' && currentStep !== null && Array.isArray(currentStep.type)) {
         stepTypes = currentStep.type;
       }
-      console.log('🔍 VIP Step Types:', stepTypes);
 
-      // If step has no requirements (empty type array), advance automatically
-      if (stepTypes.length === 0) {
+      // Initialize step data if not exists
+      if (!ticketState.stepData) ticketState.stepData = {};
+      if (!ticketState.stepData[stepIndex]) ticketState.stepData[stepIndex] = {};
+
+      // NOVO: Salvar inputs assim que forem enviados
+      if (stepTypes.includes('image') && message.attachments.size > 0) {
+        ticketState.stepData[stepIndex].hasImage = true;
+        await client.saveTicketState(message.channel.id, ticketState);
+      }
+      if (stepTypes.includes('text') && message.content && message.content.trim().length >= 5) {
+        ticketState.stepData[stepIndex].hasText = true;
+        ticketState.stepData[stepIndex].textContent = message.content.trim();
+        await client.saveTicketState(message.channel.id, ticketState);
+      }
+
+      // Check if all required types are provided
+      const allRequirementsMet = stepTypes.every(type => {
+        if (type === 'image') return ticketState.stepData[stepIndex].hasImage;
+        if (type === 'text') return ticketState.stepData[stepIndex].hasText;
+        return false;
+      });
+
+      if (allRequirementsMet) {
+        // All requirements met, advance to next step
         ticketState.awaitProof = false;
+        // Clear step data for this step
+        delete ticketState.stepData[stepIndex];
         await client.saveTicketState(message.channel.id, ticketState);
       } else {
-        // Initialize step data if not exists
-        if (!ticketState.stepData) ticketState.stepData = {};
-        if (!ticketState.stepData[stepIndex]) ticketState.stepData[stepIndex] = {};
-
-        // Check current message for inputs
-        if (stepTypes.includes('image') && message.attachments.size > 0) {
-          ticketState.stepData[stepIndex].hasImage = true;
-        }
-        if (stepTypes.includes('text') && message.content && message.content.trim().length >= 5) {
-          ticketState.stepData[stepIndex].hasText = true;
-          ticketState.stepData[stepIndex].textContent = message.content.trim();
-        }
-
-        // Check if all required types are provided
-        const allRequirementsMet = stepTypes.every(type => {
-          if (type === 'image') return ticketState.stepData[stepIndex].hasImage;
-          if (type === 'text') return ticketState.stepData[stepIndex].hasText;
-          return false;
+        // Still missing requirements, save state and wait for more input
+        await client.saveTicketState(message.channel.id, ticketState);
+        
+        // Show what's still missing
+        const missing = [];
+        if (stepTypes.includes('image') && !ticketState.stepData[stepIndex].hasImage) missing.push('**imagem**');
+        if (stepTypes.includes('text') && !ticketState.stepData[stepIndex].hasText) missing.push('**texto**');
+        
+        return message.reply({
+          embeds: [EmbedFactory.error(MESSAGES.CHECKLIST.MISSING_REQUIREMENTS.replace('{missing}', missing.join(' e ')))]
         });
-
-        if (allRequirementsMet) {
-          // All requirements met, advance to next step
-          ticketState.awaitProof = false;
-          // Clear step data for this step
-          delete ticketState.stepData[stepIndex];
-          await client.saveTicketState(message.channel.id, ticketState);
-        } else {
-          // Still missing requirements, save state and wait for more input
-          await client.saveTicketState(message.channel.id, ticketState);
-          
-          // Show what's still missing
-          const missing = [];
-          if (stepTypes.includes('image') && !ticketState.stepData[stepIndex].hasImage) missing.push('**imagem**');
-          if (stepTypes.includes('text') && !ticketState.stepData[stepIndex].hasText) missing.push('**texto**');
-          
-          return message.reply({
-            embeds: [EmbedFactory.error(MESSAGES.CHECKLIST.MISSING_REQUIREMENTS.replace('{missing}', missing.join(' e ')))]
-          });
-        }
       }
 
       if (!ticketState.awaitProof) {
