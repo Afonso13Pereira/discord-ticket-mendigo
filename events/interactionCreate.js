@@ -1871,6 +1871,21 @@ module.exports = {
         flags: 64
       });
     }
+
+    // Novo botão para GTB: pedir nome e foto do perfil da Twitch
+    if (interaction.customId === 'gw_type_gtb') {
+      // Novo passo: pedir nome e foto do perfil da Twitch
+      const ticketState = client.ticketStates.get(interaction.channel.id);
+      ticketState.awaitTwitchProfile = true;
+      ticketState.twitchProfile = { hasImage: false, hasText: false, text: null };
+      await client.saveTicketState(interaction.channel.id, ticketState);
+
+      await interaction.channel.send({
+        embeds: [EmbedFactory.info('Mande o nome e foto do perfil da Twitch\n\nObrigatório: enviar uma mensagem de texto com o nome e uma imagem do perfil.')],
+        components: [ComponentFactory.createButtonRow(ComponentFactory.supportButton(), ComponentFactory.closeTicketButton())]
+      });
+      return;
+    }
   }
 };
 

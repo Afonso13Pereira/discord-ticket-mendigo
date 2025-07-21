@@ -30,6 +30,38 @@ module.exports = {
     const ticketState = client.ticketStates.get(message.channel.id);
     if (!ticketState) return;
 
+    // Passo obrigatório para GTB: nome e foto do perfil da Twitch
+    if (ticketState && ticketState.awaitTwitchProfile) {
+      let updated = false;
+      if (message.attachments.size > 0) {
+        ticketState.twitchProfile = ticketState.twitchProfile || {};
+        ticketState.twitchProfile.hasImage = true;
+        updated = true;
+      }
+      if (message.content && message.content.trim().length >= 3) {
+        ticketState.twitchProfile = ticketState.twitchProfile || {};
+        ticketState.twitchProfile.hasText = true;
+        ticketState.twitchProfile.text = message.content.trim();
+        updated = true;
+      }
+      if (updated) await client.saveTicketState(message.channel.id, ticketState);
+      if (ticketState.twitchProfile && ticketState.twitchProfile.hasImage && ticketState.twitchProfile.hasText) {
+        ticketState.awaitTwitchProfile = false;
+        await client.saveTicketState(message.channel.id, ticketState);
+        await message.channel.send({
+          embeds: [EmbedFactory.success('Perfil da Twitch recebido! Agora escolha o casino.')]
+        });
+        // Liberar escolha do casino
+        return askCasino(message.channel);
+      } else {
+        // Se ainda falta algo, avisar
+        await message.reply({
+          embeds: [EmbedFactory.warning('Ainda falta enviar o nome e a foto do perfil da Twitch!')]
+        });
+        return;
+      }
+    }
+
     // 18+ Confirmation
     if (ticketState.awaitConfirm) {
       if (CONFIRM_RX.test(message.content.trim())) {
