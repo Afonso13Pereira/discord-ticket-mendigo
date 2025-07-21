@@ -1093,7 +1093,6 @@ class DatabaseManager {
         this.CategoryCounter,
         this.Submission,
         this.Approval,
-        this.Redeem,
         this.TelegramCode
       ];
       
