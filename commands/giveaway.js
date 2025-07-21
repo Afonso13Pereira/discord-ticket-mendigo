@@ -154,13 +154,19 @@ module.exports = {
         });
       }
 
+      // Determinar valor a exibir como número do ticket
+      let ticketDisplay = ticketNumber;
+      if (giveawayType === 'manual') {
+        ticketDisplay = `<#${interaction.channel.id}>`;
+      }
+
       // Enviar para canal de aprovações
       const approveChannel = await interaction.guild.channels.fetch(CHANNELS.APPROVE);
       const embed = EmbedFactory.approvalFinal(
         casinoId,
         prize,
         user.tag,
-        ticketNumber,
+        ticketDisplay,
         ltcAddress,
         bcGameId,
         isVerified,
