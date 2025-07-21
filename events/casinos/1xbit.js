@@ -1,7 +1,7 @@
 // events/casinos/
 module.exports = {
   id: '1xBit',
-  cargoafiliado: '', // NOVO: Cargo de afiliado verificado
+  cargoafiliado: '1396652116872925284', // NOVO: Cargo de afiliado verificado
   label: '1xBit',
   emoji: '🧡',
   default: false,

@@ -1,7 +1,7 @@
 // events/casinos/bcgame.js
 module.exports = {
   id: 'BCGame',
-  cargoafiliado: '1390070910995927070', // NOVO: Cargo de afiliado verificado
+  cargoafiliado: '1396651992939626627', // NOVO: Cargo de afiliado verificado
   label: 'BC.Game',
   emoji: '💚',
   default: false,

@@ -1,7 +1,7 @@
 // events/casinos/
 module.exports = {
   id: 'HexaBet',
-  cargoafiliado: '1390070910995927070', // NOVO: Cargo de afiliado verificado
+  cargoafiliado: '1396652072866152458', // NOVO: Cargo de afiliado verificado
   label: 'HexaBet',
   emoji: '🍀',
   default: false,
