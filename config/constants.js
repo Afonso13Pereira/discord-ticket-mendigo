@@ -75,13 +75,5 @@ module.exports = {
     loading: 'https://media.giphy.com/media/3oEjI6SIIHBdRxXI40/giphy.gif'
   },
 
-  // VIPs agora são carregados dinamicamente de events/vips/
-  // VIP_TYPES e VIP_CASINOS foram removidos - use a pasta events/vips/ em vez disso
 
-  // NOVO: Mapeamento de casinos para cargos
-  CASINO_ROLES: {
-    'BCGame': 'AFILIADO_BCGAME',
-    'RioAce': 'AFILIADO_RIOACE',
-    'Stake': 'AFILIADO_STAKE'
-  }
 };

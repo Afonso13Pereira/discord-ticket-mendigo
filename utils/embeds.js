@@ -118,7 +118,7 @@ class EmbedFactory {
       .setColor(COLORS.PRIMARY)
       .setTitle(MESSAGES.TICKETS.WELCOME_TITLE)
       .setDescription(MESSAGES.TICKETS.WELCOME_DESCRIPTION)
-      .setImage('https://media.giphy.com/media/3oKIPnAiaMCws8nOsE/giphy.gif')
+      .setImage('https://i.imgur.com/Zkymy68.png')
       .setTimestamp()
       .setFooter({ 
         text: 'MENDIGOTV.COM | 18+ GAMBLEAWARE',
@@ -131,7 +131,7 @@ class EmbedFactory {
       .setColor(COLORS.WARNING)
       .setTitle(MESSAGES.CONFIRMATION.TITLE)
       .setDescription(MESSAGES.CONFIRMATION.DESCRIPTION)
-      .setThumbnail('https://media.giphy.com/media/l0HlBO7eyXzSZkJri/giphy.gif')
+      .setThumbnail('https://www.stokestaffslep.org.uk/wp-content/uploads/2025/03/gambleaware-logo.png')
       .setTimestamp()
       .setFooter({ 
         text: 'MENDIGOTV.COM | 18+ GAMBLEAWARE',
