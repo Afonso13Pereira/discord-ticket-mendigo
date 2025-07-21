@@ -398,12 +398,22 @@ module.exports = {
           console.error('Error deleting submission message:', error);
         }
 
-        // NOVO: Apagar mensagem de aprovação também
+        // NOVO: Apagar mensagens do ticket (Finalizar e Aprovar/Não Aprovar)
         try {
-          await approvalMessage.delete();
-          console.log(`🗑️ Deleted approval message for ticket #${submission.ticketNumber}`);
+          const ticketChannel = await interaction.guild.channels.fetch(submission.ticketChannelId);
+          const ticketMessages = await ticketChannel.messages.fetch({ limit: 20 });
+          for (const msg of ticketMessages.values()) {
+            // Apagar se tiver botão 'finish_ticket' ou 'mod_approve_'/'mod_reject_'
+            const hasFinish = msg.components?.some(row => row.components.some(btn => btn.customId === 'finish_ticket'));
+            const hasApprove = msg.components?.some(row => row.components.some(btn => btn.customId?.startsWith('mod_approve_') || btn.customId?.startsWith('mod_reject_')));
+            // Apagar se embed tem descrição de aprovação
+            const hasApprovalEmbed = msg.embeds?.some(e => e.description && e.description.includes('Solicitação enviada para aprovação'));
+            if (hasFinish || hasApprove || hasApprovalEmbed) {
+              try { await msg.delete(); } catch (e) { /* ignore */ }
+            }
+          }
         } catch (error) {
-          console.error('Error deleting approval message:', error);
+          console.error('Erro ao apagar mensagens do ticket:', error);
         }
 
         return interaction.reply({
