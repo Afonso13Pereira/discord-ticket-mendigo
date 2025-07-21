@@ -63,6 +63,18 @@ module.exports = {
         .setDescription('Motivo do giveaway (opcional)')
         .setRequired(false)
     )
+    .addStringOption(option =>
+      option
+        .setName('categoria')
+        .setDescription('Categoria do ticket (opcional)')
+        .setRequired(false)
+        .addChoices(
+          { name: '🎁 Giveaways', value: 'Giveaways' },
+          { name: '❓ Dúvidas', value: 'Dúvidas' },
+          { name: '🌐 Website', value: 'Website' },
+          { name: '📌 Outros', value: 'Outros' }
+        )
+    )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
   async execute(interaction, client) {
@@ -83,6 +95,7 @@ module.exports = {
       const bcGameId = interaction.options.getString('bcgame_id') || null;
       const giveawayType = interaction.options.getString('tipo') || 'manual';
       const reason = interaction.options.getString('motivo') || 'Giveaway manual';
+      const selectedCategory = interaction.options.getString('categoria') || null;
 
       // Validar dados
       if (!CASINOS[casinoId]) {
@@ -107,8 +120,14 @@ module.exports = {
         });
       }
 
-      // Gerar número de ticket único
-      const ticketNumber = Math.floor(Math.random() * 90000) + 10000; // 5 dígitos
+      // Determinar categoria
+      let category = selectedCategory || 'Giveaways'; // Usar categoria escolhida ou padrão
+      if (!selectedCategory && giveawayType === 'manual') {
+        category = 'Outros'; // Para giveaways manuais sem categoria específica
+      }
+
+      // Gerar número de ticket usando o sistema correto
+      const ticketNumber = await client.db.getNextTicketNumberForCategory(category);
 
       // Verificar se o usuário tem cargo de verificação
       const member = await interaction.guild.members.fetch(user.id);
@@ -116,7 +135,7 @@ module.exports = {
 
       // Criar approval na base de dados
       const approvalId = await client.db.saveApproval(
-        'manual_giveaway', // channelId especial para giveaways manuais
+        interaction.channel.id, // Usar o canal atual onde o comando foi executado
         ticketNumber,
         user.id,
         user.tag,
@@ -155,7 +174,7 @@ module.exports = {
         { name: '👤 Criado por', value: interaction.user.tag, inline: true }
       );
 
-      const components = ComponentFactory.approvalButtons(approvalId, 'manual_giveaway');
+      const components = ComponentFactory.approvalButtons(approvalId, interaction.channel.id);
 
       const approvalMessage = await approveChannel.send({
         embeds: [embed],
@@ -167,10 +186,10 @@ module.exports = {
 
       // Log da ação
       await client.db.logAction(
-        'manual_giveaway',
+        interaction.channel.id,
         interaction.user.id,
         'manual_giveaway_created',
-        `User: ${user.tag}, Casino: ${casinoId}, Prize: ${prize}, Type: ${giveawayType}`
+        `User: ${user.tag}, Casino: ${casinoId}, Prize: ${prize}, Type: ${giveawayType}, Category: ${category}`
       );
 
       // Responder com confirmação
@@ -181,6 +200,7 @@ module.exports = {
         `🎰 **Casino:** ${CASINOS[casinoId].label}`,
         `💰 **Prêmio:** ${prize}`,
         `🎯 **Tipo:** ${giveawayType.toUpperCase()}`,
+        `📂 **Categoria:** ${category}`,
         `🎫 **Ticket:** #${ticketNumber}`,
         `✅ **Verificado:** ${isVerified ? 'Sim' : 'Não'}`,
         '',
