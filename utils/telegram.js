@@ -99,7 +99,7 @@ class TelegramService {
   }
 
   async handleCallbackQuery(callbackQuery, client) {
-    const { data, from } = callbackQuery;
+    const { data, from, message } = callbackQuery;
     
     console.log(`[TELEGRAM] Callback recebido: ${data} de @${from.username}`);
     
@@ -123,26 +123,55 @@ class TelegramService {
         // Atualizar status para paid
         await client.db.updateApproval(approvalId, 'paid');
 
-        // Enviar mensagem de confirmação no Telegram
-        await this.sendMessage(`✅ <b>Giveaway Pago</b>\n\n🎫 <b>Ticket:</b> #${approval.ticketNumber}\n👤 <b>Usuário:</b> ${approval.userTag}\n🎰 <b>Casino:</b> ${approval.casino}\n💰 <b>Prêmio:</b> ${approval.prize}\n\n👤 <b>Pago por:</b> @${from.username}`);
+        // Editar a mensagem original no Telegram (remover botões e mostrar como pago)
+        try {
+          const updatedText = `🎁 <b>Giveaway Aprovado</b>\n\n🎰 <b>Casino:</b> ${approval.casino}\n💰 <b>Prêmio:</b> ${approval.prize}\n👤 <b>Usuário:</b> ${approval.userTag}\n🎫 <b>Ticket:</b> #${approval.ticketNumber}\n\n✅ <b>Pago com sucesso por @${from.username}</b>`;
+          
+          await fetch(`${this.baseUrl}/editMessageText`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              chat_id: this.chatId,
+              message_id: message.message_id,
+              text: updatedText,
+              parse_mode: 'HTML',
+              reply_markup: JSON.stringify({ inline_keyboard: [] }) // Remove botões
+            })
+          });
+        } catch (error) {
+          console.error('[TELEGRAM] Erro ao editar mensagem:', error);
+        }
 
-        // Enviar mensagem para o ticket no Discord
+        // Enviar mensagem para o ticket no Discord (igual ao Discord)
         try {
           const ticketChannel = await client.channels.fetch(approval.ticketChannelId);
           if (ticketChannel) {
-            const { EmbedBuilder } = require('discord.js');
-            const embed = new EmbedBuilder()
-              .setColor(0x00ff00) // Verde
-              .setTitle('✅ Giveaway Pago!')
-              .setDescription('O seu giveaway foi pago com sucesso! Parabéns!')
-              .setTimestamp();
-            
+            const EmbedFactory = require('../utils/embeds');
             await ticketChannel.send({
-              embeds: [embed]
+              embeds: [EmbedFactory.giveawayPaid()]
             });
           }
         } catch (error) {
           console.error('[TELEGRAM] Erro ao enviar mensagem para ticket Discord:', error);
+        }
+
+        // NOVO: Adicionar cargo de verificação para o usuário (igual ao Discord)
+        const { CASINOS } = require('../config/constants');
+        if (approval.casino && CASINOS[approval.casino]) {
+          const casino = CASINOS[approval.casino];
+          const roleId = casino.cargoafiliado;
+          
+          try {
+            const member = await client.guilds.cache.first().members.fetch(approval.userId);
+            if (member && roleId) {
+              await member.roles.add(roleId);
+              console.log(`✅ Added verification role ${roleId} to user ${approval.userTag} for casino ${approval.casino}`);
+            }
+          } catch (error) {
+            console.error('Error adding verification role:', error);
+          }
         }
 
         // Log da ação
@@ -171,39 +200,119 @@ class TelegramService {
           return;
         }
 
-        // Atualizar status para rejected
-        await client.db.updateApproval(approvalId, 'rejected');
-
-        // Enviar mensagem de confirmação no Telegram
-        await this.sendMessage(`❌ <b>Giveaway Rejeitado</b>\n\n🎫 <b>Ticket:</b> #${approval.ticketNumber}\n👤 <b>Usuário:</b> ${approval.userTag}\n🎰 <b>Casino:</b> ${approval.casino}\n💰 <b>Prêmio:</b> ${approval.prize}\n\n👤 <b>Rejeitado por:</b> @${from.username}\n\n📝 <b>Motivo:</b> Rejeitado via Telegram`);
-
-        // Enviar mensagem para o ticket no Discord
+        // Tentar implementar modal no Telegram (se não der, usar mensagem simples)
         try {
-          const ticketChannel = await client.channels.fetch(approval.ticketChannelId);
-          if (ticketChannel) {
-            const { EmbedBuilder } = require('discord.js');
-            const embed = new EmbedBuilder()
-              .setColor(0xff0000) // Vermelho
-              .setTitle('❌ Giveaway Rejeitado')
-              .setDescription('O seu giveaway foi rejeitado. Entre em contacto com o suporte para mais informações.')
-              .setTimestamp();
-            
-            await ticketChannel.send({
-              embeds: [embed]
-            });
-          }
+          // Enviar mensagem pedindo motivo
+          await this.sendMessage(`📝 <b>Rejeição de Giveaway</b>\n\n🎫 <b>Ticket:</b> #${approval.ticketNumber}\n👤 <b>Usuário:</b> ${approval.userTag}\n\nPor favor, envie o motivo da rejeição em uma mensagem separada.`);
+          
+          // Armazenar estado de espera para este approval
+          this.pendingRejections = this.pendingRejections || new Map();
+          this.pendingRejections.set(approvalId, {
+            approval,
+            userId: from.id,
+            username: from.username,
+            messageId: message.message_id,
+            timestamp: Date.now()
+          });
+          
+          // Timeout para limpar após 5 minutos
+          setTimeout(() => {
+            this.pendingRejections.delete(approvalId);
+          }, 5 * 60 * 1000);
+          
+          return;
+          
         } catch (error) {
-          console.error('[TELEGRAM] Erro ao enviar mensagem para ticket Discord:', error);
+          console.error('[TELEGRAM] Erro ao implementar modal, usando rejeição simples:', error);
+          
+          // Fallback: rejeição simples
+          await this.processRejection(approval, from, 'Rejeitado via Telegram', client, message.message_id);
         }
-
-        // Log da ação
-        await client.db.logAction(approval.ticketChannelId, from.id, 'giveaway_rejected_telegram', `Ticket #${approval.ticketNumber} - Rejeitado por @${from.username}`);
 
       } catch (error) {
         console.error('[TELEGRAM] Erro ao processar rejeição:', error);
         await this.sendMessage(`❌ Erro ao processar rejeição: ${error.message}`);
       }
     }
+  }
+
+  // Método para processar mensagens de texto
+  async handleMessage(message, client) {
+    const { text, from } = message;
+    
+    // Verificar se é uma resposta a uma rejeição pendente
+    if (this.pendingRejections && text) {
+      for (const [approvalId, pendingData] of this.pendingRejections.entries()) {
+        if (pendingData.userId === from.id) {
+          console.log(`[TELEGRAM] Motivo de rejeição recebido para approval ${approvalId}: ${text}`);
+          
+          // Processar a rejeição com o motivo
+          await this.processRejection(pendingData.approval, from, text, client, pendingData.messageId);
+          
+          // Limpar o estado pendente
+          this.pendingRejections.delete(approvalId);
+          
+          // Confirmar recebimento
+          await this.sendMessage(`✅ <b>Rejeição processada</b>\n\n🎫 <b>Ticket:</b> #${pendingData.approval.ticketNumber}\n📝 <b>Motivo:</b> ${text}\n\nA rejeição foi aplicada com sucesso.`);
+          
+          return;
+        }
+      }
+    }
+    
+    // Outras mensagens podem ser processadas aqui
+    console.log(`[TELEGRAM] Mensagem de @${from.username}: ${text}`);
+  }
+
+  // Método auxiliar para processar rejeição
+  async processRejection(approval, from, reason, client, messageId = null) {
+    // Atualizar status para rejected
+    await client.db.updateApproval(approval.approvalId, 'rejected');
+
+    // Editar a mensagem original no Telegram (se messageId fornecido)
+    if (messageId) {
+      try {
+        const updatedText = `🎁 <b>Giveaway Aprovado</b>\n\n🎰 <b>Casino:</b> ${approval.casino}\n💰 <b>Prêmio:</b> ${approval.prize}\n👤 <b>Usuário:</b> ${approval.userTag}\n🎫 <b>Ticket:</b> #${approval.ticketNumber}\n\n❌ <b>Não aprovado por @${from.username}</b>\n📝 <b>Motivo:</b> ${reason}`;
+        
+        await fetch(`${this.baseUrl}/editMessageText`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            chat_id: this.chatId,
+            message_id: messageId,
+            text: updatedText,
+            parse_mode: 'HTML',
+            reply_markup: JSON.stringify({ inline_keyboard: [] }) // Remove botões
+          })
+        });
+      } catch (error) {
+        console.error('[TELEGRAM] Erro ao editar mensagem:', error);
+      }
+    }
+
+    // Enviar mensagem para o ticket no Discord (igual ao Discord)
+    try {
+      const ticketChannel = await client.channels.fetch(approval.ticketChannelId);
+      if (ticketChannel) {
+        const EmbedFactory = require('../utils/embeds');
+        const ComponentFactory = require('../utils/components');
+        
+        const embed = EmbedFactory.rejectionReason(reason);
+        const components = ComponentFactory.rejectionButtons();
+
+        await ticketChannel.send({
+          embeds: [embed],
+          components: [components]
+        });
+      }
+    } catch (error) {
+      console.error('[TELEGRAM] Erro ao enviar mensagem para ticket Discord:', error);
+    }
+
+    // Log da ação
+    await client.db.logAction(approval.ticketChannelId, from.id, 'giveaway_rejected_telegram', `Ticket #${approval.ticketNumber} - Rejeitado por @${from.username} - Motivo: ${reason}`);
   }
 
   // Função para configurar webhook (opcional)

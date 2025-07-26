@@ -62,7 +62,7 @@ class TelegramPolling {
 
     if (update.message) {
       console.log('[TELEGRAM] Mensagem recebida:', update.message.text);
-      // Aqui você pode adicionar lógica para responder a mensagens
+      await telegramService.handleMessage(update.message, this.client);
     }
   }
 }
