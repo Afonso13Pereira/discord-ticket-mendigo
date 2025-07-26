@@ -130,7 +130,7 @@ class TelegramService {
         try {
           const ticketChannel = await client.channels.fetch(approval.ticketChannelId);
           if (ticketChannel) {
-            const { EmbedFactory } = require('./embeds');
+            const EmbedFactory = require('./embeds');
             await ticketChannel.send({
               embeds: [EmbedFactory.giveawayPaid()]
             });
@@ -175,7 +175,7 @@ class TelegramService {
         try {
           const ticketChannel = await client.channels.fetch(approval.ticketChannelId);
           if (ticketChannel) {
-            const { EmbedFactory } = require('./embeds');
+            const EmbedFactory = require('./embeds');
             await ticketChannel.send({
               embeds: [EmbedFactory.error('O seu giveaway foi rejeitado. Entre em contacto com o suporte para mais informações.')]
             });

@@ -434,100 +434,99 @@ module.exports = {
         });
       }
 
-      // Rejection Modal
+      // Rejection Modal - Handle both submission and approval rejections
       if (interaction.customId.startsWith('reject_modal_')) {
-        const submissionId = interaction.customId.split('_')[2];
+        const modalId = interaction.customId.split('_')[2];
         const reason = interaction.fields.getTextInputValue('reject_reason').trim();
         
-        const submission = await client.db.getSubmission(submissionId);
-        if (!submission) {
-          return interaction.reply({
-            embeds: [EmbedFactory.error('Submissão não encontrada')],
-            flags: 64
-          });
-        }
-
-        // Send rejection to ticket
-        const ticketChannel = await interaction.guild.channels.fetch(submission.ticketChannelId);
-        const embed = EmbedFactory.rejectionReason(reason);
-        const components = ComponentFactory.rejectionButtons();
-
-        await ticketChannel.send({
-          embeds: [embed],
-          components: [components]
-        });
-
-        // Update submission status
-        await client.db.updateSubmission(submissionId, 'rejected');
-
-        // NOVO: Apagar mensagem de submissão pendente
-        try {
-          const modChannel = await interaction.guild.channels.fetch(CHANNELS.MOD);
-          const messages = await modChannel.messages.fetch({ limit: 50 });
-          const submissionMessage = messages.find(m => 
-            m.embeds.length > 0 && 
-            m.embeds[0].description && 
-            m.embeds[0].description.includes(`#${submission.ticketNumber}`)
-          );
+        console.log(`[REJECT_MODAL] Processing modal for ID: ${modalId}`);
+        
+        // Try to find as approval first
+        let approval = await client.db.getApproval(modalId);
+        if (approval) {
+          console.log(`[REJECT_MODAL] Found approval: ${approval.approvalId}`);
           
-          if (submissionMessage) {
-            await submissionMessage.delete();
-            console.log(`🗑️ Deleted submission message for ticket #${submission.ticketNumber}`);
+          // Send rejection to ticket
+          const ticketChannel = await interaction.guild.channels.fetch(approval.ticketChannelId);
+          const embed = EmbedFactory.rejectionReason(reason);
+          const components = ComponentFactory.rejectionButtons();
+
+          await ticketChannel.send({
+            embeds: [embed],
+            components: [components]
+          });
+
+          // Update approval status
+          await client.db.updateApproval(modalId, 'rejected');
+
+          // NOVO: Enviar mensagem de rejeição para o Telegram
+          const telegramService = require('../utils/telegram');
+          try {
+            await telegramService.sendMessage(`❌ <b>Giveaway Rejeitado</b>\n\n🎫 <b>Ticket:</b> #${approval.ticketNumber}\n👤 <b>Usuário:</b> ${approval.userTag}\n🎰 <b>Casino:</b> ${approval.casino}\n💰 <b>Prêmio:</b> ${approval.prize}\n\n📝 <b>Motivo:</b> ${reason}\n\n👤 <b>Rejeitado por:</b> ${interaction.user.tag}`);
+            console.log(`[TELEGRAM] Mensagem de rejeição enviada para o Telegram - Ticket #${approval.ticketNumber}`);
+          } catch (error) {
+            console.error('[TELEGRAM] Erro ao enviar mensagem de rejeição para o Telegram:', error);
           }
-        } catch (error) {
-          console.error('Error deleting submission message:', error);
-        }
 
-        return interaction.reply({
-          embeds: [EmbedFactory.success(MESSAGES.GIVEAWAYS.REJECTED)],
-          flags: 64
-        });
-      }
+          // Delete approval message
+          try {
+            await interaction.message.delete();
+          } catch (error) {
+            console.error('Error deleting approval message:', error);
+          }
 
-      // Rejection Modal (mudou de review para reject)
-      if (interaction.customId.startsWith('reject_modal_')) {
-        const approvalId = interaction.customId.split('_')[2];
-        const reason = interaction.fields.getTextInputValue('reject_reason').trim();
-        
-        const approval = await client.db.getApproval(approvalId);
-        if (!approval) {
           return interaction.reply({
-            embeds: [EmbedFactory.error('Aprovação não encontrada')],
+            embeds: [EmbedFactory.success(MESSAGES.GIVEAWAYS.REJECTED)],
             flags: 64
           });
         }
+        
+        // If not found as approval, try as submission
+        let submission = await client.db.getSubmission(modalId);
+        if (submission) {
+          console.log(`[REJECT_MODAL] Found submission: ${submission.submissionId}`);
+          
+          // Send rejection to ticket
+          const ticketChannel = await interaction.guild.channels.fetch(submission.ticketChannelId);
+          const embed = EmbedFactory.rejectionReason(reason);
+          const components = ComponentFactory.rejectionButtons();
 
-        // Send rejection to ticket
-        const ticketChannel = await interaction.guild.channels.fetch(approval.ticketChannelId);
-        const embed = EmbedFactory.rejectionReason(reason);
-        const components = ComponentFactory.rejectionButtons();
+          await ticketChannel.send({
+            embeds: [embed],
+            components: [components]
+          });
 
-        await ticketChannel.send({
-          embeds: [embed],
-          components: [components]
-        });
+          // Update submission status
+          await client.db.updateSubmission(modalId, 'rejected');
 
-        // Update approval status
-        await client.db.updateApproval(approvalId, 'rejected');
+          // NOVO: Apagar mensagem de submissão pendente
+          try {
+            const modChannel = await interaction.guild.channels.fetch(CHANNELS.MOD);
+            const messages = await modChannel.messages.fetch({ limit: 50 });
+            const submissionMessage = messages.find(m => 
+              m.embeds.length > 0 && 
+              m.embeds[0].description && 
+              m.embeds[0].description.includes(`#${submission.ticketNumber}`)
+            );
+            
+            if (submissionMessage) {
+              await submissionMessage.delete();
+              console.log(`🗑️ Deleted submission message for ticket #${submission.ticketNumber}`);
+            }
+          } catch (error) {
+            console.error('Error deleting submission message:', error);
+          }
 
-        // NOVO: Enviar mensagem de rejeição para o Telegram
-        const telegramService = require('../utils/telegram');
-        try {
-          await telegramService.sendMessage(`❌ <b>Giveaway Rejeitado</b>\n\n🎫 <b>Ticket:</b> #${approval.ticketNumber}\n👤 <b>Usuário:</b> ${approval.userTag}\n🎰 <b>Casino:</b> ${approval.casino}\n💰 <b>Prêmio:</b> ${approval.prize}\n\n📝 <b>Motivo:</b> ${reason}\n\n👤 <b>Rejeitado por:</b> ${interaction.user.tag}`);
-          console.log(`[TELEGRAM] Mensagem de rejeição enviada para o Telegram - Ticket #${approval.ticketNumber}`);
-        } catch (error) {
-          console.error('[TELEGRAM] Erro ao enviar mensagem de rejeição para o Telegram:', error);
+          return interaction.reply({
+            embeds: [EmbedFactory.success(MESSAGES.GIVEAWAYS.REJECTED)],
+            flags: 64
+          });
         }
-
-        // Delete approval message
-        try {
-          await interaction.message.delete();
-        } catch (error) {
-          console.error('Error deleting approval message:', error);
-        }
-
+        
+        // If neither found, return error
+        console.log(`[REJECT_MODAL] Neither approval nor submission found for ID: ${modalId}`);
         return interaction.reply({
-          embeds: [EmbedFactory.success(MESSAGES.GIVEAWAYS.REJECTED)],
+          embeds: [EmbedFactory.error('Aprovação/Submissão não encontrada')],
           flags: 64
         });
       }
