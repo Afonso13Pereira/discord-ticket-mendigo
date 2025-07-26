@@ -130,9 +130,15 @@ class TelegramService {
         try {
           const ticketChannel = await client.channels.fetch(approval.ticketChannelId);
           if (ticketChannel) {
-            const EmbedFactory = require('./embeds');
+            const { EmbedBuilder } = require('discord.js');
+            const embed = new EmbedBuilder()
+              .setColor(0x00ff00) // Verde
+              .setTitle('✅ Giveaway Pago!')
+              .setDescription('O seu giveaway foi pago com sucesso! Parabéns!')
+              .setTimestamp();
+            
             await ticketChannel.send({
-              embeds: [EmbedFactory.giveawayPaid()]
+              embeds: [embed]
             });
           }
         } catch (error) {
@@ -175,9 +181,15 @@ class TelegramService {
         try {
           const ticketChannel = await client.channels.fetch(approval.ticketChannelId);
           if (ticketChannel) {
-            const EmbedFactory = require('./embeds');
+            const { EmbedBuilder } = require('discord.js');
+            const embed = new EmbedBuilder()
+              .setColor(0xff0000) // Vermelho
+              .setTitle('❌ Giveaway Rejeitado')
+              .setDescription('O seu giveaway foi rejeitado. Entre em contacto com o suporte para mais informações.')
+              .setTimestamp();
+            
             await ticketChannel.send({
-              embeds: [EmbedFactory.error('O seu giveaway foi rejeitado. Entre em contacto com o suporte para mais informações.')]
+              embeds: [embed]
             });
           }
         } catch (error) {
