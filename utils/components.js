@@ -392,7 +392,7 @@ class ComponentFactory {
         '🎫'
       ),
       this.createButton(`approval_paid_${approvalId}`, MESSAGES.BUTTONS.PAID, ButtonStyle.Success, '💰'),
-      this.createButton(`approval_review_${approvalId}`, MESSAGES.BUTTONS.REVIEW, ButtonStyle.Secondary, '🔍')
+      this.createButton(`approval_review_${approvalId}`, 'Não Aprovar', ButtonStyle.Danger, '❌')
     );
   }
 

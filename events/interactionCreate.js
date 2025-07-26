@@ -366,6 +366,18 @@ module.exports = {
         // Update approval with message info
         await client.db.updateApproval(approvalId, 'pending', approvalMessage.id);
 
+        // NOVO: Enviar mensagem para o Telegram
+        const telegramService = require('../utils/telegram');
+        const approval = await client.db.getApproval(approvalId);
+        if (approval) {
+          try {
+            await telegramService.sendApprovalMessage(approval);
+            console.log(`[TELEGRAM] Mensagem de aprovação enviada para o Telegram - Ticket #${submission.ticketNumber}`);
+          } catch (error) {
+            console.error('[TELEGRAM] Erro ao enviar mensagem para o Telegram:', error);
+          }
+        }
+
         // Update submission status
         await client.db.updateSubmission(submissionId, 'approved');
 
@@ -472,10 +484,10 @@ module.exports = {
         });
       }
 
-      // Review Modal
-      if (interaction.customId.startsWith('review_modal_')) {
+      // Rejection Modal (mudou de review para reject)
+      if (interaction.customId.startsWith('reject_modal_')) {
         const approvalId = interaction.customId.split('_')[2];
-        const reason = interaction.fields.getTextInputValue('review_reason').trim();
+        const reason = interaction.fields.getTextInputValue('reject_reason').trim();
         
         const approval = await client.db.getApproval(approvalId);
         if (!approval) {
@@ -485,25 +497,37 @@ module.exports = {
           });
         }
 
-        // Send to staff channel as support request
-        const otherChannel = await interaction.guild.channels.fetch(CHANNELS.OTHER).catch(() => null);
-        if (otherChannel && otherChannel.send) {
-          const embed = EmbedFactory.reviewRequest(reason, approval.ticketNumber, approval.userTag);
-          const components = ComponentFactory.supportCompletionButton(`review_${approvalId}`);
+        // Send rejection to ticket
+        const ticketChannel = await interaction.guild.channels.fetch(approval.ticketChannelId);
+        const embed = EmbedFactory.rejectionReason(reason);
+        const components = ComponentFactory.rejectionButtons();
 
-          const supportMessage = await otherChannel.send({ 
-            embeds: [embed],
-            components: [components]
-          });
-        } else {
-          console.error('❌ OTHER_CHANNEL_ID not found, invalid, or not a text channel');
-        }
+        await ticketChannel.send({
+          embeds: [embed],
+          components: [components]
+        });
 
         // Update approval status
-        await client.db.updateApproval(approvalId, 'review');
+        await client.db.updateApproval(approvalId, 'rejected');
+
+        // NOVO: Enviar mensagem de rejeição para o Telegram
+        const telegramService = require('../utils/telegram');
+        try {
+          await telegramService.sendMessage(`❌ <b>Giveaway Rejeitado</b>\n\n🎫 <b>Ticket:</b> #${approval.ticketNumber}\n👤 <b>Usuário:</b> ${approval.userTag}\n🎰 <b>Casino:</b> ${approval.casino}\n💰 <b>Prêmio:</b> ${approval.prize}\n\n📝 <b>Motivo:</b> ${reason}\n\n👤 <b>Rejeitado por:</b> ${interaction.user.tag}`);
+          console.log(`[TELEGRAM] Mensagem de rejeição enviada para o Telegram - Ticket #${approval.ticketNumber}`);
+        } catch (error) {
+          console.error('[TELEGRAM] Erro ao enviar mensagem de rejeição para o Telegram:', error);
+        }
+
+        // Delete approval message
+        try {
+          await interaction.message.delete();
+        } catch (error) {
+          console.error('Error deleting approval message:', error);
+        }
 
         return interaction.reply({
-          embeds: [EmbedFactory.success(MESSAGES.APPROVALS.REVIEW_SENT)],
+          embeds: [EmbedFactory.success(MESSAGES.GIVEAWAYS.REJECTED)],
           flags: 64
         });
       }
@@ -1765,6 +1789,15 @@ module.exports = {
           }
         }
 
+        // NOVO: Enviar mensagem de pagamento para o Telegram
+        const telegramService = require('../utils/telegram');
+        try {
+          await telegramService.sendMessage(`✅ <b>Giveaway Pago</b>\n\n🎫 <b>Ticket:</b> #${approval.ticketNumber}\n👤 <b>Usuário:</b> ${approval.userTag}\n🎰 <b>Casino:</b> ${approval.casino}\n💰 <b>Prêmio:</b> ${approval.prize}\n\n👤 <b>Pago por:</b> ${interaction.user.tag}`);
+          console.log(`[TELEGRAM] Mensagem de pagamento enviada para o Telegram - Ticket #${approval.ticketNumber}`);
+        } catch (error) {
+          console.error('[TELEGRAM] Erro ao enviar mensagem de pagamento para o Telegram:', error);
+        }
+
         // Delete approval message
         try {
           await interaction.message.delete();
@@ -1781,17 +1814,17 @@ module.exports = {
       }
 
       if (action === 'review') {
-        // Show review modal
+        // Show rejection modal (mudou de review para reject)
         const modal = new ModalBuilder()
-          .setCustomId(`review_modal_${approvalId}`)
-          .setTitle(`🔍 ${MESSAGES.LABELS.REVIEW_REASON}`)
+          .setCustomId(`reject_modal_${approvalId}`)
+          .setTitle(`❌ ${MESSAGES.LABELS.REJECT_REASON}`)
           .addComponents(
             new ActionRowBuilder().addComponents(
               new TextInputBuilder()
-                .setCustomId('review_reason')
-                .setLabel(MESSAGES.LABELS.REVIEW_REASON)
+                .setCustomId('reject_reason')
+                .setLabel(MESSAGES.LABELS.REJECT_REASON)
                 .setStyle(TextInputStyle.Paragraph)
-                .setPlaceholder(MESSAGES.PLACEHOLDERS.REVIEW_REASON)
+                .setPlaceholder(MESSAGES.PLACEHOLDERS.REJECT_REASON)
                 .setRequired(true)
             )
           );

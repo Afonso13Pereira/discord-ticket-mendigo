@@ -16,6 +16,11 @@ module.exports = {
     CREATETICKET: process.env.CREATETICKET_CHANNEL_ID || '1386488093623717888'
   },
 
+  TELEGRAM: {
+    BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+    CHAT_ID: process.env.TELEGRAM_CHAT_ID
+  },
+
   ROLES: {
     MOD: process.env.MOD_ID || '1386505412718887073',
     // NOVO: Cargos de verificação de casino
