@@ -22,11 +22,7 @@ module.exports = {
   },
 
   ROLES: {
-    MOD: process.env.MOD_ID || '1386505412718887073',
-    // NOVO: Cargos de verificação de casino
-    AFILIADO_BCGAME: process.env.AFILIADO_BCGAME_ID || '1234567890123456789',
-    AFILIADO_RIOACE: process.env.AFILIADO_RIOACE_ID || '1234567890123456789',
-    AFILIADO_STAKE: process.env.AFILIADO_STAKE_ID || '1234567890123456789'
+    MOD: process.env.MOD_ID || '1386505412718887073'
   },
 
   COLORS: {

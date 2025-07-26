@@ -173,16 +173,27 @@ class TelegramService {
           const { CHANNELS } = require('../config/constants');
           const approveChannel = await client.channels.fetch(CHANNELS.APPROVE);
           if (approveChannel) {
-            const messages = await approveChannel.messages.fetch({ limit: 50 });
-            const approvalMessage = messages.find(m => 
-              m.embeds.length > 0 && 
-              m.embeds[0].description && 
-              m.embeds[0].description.includes(`#${approval.ticketNumber}`)
-            );
+            const messages = await approveChannel.messages.fetch({ limit: 100 });
+            const approvalMessage = messages.find(m => {
+              if (m.embeds.length === 0) return false;
+              
+              const embed = m.embeds[0];
+              const embedText = [
+                embed.title,
+                embed.description,
+                ...(embed.fields || []).map(f => f.value)
+              ].filter(Boolean).join(' ');
+              
+              return embedText.includes(`#${approval.ticketNumber}`) || 
+                     embedText.includes(`Ticket #${approval.ticketNumber}`) ||
+                     embedText.includes(`ticket-${approval.ticketNumber}`);
+            });
             
             if (approvalMessage) {
               await approvalMessage.delete();
               console.log(`🗑️ Deleted approval message for ticket #${approval.ticketNumber}`);
+            } else {
+              console.log(`⚠️ Approval message not found for ticket #${approval.ticketNumber}`);
             }
           }
         } catch (error) {
@@ -190,31 +201,31 @@ class TelegramService {
         }
 
         // NOVO: Adicionar cargo de verificação para o usuário (igual ao Discord)
-        const { ROLES } = require('../config/constants');
-        let roleId = null;
-        
-        // Mapear casino para cargo de afiliado
-        if (approval.casino === 'BCGame') {
-          roleId = ROLES.AFILIADO_BCGAME;
-        } else if (approval.casino === 'RioAce') {
-          roleId = ROLES.AFILIADO_RIOACE;
-        } else if (approval.casino === 'Stake') {
-          roleId = ROLES.AFILIADO_STAKE;
-        }
-        
-        if (roleId) {
-          try {
+        try {
+          const casinos = require('../events/casinos');
+          const casino = casinos[approval.casino];
+          
+          if (casino && casino.cargoafiliado) {
             const guild = client.guilds.cache.first();
             if (guild) {
+              // Verificar se o cargo existe
+              const role = await guild.roles.fetch(casino.cargoafiliado);
+              if (!role) {
+                console.log(`⚠️ Role ${casino.cargoafiliado} not found for casino ${approval.casino}`);
+                return;
+              }
+              
               const member = await guild.members.fetch(approval.userId);
               if (member) {
-                await member.roles.add(roleId);
-                console.log(`✅ Added verification role ${roleId} to user ${approval.userTag} for casino ${approval.casino}`);
+                await member.roles.add(casino.cargoafiliado);
+                console.log(`✅ Added verification role ${casino.cargoafiliado} (${role.name}) to user ${approval.userTag} for casino ${approval.casino}`);
               }
             }
-          } catch (error) {
-            console.error('Error adding verification role:', error);
+          } else {
+            console.log(`⚠️ No cargoafiliado configured for casino ${approval.casino}`);
           }
+        } catch (error) {
+          console.error('Error adding verification role:', error);
         }
 
         // Log da ação
@@ -370,16 +381,27 @@ class TelegramService {
       const { CHANNELS } = require('../config/constants');
       const approveChannel = await client.channels.fetch(CHANNELS.APPROVE);
       if (approveChannel) {
-        const messages = await approveChannel.messages.fetch({ limit: 50 });
-        const approvalMessage = messages.find(m => 
-          m.embeds.length > 0 && 
-          m.embeds[0].description && 
-          m.embeds[0].description.includes(`#${approval.ticketNumber}`)
-        );
+        const messages = await approveChannel.messages.fetch({ limit: 100 });
+        const approvalMessage = messages.find(m => {
+          if (m.embeds.length === 0) return false;
+          
+          const embed = m.embeds[0];
+          const embedText = [
+            embed.title,
+            embed.description,
+            ...(embed.fields || []).map(f => f.value)
+          ].filter(Boolean).join(' ');
+          
+          return embedText.includes(`#${approval.ticketNumber}`) || 
+                 embedText.includes(`Ticket #${approval.ticketNumber}`) ||
+                 embedText.includes(`ticket-${approval.ticketNumber}`);
+        });
         
         if (approvalMessage) {
           await approvalMessage.delete();
           console.log(`🗑️ Deleted approval message for ticket #${approval.ticketNumber}`);
+        } else {
+          console.log(`⚠️ Approval message not found for ticket #${approval.ticketNumber}`);
         }
       }
     } catch (error) {
