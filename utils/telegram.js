@@ -123,9 +123,20 @@ class TelegramService {
         // Atualizar status para paid
         await client.db.updateApproval(approvalId, 'paid');
 
-        // Editar a mensagem original no Telegram (remover botões e mostrar como pago)
+        // Editar a mensagem original no Telegram (manter todas as informações e mostrar como pago)
         try {
-          const updatedText = `🎁 <b>Giveaway Aprovado</b>\n\n🎰 <b>Casino:</b> ${approval.casino}\n💰 <b>Prêmio:</b> ${approval.prize}\n👤 <b>Usuário:</b> ${approval.userTag}\n🎫 <b>Ticket:</b> #${approval.ticketNumber}\n\n✅ <b>Pago com sucesso por @${from.username}</b>`;
+          let updatedText = `🎁 <b>Giveaway Aprovado</b>\n\n🎰 <b>Casino:</b> ${approval.casino}\n💰 <b>Prêmio:</b> ${approval.prize}\n👤 <b>Usuário:</b> ${approval.userTag}\n🎫 <b>Ticket:</b> #${approval.ticketNumber}`;
+          
+          // Adicionar ID BCGame se existir
+          if (approval.bcGameId) {
+            updatedText += `\n🆔 <b>ID BCGame:</b> ${approval.bcGameId}`;
+          }
+          
+          // Adicionar endereço LTC
+          updatedText += `\n💳 <b>Endereço LTC:</b> ${approval.ltcAddress}`;
+          
+          // Adicionar status de pagamento
+          updatedText += `\n\n✅ <b>Pago com sucesso por @${from.username}</b>`;
           
           await fetch(`${this.baseUrl}/editMessageText`, {
             method: 'POST',
@@ -157,17 +168,49 @@ class TelegramService {
           console.error('[TELEGRAM] Erro ao enviar mensagem para ticket Discord:', error);
         }
 
+        // NOVO: Apagar mensagem de aprovação no Discord (igual ao Discord)
+        try {
+          const { CHANNELS } = require('../config/constants');
+          const approveChannel = await client.channels.fetch(CHANNELS.APPROVE);
+          if (approveChannel) {
+            const messages = await approveChannel.messages.fetch({ limit: 50 });
+            const approvalMessage = messages.find(m => 
+              m.embeds.length > 0 && 
+              m.embeds[0].description && 
+              m.embeds[0].description.includes(`#${approval.ticketNumber}`)
+            );
+            
+            if (approvalMessage) {
+              await approvalMessage.delete();
+              console.log(`🗑️ Deleted approval message for ticket #${approval.ticketNumber}`);
+            }
+          }
+        } catch (error) {
+          console.error('[TELEGRAM] Erro ao apagar mensagem de aprovação no Discord:', error);
+        }
+
         // NOVO: Adicionar cargo de verificação para o usuário (igual ao Discord)
-        const { CASINOS } = require('../config/constants');
-        if (approval.casino && CASINOS[approval.casino]) {
-          const casino = CASINOS[approval.casino];
-          const roleId = casino.cargoafiliado;
-          
+        const { ROLES } = require('../config/constants');
+        let roleId = null;
+        
+        // Mapear casino para cargo de afiliado
+        if (approval.casino === 'BCGame') {
+          roleId = ROLES.AFILIADO_BCGAME;
+        } else if (approval.casino === 'RioAce') {
+          roleId = ROLES.AFILIADO_RIOACE;
+        } else if (approval.casino === 'Stake') {
+          roleId = ROLES.AFILIADO_STAKE;
+        }
+        
+        if (roleId) {
           try {
-            const member = await client.guilds.cache.first().members.fetch(approval.userId);
-            if (member && roleId) {
-              await member.roles.add(roleId);
-              console.log(`✅ Added verification role ${roleId} to user ${approval.userTag} for casino ${approval.casino}`);
+            const guild = client.guilds.cache.first();
+            if (guild) {
+              const member = await guild.members.fetch(approval.userId);
+              if (member) {
+                await member.roles.add(roleId);
+                console.log(`✅ Added verification role ${roleId} to user ${approval.userTag} for casino ${approval.casino}`);
+              }
             }
           } catch (error) {
             console.error('Error adding verification role:', error);
@@ -269,10 +312,21 @@ class TelegramService {
     // Atualizar status para rejected
     await client.db.updateApproval(approval.approvalId, 'rejected');
 
-    // Editar a mensagem original no Telegram (se messageId fornecido)
+    // Editar a mensagem original no Telegram (manter todas as informações e mostrar rejeição)
     if (messageId) {
       try {
-        const updatedText = `🎁 <b>Giveaway Aprovado</b>\n\n🎰 <b>Casino:</b> ${approval.casino}\n💰 <b>Prêmio:</b> ${approval.prize}\n👤 <b>Usuário:</b> ${approval.userTag}\n🎫 <b>Ticket:</b> #${approval.ticketNumber}\n\n❌ <b>Não aprovado por @${from.username}</b>\n📝 <b>Motivo:</b> ${reason}`;
+        let updatedText = `🎁 <b>Giveaway Aprovado</b>\n\n🎰 <b>Casino:</b> ${approval.casino}\n💰 <b>Prêmio:</b> ${approval.prize}\n👤 <b>Usuário:</b> ${approval.userTag}\n🎫 <b>Ticket:</b> #${approval.ticketNumber}`;
+        
+        // Adicionar ID BCGame se existir
+        if (approval.bcGameId) {
+          updatedText += `\n🆔 <b>ID BCGame:</b> ${approval.bcGameId}`;
+        }
+        
+        // Adicionar endereço LTC
+        updatedText += `\n💳 <b>Endereço LTC:</b> ${approval.ltcAddress}`;
+        
+        // Adicionar status de rejeição
+        updatedText += `\n\n❌ <b>Não aprovado por @${from.username}</b>\n📝 <b>Motivo:</b> ${reason}`;
         
         await fetch(`${this.baseUrl}/editMessageText`, {
           method: 'POST',
@@ -309,6 +363,27 @@ class TelegramService {
       }
     } catch (error) {
       console.error('[TELEGRAM] Erro ao enviar mensagem para ticket Discord:', error);
+    }
+
+    // NOVO: Apagar mensagem de aprovação no Discord (igual ao Discord)
+    try {
+      const { CHANNELS } = require('../config/constants');
+      const approveChannel = await client.channels.fetch(CHANNELS.APPROVE);
+      if (approveChannel) {
+        const messages = await approveChannel.messages.fetch({ limit: 50 });
+        const approvalMessage = messages.find(m => 
+          m.embeds.length > 0 && 
+          m.embeds[0].description && 
+          m.embeds[0].description.includes(`#${approval.ticketNumber}`)
+        );
+        
+        if (approvalMessage) {
+          await approvalMessage.delete();
+          console.log(`🗑️ Deleted approval message for ticket #${approval.ticketNumber}`);
+        }
+      }
+    } catch (error) {
+      console.error('[TELEGRAM] Erro ao apagar mensagem de aprovação no Discord:', error);
     }
 
     // Log da ação
