@@ -36,6 +36,16 @@ class TelegramService {
       
       if (!result.ok) {
         console.error('[TELEGRAM] Erro ao enviar mensagem:', result);
+        
+        // Verificar se é erro de migração de grupo
+        if (result.error_code === 400 && result.description.includes('upgraded to a supergroup')) {
+          const newChatId = result.parameters?.migrate_to_chat_id;
+          if (newChatId) {
+            console.log(`[TELEGRAM] Grupo migrado para supergrupo. Novo Chat ID: ${newChatId}`);
+            console.log(`[TELEGRAM] Atualize TELEGRAM_CHAT_ID no .env para: ${newChatId}`);
+          }
+        }
+        
         return null;
       }
 
@@ -88,21 +98,123 @@ class TelegramService {
     };
   }
 
-  async handleCallbackQuery(callbackQuery) {
+  async handleCallbackQuery(callbackQuery, client) {
     const { data, from } = callbackQuery;
+    
+    console.log(`[TELEGRAM] Callback recebido: ${data} de @${from.username}`);
     
     if (data.startsWith('paid_')) {
       const approvalId = data.split('_')[1];
-      // Aqui você pode implementar a lógica para marcar como pago
-      console.log(`[TELEGRAM] Aprovação ${approvalId} marcada como paga por ${from.username}`);
-      return this.sendMessage(`✅ Giveaway marcado como <b>PAGO</b> por @${from.username}`);
+      console.log(`[TELEGRAM] Processando pagamento para approval: ${approvalId}`);
+      
+      try {
+        // Buscar approval no banco de dados
+        const approval = await client.db.getApproval(approvalId);
+        if (!approval) {
+          await this.sendMessage(`❌ Approval não encontrada: ${approvalId}`);
+          return;
+        }
+
+        if (approval.status !== 'pending') {
+          await this.sendMessage(`❌ Approval já foi processada (status: ${approval.status})`);
+          return;
+        }
+
+        // Atualizar status para paid
+        await client.db.updateApproval(approvalId, 'paid');
+
+        // Enviar mensagem de confirmação no Telegram
+        await this.sendMessage(`✅ <b>Giveaway Pago</b>\n\n🎫 <b>Ticket:</b> #${approval.ticketNumber}\n👤 <b>Usuário:</b> ${approval.userTag}\n🎰 <b>Casino:</b> ${approval.casino}\n💰 <b>Prêmio:</b> ${approval.prize}\n\n👤 <b>Pago por:</b> @${from.username}`);
+
+        // Enviar mensagem para o ticket no Discord
+        try {
+          const ticketChannel = await client.channels.fetch(approval.ticketChannelId);
+          if (ticketChannel) {
+            const { EmbedFactory } = require('./embeds');
+            await ticketChannel.send({
+              embeds: [EmbedFactory.giveawayPaid()]
+            });
+          }
+        } catch (error) {
+          console.error('[TELEGRAM] Erro ao enviar mensagem para ticket Discord:', error);
+        }
+
+        // Log da ação
+        await client.db.logAction(approval.ticketChannelId, from.id, 'giveaway_paid_telegram', `Ticket #${approval.ticketNumber} - Pago por @${from.username}`);
+
+      } catch (error) {
+        console.error('[TELEGRAM] Erro ao processar pagamento:', error);
+        await this.sendMessage(`❌ Erro ao processar pagamento: ${error.message}`);
+      }
     }
     
     if (data.startsWith('reject_')) {
       const approvalId = data.split('_')[1];
-      // Aqui você pode implementar a lógica para rejeitar
-      console.log(`[TELEGRAM] Aprovação ${approvalId} rejeitada por ${from.username}`);
-      return this.sendMessage(`❌ Giveaway <b>REJEITADO</b> por @${from.username}\n\nPor favor, informe o motivo da rejeição.`);
+      console.log(`[TELEGRAM] Processando rejeição para approval: ${approvalId}`);
+      
+      try {
+        // Buscar approval no banco de dados
+        const approval = await client.db.getApproval(approvalId);
+        if (!approval) {
+          await this.sendMessage(`❌ Approval não encontrada: ${approvalId}`);
+          return;
+        }
+
+        if (approval.status !== 'pending') {
+          await this.sendMessage(`❌ Approval já foi processada (status: ${approval.status})`);
+          return;
+        }
+
+        // Atualizar status para rejected
+        await client.db.updateApproval(approvalId, 'rejected');
+
+        // Enviar mensagem de confirmação no Telegram
+        await this.sendMessage(`❌ <b>Giveaway Rejeitado</b>\n\n🎫 <b>Ticket:</b> #${approval.ticketNumber}\n👤 <b>Usuário:</b> ${approval.userTag}\n🎰 <b>Casino:</b> ${approval.casino}\n💰 <b>Prêmio:</b> ${approval.prize}\n\n👤 <b>Rejeitado por:</b> @${from.username}\n\n📝 <b>Motivo:</b> Rejeitado via Telegram`);
+
+        // Enviar mensagem para o ticket no Discord
+        try {
+          const ticketChannel = await client.channels.fetch(approval.ticketChannelId);
+          if (ticketChannel) {
+            const { EmbedFactory } = require('./embeds');
+            await ticketChannel.send({
+              embeds: [EmbedFactory.error('O seu giveaway foi rejeitado. Entre em contacto com o suporte para mais informações.')]
+            });
+          }
+        } catch (error) {
+          console.error('[TELEGRAM] Erro ao enviar mensagem para ticket Discord:', error);
+        }
+
+        // Log da ação
+        await client.db.logAction(approval.ticketChannelId, from.id, 'giveaway_rejected_telegram', `Ticket #${approval.ticketNumber} - Rejeitado por @${from.username}`);
+
+      } catch (error) {
+        console.error('[TELEGRAM] Erro ao processar rejeição:', error);
+        await this.sendMessage(`❌ Erro ao processar rejeição: ${error.message}`);
+      }
+    }
+  }
+
+  // Função para configurar webhook (opcional)
+  async setWebhook(webhookUrl) {
+    if (!this.botToken) return null;
+
+    try {
+      const response = await fetch(`${this.baseUrl}/setWebhook`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          url: webhookUrl
+        })
+      });
+
+      const result = await response.json();
+      console.log('[TELEGRAM] Webhook configurado:', result);
+      return result;
+    } catch (error) {
+      console.error('[TELEGRAM] Erro ao configurar webhook:', error);
+      return null;
     }
   }
 }

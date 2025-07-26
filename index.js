@@ -8,6 +8,7 @@ const EmbedFactory = require('./utils/embeds');
 const ErrorHandler = require('./utils/errorHandler');
 const { CHANNELS } = require('./config/constants');
 const { updateTicketMessage } = require('./commands/atualizartickets');
+const TelegramPolling = require('./utils/telegramPolling');
 
 const client = new Client({
   intents: [
@@ -177,6 +178,10 @@ client.once('ready', () => {
   errorHandler = new ErrorHandler(client);
   
   restoreTicketStates();
+  
+  // Initialize Telegram polling
+  const telegramPolling = new TelegramPolling(client);
+  telegramPolling.start();
   
   // Update statistics and ticket message on startup
   setTimeout(updateStatistics, 5000); // Wait 5 seconds for everything to load
