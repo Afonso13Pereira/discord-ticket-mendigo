@@ -23,7 +23,6 @@ function isUserVerifiedForCasino(member, casino) {
 module.exports = {
   name: 'messageCreate',
   async execute(message, client) {
-    // Wrap in try-catch for additional safety
     try {
     if (message.author.bot || message.channel.type !== 0) return;
     
@@ -616,112 +615,119 @@ module.exports = {
       }
     }
 
-    // Checklist Validation
-    if (ticketState.casino && ticketState.awaitProof && !ticketState.vipType) {
+    // Checklist dos casinos (awaitProof)
+    if (!ticketState.vipType && ticketState.awaitProof) {
       const casino = CASINOS[ticketState.casino];
-      const stepIndex = ticketState.step;
-      const currentStep = casino.checklist[stepIndex];
-
-      // Check if current step requires any input
-      let stepTypes = [];
-      if (typeof currentStep === 'object' && currentStep !== null && Array.isArray(currentStep.type)) {
-        stepTypes = currentStep.type;
-      }
-
-      // If step has no requirements (empty type array), advance automatically
-      if (stepTypes.length === 0) {
-        ticketState.awaitProof = false;
-        await client.saveTicketState(message.channel.id, ticketState);
-      } else {
-        // Initialize step data if not exists
+      if (!casino || !casino.checklist) return;
+      const stepIndex = ticketState.step ?? 0;
+      // NOVO: Step extra para giveaway "outro"
+      if (ticketState.gwType === 'other' && stepIndex >= casino.checklist.length) {
         if (!ticketState.stepData) ticketState.stepData = {};
         if (!ticketState.stepData[stepIndex]) ticketState.stepData[stepIndex] = {};
+        if (message.content && message.content.trim().length >= 10) {
+          ticketState.stepData[stepIndex].hasText = true;
+          ticketState.stepData[stepIndex].textContent = message.content.trim();
+          ticketState.awaitProof = false;
+          await client.saveTicketState(message.channel.id, ticketState);
+          return message.reply({
+            embeds: [EmbedFactory.success('Explicação do giveaway recebida! Agora pode finalizar o ticket.')],
+            components: [ComponentFactory.finishButtons()]
+          });
+        } else {
+          return message.reply({
+            embeds: [EmbedFactory.error('Por favor, explique o giveaway que ganhou (mínimo 10 caracteres).')]
+          });
+        }
+      }
+      // Initialize step data if not exists
+      if (!ticketState.stepData) ticketState.stepData = {};
+      if (!ticketState.stepData[stepIndex]) ticketState.stepData[stepIndex] = {};
 
-        // Check current message for inputs
-        if (stepTypes.includes('image') && message.attachments.size > 0) {
-          ticketState.stepData[stepIndex].hasImage = true;
+      // Check current message for inputs
+      if (stepTypes.includes('image') && message.attachments.size > 0) {
+        ticketState.stepData[stepIndex].hasImage = true;
+        
+        // NOVO: Capturar URL da imagem se for BCGame
+        if (ticketState.casino === 'BCGame' && stepIndex === 1) { // Passo 2 do BCGame é o perfil
+          const attachment = message.attachments.first();
+          if (attachment.contentType && attachment.contentType.startsWith('image/')) {
+            ticketState.bcGameProfileImage = attachment.url;
+            console.log(`[BCGAME][PROFILE_IMAGE][STEP_${stepIndex}] Imagem do perfil capturada:`, attachment.url);
+            await client.saveTicketState(message.channel.id, ticketState);
+          }
+        }
+      }
+      if (stepTypes.includes('text') && message.content && message.content.trim().length >= 5) {
+        ticketState.stepData[stepIndex].hasText = true;
+        ticketState.stepData[stepIndex].textContent = message.content.trim();
+        
+        // NOVO: Capturar LTC imediatamente quando texto é fornecido
+        const textContent = message.content.trim();
+        console.log(`[LTC][CAPTURE][STEP_${stepIndex}] Texto capturado:`, textContent);
+        
+        // Verificar se parece com endereço LTC
+        if (textContent.length >= 25 && (textContent.startsWith('L') || textContent.startsWith('M') || textContent.startsWith('ltc1'))) {
+          ticketState.ltcAddress = textContent;
+          console.log(`[LTC][CAPTURE][STEP_${stepIndex}] LTC válido capturado:`, textContent);
+          await client.saveTicketState(message.channel.id, ticketState);
+        } else if (textContent.length >= 10 && !ticketState.ltcAddress) {
+          // Fallback: qualquer texto longo se ainda não temos LTC
+          ticketState.ltcAddress = textContent;
+          console.log(`[LTC][CAPTURE][STEP_${stepIndex}] LTC fallback capturado:`, textContent);
+          await client.saveTicketState(message.channel.id, ticketState);
+        }
+        
+        // NOVO: Capturar BCGame ID se for BCGame e o texto parece com um ID
+        if (ticketState.casino === 'BCGame' && !ticketState.bcGameId) {
+          // Verificar se parece com um ID do BCGame (geralmente números)
+          if (/^\d+$/.test(textContent) && textContent.length >= 5 && textContent.length <= 15) {
+            // Verificar se não é o ticket number (que geralmente é menor)
+            if (textContent !== ticketState.ticketNumber?.toString()) {
+              ticketState.bcGameId = textContent;
+              console.log(`[BCGAME][CAPTURE][STEP_${stepIndex}] BCGame ID capturado:`, textContent);
+              await client.saveTicketState(message.channel.id, ticketState);
+            }
+          }
           
-          // NOVO: Capturar URL da imagem se for BCGame
-          if (ticketState.casino === 'BCGame' && stepIndex === 1) { // Passo 2 do BCGame é o perfil
-            const attachment = message.attachments.first();
-            if (attachment.contentType && attachment.contentType.startsWith('image/')) {
-              ticketState.bcGameProfileImage = attachment.url;
-              console.log(`[BCGAME][PROFILE_IMAGE][STEP_${stepIndex}] Imagem do perfil capturada:`, attachment.url);
+          // Também procurar por padrões como "ID: 123456" ou "BCGame ID: 123456"
+          const idMatch = textContent.match(/(?:bcgame\s*id|id)\s*:?\s*(\d{5,15})/i);
+          if (idMatch && !ticketState.bcGameId) {
+            const extractedId = idMatch[1];
+            if (extractedId !== ticketState.ticketNumber?.toString()) {
+              ticketState.bcGameId = extractedId;
+              console.log(`[BCGAME][CAPTURE][STEP_${stepIndex}] BCGame ID capturado via regex:`, extractedId);
               await client.saveTicketState(message.channel.id, ticketState);
             }
           }
         }
-        if (stepTypes.includes('text') && message.content && message.content.trim().length >= 5) {
-          ticketState.stepData[stepIndex].hasText = true;
-          ticketState.stepData[stepIndex].textContent = message.content.trim();
-          
-          // NOVO: Capturar LTC imediatamente quando texto é fornecido
-          const textContent = message.content.trim();
-          console.log(`[LTC][CAPTURE][STEP_${stepIndex}] Texto capturado:`, textContent);
-          
-          // Verificar se parece com endereço LTC
-          if (textContent.length >= 25 && (textContent.startsWith('L') || textContent.startsWith('M') || textContent.startsWith('ltc1'))) {
-            ticketState.ltcAddress = textContent;
-            console.log(`[LTC][CAPTURE][STEP_${stepIndex}] LTC válido capturado:`, textContent);
-            await client.saveTicketState(message.channel.id, ticketState);
-          } else if (textContent.length >= 10 && !ticketState.ltcAddress) {
-            // Fallback: qualquer texto longo se ainda não temos LTC
-            ticketState.ltcAddress = textContent;
-            console.log(`[LTC][CAPTURE][STEP_${stepIndex}] LTC fallback capturado:`, textContent);
-            await client.saveTicketState(message.channel.id, ticketState);
-          }
-          
-          // NOVO: Capturar BCGame ID se for BCGame e o texto parece com um ID
-          if (ticketState.casino === 'BCGame' && !ticketState.bcGameId) {
-            // Verificar se parece com um ID do BCGame (geralmente números)
-            if (/^\d+$/.test(textContent) && textContent.length >= 5 && textContent.length <= 15) {
-              // Verificar se não é o ticket number (que geralmente é menor)
-              if (textContent !== ticketState.ticketNumber?.toString()) {
-                ticketState.bcGameId = textContent;
-                console.log(`[BCGAME][CAPTURE][STEP_${stepIndex}] BCGame ID capturado:`, textContent);
-                await client.saveTicketState(message.channel.id, ticketState);
-              }
-            }
-            
-            // Também procurar por padrões como "ID: 123456" ou "BCGame ID: 123456"
-            const idMatch = textContent.match(/(?:bcgame\s*id|id)\s*:?\s*(\d{5,15})/i);
-            if (idMatch && !ticketState.bcGameId) {
-              const extractedId = idMatch[1];
-              if (extractedId !== ticketState.ticketNumber?.toString()) {
-                ticketState.bcGameId = extractedId;
-                console.log(`[BCGAME][CAPTURE][STEP_${stepIndex}] BCGame ID capturado via regex:`, extractedId);
-                await client.saveTicketState(message.channel.id, ticketState);
-              }
-            }
-          }
-        }
-
-        // Check if all required types are provided
-        const allRequirementsMet = stepTypes.every(type => {
-          if (type === 'image') return ticketState.stepData[stepIndex].hasImage;
-          if (type === 'text') return ticketState.stepData[stepIndex].hasText;
-          return false;
-        });
-
-        if (allRequirementsMet) {
-          // All requirements met, advance to next step
-          ticketState.awaitProof = false;
-          // NÃO limpar step data ainda - precisamos para LTC
-          await client.saveTicketState(message.channel.id, ticketState);
-        } else {
-          // Still missing requirements, save state and wait for more input
-          await client.saveTicketState(message.channel.id, ticketState);
-          
-          // Show what's still missing
-          const missing = [];
-          if (stepTypes.includes('image') && !ticketState.stepData[stepIndex].hasImage) missing.push('**imagem**');
-          if (stepTypes.includes('text') && !ticketState.stepData[stepIndex].hasText) missing.push('**texto**');
-          
-          return message.reply({
-            embeds: [EmbedFactory.error(MESSAGES.CHECKLIST.MISSING_REQUIREMENTS.replace('{missing}', missing.join(' e ')))]
-          });
-        }
       }
+
+      // Check if all required types are provided
+      const allRequirementsMet = stepTypes.every(type => {
+        if (type === 'image') return ticketState.stepData[stepIndex].hasImage;
+        if (type === 'text') return ticketState.stepData[stepIndex].hasText;
+        return false;
+      });
+
+      if (allRequirementsMet) {
+        // All requirements met, advance to next step
+        ticketState.awaitProof = false;
+        // NÃO limpar step data ainda - precisamos para LTC
+        await client.saveTicketState(message.channel.id, ticketState);
+      } else {
+        // Still missing requirements, save state and wait for more input
+        await client.saveTicketState(message.channel.id, ticketState);
+        
+        // Show what's still missing
+        const missing = [];
+        if (stepTypes.includes('image') && !ticketState.stepData[stepIndex].hasImage) missing.push('**imagem**');
+        if (stepTypes.includes('text') && !ticketState.stepData[stepIndex].hasText) missing.push('**texto**');
+        
+        return message.reply({
+          embeds: [EmbedFactory.error(MESSAGES.CHECKLIST.MISSING_REQUIREMENTS.replace('{missing}', missing.join(' e ')))]
+        });
+      }
+    }
 
       if (!ticketState.awaitProof) {
         // Log step completion
@@ -780,10 +786,8 @@ module.exports = {
           components: [ComponentFactory.finishButtons()]
         });
       }
-    }
     } catch (error) {
       console.error('🚨 Message handler error:', error);
-      // Error will be caught by global error handler
       throw error;
     }
   }

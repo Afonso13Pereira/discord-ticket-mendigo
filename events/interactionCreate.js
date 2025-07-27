@@ -1664,6 +1664,29 @@ module.exports = {
       }
 
       const stepIndex = ticketState.step;
+      
+      // NOVO: Verificar se é o step extra de giveaway "outro"
+      if (ticketState.gwType === 'other' && stepIndex >= casino.checklist.length) {
+        // Step extra de giveaway "outro" - verificar se tem texto
+        if (ticketState.stepData && ticketState.stepData[stepIndex] && ticketState.stepData[stepIndex].textContent) {
+          // Tem texto, finalizar
+          ticketState.awaitProof = false;
+          await client.saveTicketState(interaction.channel.id, ticketState);
+          
+          return interaction.followUp({
+            embeds: [EmbedFactory.success('✅ Checklist completo! Agora pode finalizar o ticket.')],
+            components: [ComponentFactory.finishButtons()],
+            flags: 64
+          });
+        } else {
+          // Não tem texto, mostrar erro
+          return interaction.followUp({
+            embeds: [EmbedFactory.error('❌ Por favor, explique o giveaway que ganhou antes de continuar.')],
+            flags: 64
+          });
+        }
+      }
+      
       const currentStep = casino.checklist[stepIndex];
       
       let stepTypes = [];
@@ -2236,6 +2259,24 @@ function askChecklist(channel, ticketState) {
   }
 
   const stepIndex = ticketState.step ?? 0;
+  
+  // NOVO: Verificar se é giveaway "outro" e checklist está completo
+  if (ticketState.gwType === 'other' && stepIndex >= casino.checklist.length) {
+    // Step extra para giveaway "outro" - explicar o motivo
+    const embed = EmbedFactory.checklist(
+      casino.checklist.length + 1,
+      casino.checklist.length + 1,
+      '📝 **Explicar o Giveaway Ganho**\n\nPor favor, descreva detalhadamente o giveaway que ganhou:\n• Qual foi o prêmio?\n• Onde ganhou?\n• Quando aconteceu?\n• Qualquer informação relevante',
+      null
+    );
+
+    const components = [ComponentFactory.stepButtons()];
+    
+    return channel.send({
+      embeds: [embed],
+      components: components
+    });
+  }
   
   // NOVO: Handle new checklist structure (objects with title, description, type, image)
   let stepDescription, stepImage;
