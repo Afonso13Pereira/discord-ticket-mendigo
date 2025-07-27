@@ -643,6 +643,9 @@ module.exports = {
       if (!ticketState.stepData) ticketState.stepData = {};
       if (!ticketState.stepData[stepIndex]) ticketState.stepData[stepIndex] = {};
 
+      // Get step types from casino checklist
+      const stepTypes = casino.checklist[stepIndex].type;
+      
       // Check current message for inputs
       if (stepTypes.includes('image') && message.attachments.size > 0) {
         ticketState.stepData[stepIndex].hasImage = true;
