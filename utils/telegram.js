@@ -237,6 +237,31 @@ class TelegramService {
     };
   }
 
+  createRejectionButtons(approvalId) {
+    return {
+      inline_keyboard: [
+        [
+          {
+            text: '❌ Não afiliado',
+            callback_data: `reject_reason_${approvalId}_nao_afiliado`
+          }
+        ],
+        [
+          {
+            text: '❌ Address errado',
+            callback_data: `reject_reason_${approvalId}_address_errado`
+          }
+        ],
+        [
+          {
+            text: '❌ Outro, contacta o suporte',
+            callback_data: `reject_reason_${approvalId}_outro`
+          }
+        ]
+      ]
+    };
+  }
+
   async handleCallbackQuery(callbackQuery, client) {
     const { data, from, message } = callbackQuery;
     
@@ -376,7 +401,7 @@ class TelegramService {
       }
     }
     
-    if (data.startsWith('reject_')) {
+    if (data.startsWith('reject_') && !data.startsWith('reject_reason_')) {
       const approvalId = data.split('_')[1];
       console.log(`[TELEGRAM] Processando rejeição para approval: ${approvalId}`);
       
@@ -393,37 +418,101 @@ class TelegramService {
           return;
         }
 
-        // Tentar implementar modal no Telegram (se não der, usar mensagem simples)
+        // Editar a mensagem original para mostrar os botões de rejeição
         try {
-          // Enviar mensagem pedindo motivo
-          await this.sendMessage(`📝 <b>Rejeição de Giveaway</b>\n\n🎫 <b>Ticket:</b> #${approval.ticketNumber}\n👤 <b>Usuário:</b> ${approval.userTag}\n\nPor favor, envie o motivo da rejeição em uma mensagem separada.`);
+          let updatedText = `🎁 <b>Giveaway Aprovado</b>\n\n🎰 <b>Casino:</b> ${approval.casino}\n💰 <b>Prêmio:</b> ${approval.prize}\n👤 <b>Usuário:</b> ${approval.userTag}\n🎫 <b>Ticket:</b> #${approval.ticketNumber}`;
           
-          // Armazenar estado de espera para este approval
-          this.pendingRejections = this.pendingRejections || new Map();
-          this.pendingRejections.set(approvalId, {
-            approval,
-            userId: from.id,
-            username: from.username,
-            messageId: message.message_id,
-            timestamp: Date.now()
-          });
+          if (approval.bcGameId) {
+            updatedText += `\n🆔 <b>ID BCGame:</b> ${approval.bcGameId}`;
+          }
           
-          // Timeout para limpar após 5 minutos
-          setTimeout(() => {
-            this.pendingRejections.delete(approvalId);
-          }, 5 * 60 * 1000);
-          
-          return;
-          
+          updatedText += `\n💳 <b>Endereço LTC:</b> ${approval.ltcAddress}`;
+          updatedText += `\n\n❌ <b>Selecione o motivo da rejeição:</b>`;
+
+          const rejectionButtons = this.createRejectionButtons(approvalId);
+
+          // Se for BCGame e tiver imagem, editar como foto
+          if (approval.casino === 'BCGame' && approval.bcGameProfileImage) {
+            await fetch(`${this.baseUrl}/editMessageMedia`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: this.chatId,
+                message_id: message.message_id,
+                media: JSON.stringify({
+                  type: 'photo',
+                  media: approval.bcGameProfileImage,
+                  caption: updatedText,
+                  parse_mode: 'HTML'
+                }),
+                reply_markup: JSON.stringify(rejectionButtons)
+              })
+            });
+          } else {
+            // Editar como texto normal
+            await fetch(`${this.baseUrl}/editMessageText`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: this.chatId,
+                message_id: message.message_id,
+                text: updatedText,
+                parse_mode: 'HTML',
+                reply_markup: JSON.stringify(rejectionButtons)
+              })
+            });
+          }
         } catch (error) {
-          console.error('[TELEGRAM] Erro ao implementar modal, usando rejeição simples:', error);
-          
-          // Fallback: rejeição simples
-          await this.processRejection(approval, from, 'Rejeitado via Telegram', client, message.message_id);
+          console.error('[TELEGRAM] Erro ao editar mensagem com botões de rejeição:', error);
         }
 
       } catch (error) {
         console.error('[TELEGRAM] Erro ao processar rejeição:', error);
+        await this.sendMessage(`❌ Erro ao processar rejeição: ${error.message}`);
+      }
+    }
+
+    if (data.startsWith('reject_reason_')) {
+      const parts = data.split('_');
+      const approvalId = parts[3];
+      const reason = parts[4];
+      
+      console.log(`[TELEGRAM] Processando rejeição com motivo para approval: ${approvalId}, motivo: ${reason}`);
+      
+      try {
+        // Buscar approval no banco de dados
+        const approval = await client.db.getApproval(approvalId);
+        if (!approval) {
+          await this.sendMessage(`❌ Approval não encontrada: ${approvalId}`);
+          return;
+        }
+
+        if (approval.status !== 'pending') {
+          await this.sendMessage(`❌ Approval já foi processada (status: ${approval.status})`);
+          return;
+        }
+
+        // Mapear o motivo para texto legível
+        let reasonText;
+        switch (reason) {
+          case 'nao_afiliado':
+            reasonText = 'Não afiliado';
+            break;
+          case 'address_errado':
+            reasonText = 'Address errado';
+            break;
+          case 'outro':
+            reasonText = 'Outro, contacta o suporte';
+            break;
+          default:
+            reasonText = 'Motivo não especificado';
+        }
+
+        // Processar a rejeição com o motivo
+        await this.processRejection(approval, from, reasonText, client, message.message_id);
+
+      } catch (error) {
+        console.error('[TELEGRAM] Erro ao processar rejeição com motivo:', error);
         await this.sendMessage(`❌ Erro ao processar rejeição: ${error.message}`);
       }
     }
@@ -432,26 +521,6 @@ class TelegramService {
   // Método para processar mensagens de texto
   async handleMessage(message, client) {
     const { text, from } = message;
-    
-    // Verificar se é uma resposta a uma rejeição pendente
-    if (this.pendingRejections && text) {
-      for (const [approvalId, pendingData] of this.pendingRejections.entries()) {
-        if (pendingData.userId === from.id) {
-          console.log(`[TELEGRAM] Motivo de rejeição recebido para approval ${approvalId}: ${text}`);
-          
-          // Processar a rejeição com o motivo
-          await this.processRejection(pendingData.approval, from, text, client, pendingData.messageId);
-          
-          // Limpar o estado pendente
-          this.pendingRejections.delete(approvalId);
-          
-          // Confirmar recebimento
-          await this.sendMessage(`✅ <b>Rejeição processada</b>\n\n🎫 <b>Ticket:</b> #${pendingData.approval.ticketNumber}\n📝 <b>Motivo:</b> ${text}\n\nA rejeição foi aplicada com sucesso.`);
-          
-          return;
-        }
-      }
-    }
     
     // Outras mensagens podem ser processadas aqui
     console.log(`[TELEGRAM] Mensagem de @${from.username}: ${text}`);

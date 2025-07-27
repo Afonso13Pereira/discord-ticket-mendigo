@@ -2089,7 +2089,8 @@ module.exports = {
         // Mark as paid and send message to ticket
         const ticketChannel = await interaction.guild.channels.fetch(approval.ticketChannelId);
         await ticketChannel.send({
-          embeds: [EmbedFactory.giveawayPaid()]
+          embeds: [EmbedFactory.giveawayPaid()],
+          components: [ComponentFactory.giveawayPaidButtons()]
         });
 
         // Update approval status
@@ -2178,6 +2179,73 @@ module.exports = {
       } else {
         return askCasino(interaction.channel);
       }
+    }
+
+    // NOVO: Botões da mensagem "Giveaway Pago!"
+    if (interaction.isButton() && interaction.customId === 'received_close_ticket') {
+      try { await interaction.deferUpdate(); } catch {}
+      
+      // Fechar ticket com transcript
+      const ticketState = client.ticketStates.get(interaction.channel.id);
+      if (ticketState) {
+        // Criar transcript
+        const transcriptId = await client.db.createTranscript(
+          interaction.channel.id,
+          interaction.channel.name,
+          ticketState.ticketNumber,
+          ticketState.ownerTag,
+          ticketState.category || 'Giveaway'
+        );
+        
+        if (transcriptId) {
+          // Enviar transcript para o canal de logs
+          const logsChannel = await interaction.guild.channels.fetch(CHANNELS.LOGS);
+          if (logsChannel) {
+            const transcriptEmbed = EmbedFactory.transcriptCreated(
+              transcriptId,
+              interaction.channel.name,
+              ticketState.ticketNumber,
+              ticketState.ownerTag,
+              ticketState.category || 'Giveaway'
+            );
+            const transcriptButtons = ComponentFactory.transcriptButtons(transcriptId);
+            await logsChannel.send({ embeds: [transcriptEmbed], components: [transcriptButtons] });
+          }
+        }
+      }
+      
+      // Fechar o canal
+      await interaction.channel.delete();
+      
+      return;
+    }
+
+    if (interaction.isButton() && interaction.customId === 'not_received_support') {
+      try { await interaction.deferUpdate(); } catch {}
+      
+      // Enviar mensagem para suporte giveaways
+      const supportChannel = await interaction.guild.channels.fetch(CHANNELS.GIVEAWAYSHELP);
+      if (supportChannel) {
+        const ticketState = client.ticketStates.get(interaction.channel.id);
+        const supportEmbed = EmbedFactory.supportRequest(
+          'Usuário não recebeu o pagamento após 48h',
+          ticketState?.ticketNumber || 'N/A',
+          ticketState?.ownerTag || 'N/A',
+          interaction.channel.id
+        );
+        const supportButtons = ComponentFactory.supportCompletionButton(`giveaway_support_${interaction.channel.id}`);
+        
+        await supportChannel.send({
+          embeds: [supportEmbed],
+          components: [supportButtons]
+        });
+        
+        await interaction.channel.send({
+          embeds: [EmbedFactory.success('✅ **Solicitação enviada para o suporte!**\n\nO suporte irá verificar o seu caso e entrará em contacto consigo.')]
+        });
+      }
+      
+      return;
     }
 
     // Support Button

@@ -416,6 +416,14 @@ class ComponentFactory {
   static rejectionButtons() {
     return this.resubmitButtons();
   }
+
+  // NOVO: Botões para mensagem de "Giveaway Pago!"
+  static giveawayPaidButtons() {
+    return this.createButtonRow(
+      this.createButton('received_close_ticket', 'Recebi, fechar ticket', ButtonStyle.Success, '✅'),
+      this.createButton('not_received_support', 'Passaram 48h e ainda não recebi', ButtonStyle.Danger, '⏰')
+    );
+  }
 }
 
 module.exports = ComponentFactory;
