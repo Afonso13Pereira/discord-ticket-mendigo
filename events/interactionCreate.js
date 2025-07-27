@@ -392,12 +392,25 @@ module.exports = {
         // Update approval with message info
         await client.db.updateApproval(approvalId, 'pending', approvalMessage.id);
 
+        // NOVO: Salvar ID da mensagem do Discord no approval
+        await client.db.Approval.updateOne(
+          { approvalId: approvalId },
+          { $set: { discordMessageId: approvalMessage.id } }
+        );
+
         // NOVO: Enviar mensagem para o Telegram
         const telegramService = require('../utils/telegram');
         const approval = await client.db.getApproval(approvalId);
         if (approval) {
           try {
-            await telegramService.sendApprovalMessage(approval);
+            const telegramMessage = await telegramService.sendApprovalMessage(approval);
+            // NOVO: Salvar ID da mensagem do Telegram no approval
+            if (telegramMessage && telegramMessage.message_id) {
+              await client.db.Approval.updateOne(
+                { approvalId: approvalId },
+                { $set: { telegramMessageId: telegramMessage.message_id } }
+              );
+            }
             Logger.telegram(`Approval message sent for ticket #${submission.ticketNumber}`);
           } catch (error) {
             Logger.error(`Telegram error: ${error.message}`);
@@ -521,6 +534,43 @@ module.exports = {
             }
           );
 
+          // NOVO: Atualizar mensagem no Discord
+          if (approval.discordMessageId) {
+            try {
+              const approveChannel = await interaction.guild.channels.fetch(CHANNELS.APPROVE);
+              const discordMessage = await approveChannel.messages.fetch(approval.discordMessageId).catch(() => null);
+              if (discordMessage) {
+                const updatedEmbed = EmbedFactory.approvalFinal(
+                  casino,
+                  prize,
+                  approval.userTag,
+                  approval.ticketNumber,
+                  ltcAddress,
+                  bcGameId,
+                  approval.isVerified,
+                  approval.bcGameProfileImage
+                );
+                const components = ComponentFactory.approvalButtons(approvalId, approval.ticketChannelId);
+                await discordMessage.edit({
+                  embeds: [updatedEmbed],
+                  components: [components]
+                });
+              }
+            } catch (error) {
+              Logger.error(`Error updating Discord message: ${error.message}`);
+            }
+          }
+
+          // NOVO: Atualizar mensagem no Telegram
+          if (approval.telegramMessageId) {
+            try {
+              const telegramService = require('../utils/telegram');
+              await telegramService.updateApprovalMessage(approval);
+            } catch (error) {
+              Logger.error(`Error updating Telegram message: ${error.message}`);
+            }
+          }
+
           Logger.success(`Approval ${approvalId} updated successfully`);
           
           return interaction.reply({
@@ -567,6 +617,28 @@ module.exports = {
               }
             }
           );
+
+          // NOVO: Atualizar mensagem de submissão no Discord
+          if (submission.discordMessageId) {
+            try {
+              const modChannel = await interaction.guild.channels.fetch(CHANNELS.MOD);
+              const discordMessage = await modChannel.messages.fetch(submission.discordMessageId).catch(() => null);
+              if (discordMessage) {
+                const updatedEmbed = EmbedFactory.submissionReady(
+                  submission.ticketNumber,
+                  submission.userTag,
+                  submission.ticketChannelId
+                );
+                const components = ComponentFactory.submissionButtons(submission.ticketChannelId, submission.ticketNumber);
+                await discordMessage.edit({
+                  embeds: [updatedEmbed],
+                  components: [components]
+                });
+              }
+            } catch (error) {
+              console.error(`Error updating Discord submission message: ${error.message}`);
+            }
+          }
 
           // Update ticket state
           await client.db.TicketState.updateOne(
@@ -1863,13 +1935,19 @@ module.exports = {
       const embed = EmbedFactory.submissionReady(ticketState.ticketNumber, ticketState.ownerTag, interaction.channel.id);
       const components = ComponentFactory.submissionButtons(interaction.channel.id, ticketState.ticketNumber);
 
-      await modChannel.send({
+      const submissionMessage = await modChannel.send({
         embeds: [embed],
         components: [components]
       });
 
       // Update submission with message info
       await client.db.updateSubmission(submissionId, 'pending');
+      
+      // NOVO: Salvar ID da mensagem de submissão
+      await client.db.Submission.updateOne(
+        { submissionId: submissionId },
+        { $set: { discordMessageId: submissionMessage.id } }
+      );
       
       // Send mod buttons to the ticket itself
       const modButtons = ComponentFactory.modButtons(submissionId);

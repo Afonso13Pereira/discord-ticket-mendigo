@@ -61,7 +61,43 @@ class TelegramService {
     const text = this.formatApprovalMessage(approval);
     const replyMarkup = this.createApprovalButtons(approval.approvalId);
     
-    return this.sendMessage(text, replyMarkup);
+    const result = await this.sendMessage(text, replyMarkup);
+    return result;
+  }
+
+  async updateApprovalMessage(approval) {
+    if (!approval.telegramMessageId) {
+      console.log('[TELEGRAM] No message ID found for approval:', approval.approvalId);
+      return;
+    }
+
+    const text = this.formatApprovalMessage(approval);
+    const replyMarkup = this.createApprovalButtons(approval.approvalId);
+    
+    try {
+      const response = await fetch(`${this.baseUrl}/editMessageText`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chat_id: this.chatId,
+          message_id: approval.telegramMessageId,
+          text: text,
+          parse_mode: 'HTML',
+          reply_markup: JSON.stringify(replyMarkup)
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('[TELEGRAM] Error updating message:', errorData);
+      } else {
+        console.log('[TELEGRAM] Message updated successfully for approval:', approval.approvalId);
+      }
+    } catch (error) {
+      console.error('[TELEGRAM] Error updating approval message:', error);
+    }
   }
 
   formatApprovalMessage(approval) {
