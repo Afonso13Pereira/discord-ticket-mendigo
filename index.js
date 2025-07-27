@@ -144,29 +144,29 @@ for (const file of fs.readdirSync(commandsPath).filter(f => f.endsWith('.js'))) 
 const eventsPath = path.join(__dirname, 'events');
 for (const file of fs.readdirSync(eventsPath).filter(f => f.endsWith('.js') && f !== 'interactionCreate.js')) {
   const evt = require(path.join(eventsPath, file));
-  if (evt.once) {
-    client.once(evt.name, async (...args) => {
-      try {
-        await evt.execute(...args, client);
-      } catch (error) {
-        console.error(`🚨 Event handler error (${evt.name}):`, error);
-        if (errorHandler) {
-          await errorHandler.handleError(error, 'Event handler error');
+      if (evt.once) {
+      client.once(evt.name, async (...args) => {
+        try {
+          await evt.execute(...args, client);
+        } catch (error) {
+          console.error(`🚨 Event handler error (${evt.name}):`, error);
+          if (errorHandler) {
+            await errorHandler.sendErrorToSupport(error, `Event handler error (${evt.name})`);
+          }
         }
-      }
-    });
-  } else {
-    client.on(evt.name, async (...args) => {
-      try {
-        await evt.execute(...args, client);
-      } catch (error) {
-        console.error(`🚨 Event handler error (${evt.name}):`, error);
-        if (errorHandler) {
-          await errorHandler.handleError(error, 'Event handler error');
+      });
+    } else {
+      client.on(evt.name, async (...args) => {
+        try {
+          await evt.execute(...args, client);
+        } catch (error) {
+          console.error(`🚨 Event handler error (${evt.name}):`, error);
+          if (errorHandler) {
+            await errorHandler.sendErrorToSupport(error, `Event handler error (${evt.name})`);
+          }
         }
-      }
-    });
-  }
+      });
+    }
 }
 
 // Update statistics every 30 minutes
