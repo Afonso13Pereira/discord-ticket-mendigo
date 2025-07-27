@@ -454,17 +454,14 @@ module.exports = {
           const ticketChannel = await interaction.guild.channels.fetch(submission.ticketChannelId);
           const ticketMessages = await ticketChannel.messages.fetch({ limit: 20 });
           for (const msg of ticketMessages.values()) {
-            // Apagar se tiver botão 'finish_ticket' ou 'mod_approve_'/'mod_reject_'
+            // Só apagar se tiver botão 'finish_ticket' (não apaga aprovações nem outros)
             const hasFinish = msg.components?.some(row => row.components.some(btn => btn.customId === 'finish_ticket'));
-            const hasApprove = msg.components?.some(row => row.components.some(btn => btn.customId?.startsWith('mod_approve_') || btn.customId?.startsWith('mod_reject_')));
-            // Apagar se embed tem descrição de aprovação
-            const hasApprovalEmbed = msg.embeds?.some(e => e.description && e.description.includes('Solicitação enviada para aprovação'));
-            if (hasFinish || hasApprove || hasApprovalEmbed) {
+            if (hasFinish) {
               try { await msg.delete(); } catch (e) { /* ignore */ }
             }
           }
         } catch (error) {
-          console.error('Erro ao apagar mensagens do ticket:', error);
+          console.error('Erro ao apagar mensagem de finalizar do ticket:', error);
         }
 
         return interaction.reply({
