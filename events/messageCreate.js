@@ -134,6 +134,24 @@ module.exports = {
         return; // Aguardar mais input
       }
 
+      // --- STEP EXTRA PARA GIVEAWAY "OUTRO" ---
+      if (ticketState.awaitOtherGiveaway) {
+        if (message.content.trim().length < 10) {
+          return message.reply({ embeds: [EmbedFactory.error('❌ **Descrição muito curta!**\n\nPor favor, explique melhor o giveaway que ganhou.')] });
+        }
+        
+        ticketState.otherGiveawayDescription = message.content.trim();
+        ticketState.awaitOtherGiveaway = false;
+        await client.saveTicketState(message.channel.id, ticketState);
+        
+        await client.db.logAction(message.channel.id, message.author.id, 'other_giveaway_description', ticketState.otherGiveawayDescription.substring(0, 100));
+        
+        return message.reply({ 
+          embeds: [EmbedFactory.success('✅ **Descrição do giveaway recebida!**\n\nAgora pode finalizar o ticket.')], 
+          components: [ComponentFactory.finishButtons()] 
+        });
+      }
+
       // --- DESCRIÇÃO (DÚVIDAS, OUTROS, WEBSITE BUG) ---
       if (ticketState.awaitDescription) {
         if (message.content.trim().length < 10) {
@@ -317,6 +335,24 @@ module.exports = {
               }
             }
           }
+          
+          // NOVO: Step extra para giveaway "outro"
+          if (ticketState.gwType === 'other') {
+            ticketState.step = casino.checklist.length; // Step extra após o checklist
+            ticketState.awaitOtherGiveaway = true;
+            await client.saveTicketState(message.channel.id, ticketState);
+            
+            return message.reply({
+              embeds: [EmbedFactory.info(
+                '🎁 **Qual o giveaway que ganhou?**\n\n' +
+                'Por favor, explique:\n' +
+                '• **O que ganhou** (prêmio, valor, etc.)\n' +
+                '• **Se foi relacionado com a Twitch**, escreva o motivo e coloque o perfil da Twitch\n\n' +
+                '📝 **Exemplo:** "Ganhei 50€ no sorteio da Twitch do canal XYZ, perfil: @username"'
+              )]
+            });
+          }
+          
           return message.reply({ embeds: [EmbedFactory.success(MESSAGES.CHECKLIST.COMPLETED)], components: [ComponentFactory.finishButtons()] });
         } else {
           await client.saveTicketState(message.channel.id, ticketState);
