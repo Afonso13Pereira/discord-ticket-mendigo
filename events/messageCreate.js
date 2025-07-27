@@ -105,6 +105,23 @@ module.exports = {
         ticketState.awaitLtcOnly = false;
         delete ticketState.ltcData;
         await client.saveTicketState(message.channel.id, ticketState);
+        
+        // NOVO: Step extra para giveaway "outro" mesmo para usuários verificados
+        if (ticketState.gwType === 'other') {
+          ticketState.awaitOtherGiveaway = true;
+          await client.saveTicketState(message.channel.id, ticketState);
+          
+          return message.reply({
+            embeds: [EmbedFactory.info(
+              '🎁 **Qual o giveaway que ganhou?**\n\n' +
+              'Por favor, explique:\n' +
+              '• **O que ganhou** (prêmio, valor, etc.)\n' +
+              '• **Se foi relacionado com a Twitch**, escreva o motivo e coloque o perfil da Twitch\n\n' +
+              '📝 **Exemplo:** "Ganhei 50€ no sorteio da Twitch do canal XYZ, perfil: @username"'
+            )]
+          });
+        }
+        
         return message.reply({ embeds: [EmbedFactory.success(MESSAGES.GIVEAWAYS.VERIFIED_USER_COMPLETE)], components: [ComponentFactory.finishButtons()] });
       }
 

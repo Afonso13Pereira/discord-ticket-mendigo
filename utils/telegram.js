@@ -61,6 +61,41 @@ class TelegramService {
     const text = this.formatApprovalMessage(approval);
     const replyMarkup = this.createApprovalButtons(approval.approvalId);
     
+    // NOVO: Se for BCGame e tiver imagem do perfil, enviar com foto
+    if (approval.casino === 'BCGame' && approval.bcGameProfileImage) {
+      try {
+        const response = await fetch(`${this.baseUrl}/sendPhoto`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            chat_id: this.chatId,
+            photo: approval.bcGameProfileImage,
+            caption: text,
+            parse_mode: 'HTML',
+            reply_markup: JSON.stringify(replyMarkup)
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('[TELEGRAM] Error sending photo message:', errorData);
+          // Fallback para mensagem de texto
+          return await this.sendMessage(text, replyMarkup);
+        } else {
+          const result = await response.json();
+          console.log('[TELEGRAM] Photo message sent successfully for approval:', approval.approvalId);
+          return result;
+        }
+      } catch (error) {
+        console.error('[TELEGRAM] Error sending photo message:', error);
+        // Fallback para mensagem de texto
+        return await this.sendMessage(text, replyMarkup);
+      }
+    }
+    
+    // Envio normal (sem foto)
     const result = await this.sendMessage(text, replyMarkup);
     return result;
   }
@@ -74,6 +109,47 @@ class TelegramService {
     const text = this.formatApprovalMessage(approval);
     const replyMarkup = this.createApprovalButtons(approval.approvalId);
     
+    // NOVO: Se for BCGame e tiver imagem do perfil, atualizar com foto
+    if (approval.casino === 'BCGame' && approval.bcGameProfileImage) {
+      try {
+        const response = await fetch(`${this.baseUrl}/editMessageMedia`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            chat_id: this.chatId,
+            message_id: approval.telegramMessageId,
+            media: JSON.stringify({
+              type: 'photo',
+              media: approval.bcGameProfileImage,
+              caption: text,
+              parse_mode: 'HTML'
+            }),
+            reply_markup: JSON.stringify(replyMarkup)
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('[TELEGRAM] Error updating photo message:', errorData);
+          // Fallback para atualização de texto
+          await this.updateTextMessage(approval, text, replyMarkup);
+        } else {
+          console.log('[TELEGRAM] Photo message updated successfully for approval:', approval.approvalId);
+        }
+      } catch (error) {
+        console.error('[TELEGRAM] Error updating photo message:', error);
+        // Fallback para atualização de texto
+        await this.updateTextMessage(approval, text, replyMarkup);
+      }
+    } else {
+      // Atualização normal (sem foto)
+      await this.updateTextMessage(approval, text, replyMarkup);
+    }
+  }
+
+  async updateTextMessage(approval, text, replyMarkup) {
     try {
       const response = await fetch(`${this.baseUrl}/editMessageText`, {
         method: 'POST',
@@ -91,12 +167,12 @@ class TelegramService {
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('[TELEGRAM] Error updating message:', errorData);
+        console.error('[TELEGRAM] Error updating text message:', errorData);
       } else {
-        console.log('[TELEGRAM] Message updated successfully for approval:', approval.approvalId);
+        console.log('[TELEGRAM] Text message updated successfully for approval:', approval.approvalId);
       }
     } catch (error) {
-      console.error('[TELEGRAM] Error updating approval message:', error);
+      console.error('[TELEGRAM] Error updating text message:', error);
     }
   }
 

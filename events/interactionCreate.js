@@ -1580,8 +1580,7 @@ module.exports = {
           await client.saveTicketState(interaction.channel.id, ticketState);
           
           await interaction.channel.send({
-            embeds: [EmbedFactory.success(`${MESSAGES.GIVEAWAYS.PROMO_SELECTED_CASINO.replace('{name}', promo.name).replace('{casino}', casinoId)}\n\n${MESSAGES.GIVEAWAYS.VERIFIED_USER_SKIP}`)],
-            components: [ComponentFactory.finishButtons()]
+            embeds: [EmbedFactory.success(`${MESSAGES.GIVEAWAYS.PROMO_SELECTED_CASINO.replace('{name}', promo.name).replace('{casino}', casinoId)}\n\n${MESSAGES.GIVEAWAYS.VERIFIED_USER_SKIP}`)]
           });
         } else {
           // Usuário não verificado - processo normal
@@ -1649,8 +1648,7 @@ module.exports = {
         await client.saveTicketState(interaction.channel.id, ticketState);
         
         await interaction.channel.send({
-          embeds: [EmbedFactory.success(`${MESSAGES.GIVEAWAYS.CASINO_SELECTED.replace('{casino}', choice)}\n\n${MESSAGES.GIVEAWAYS.VERIFIED_USER_SKIP}`)],
-          components: [ComponentFactory.finishButtons()]
+          embeds: [EmbedFactory.success(`${MESSAGES.GIVEAWAYS.CASINO_SELECTED.replace('{casino}', choice)}\n\n${MESSAGES.GIVEAWAYS.VERIFIED_USER_SKIP}`)]
         });
       } else {
         // Usuário não verificado - processo normal
@@ -1932,6 +1930,21 @@ module.exports = {
         { submissionId: submissionId },
         { $set: { discordMessageId: submissionMessage.id } }
       );
+      
+      // NOVO: Apagar a mensagem com o botão "Finalizar" para evitar spam
+      try {
+        const messages = await interaction.channel.messages.fetch({ limit: 20 });
+        for (const msg of messages.values()) {
+          // Apagar apenas se tiver botão 'finish_ticket' (botão Finalizar)
+          const hasFinish = msg.components?.some(row => row.components.some(btn => btn.customId === 'finish_ticket'));
+          if (hasFinish) {
+            try { await msg.delete(); } catch (e) { /* ignore */ }
+            console.log(`🗑️ Deleted "Finalizar" button message for ticket #${ticketState.ticketNumber}`);
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao apagar mensagem do botão Finalizar:', error);
+      }
       
       // Send mod buttons to the ticket itself
       const modButtons = ComponentFactory.modButtons(submissionId);
