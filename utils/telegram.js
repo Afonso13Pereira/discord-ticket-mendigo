@@ -466,31 +466,43 @@ class TelegramService {
     if (messageId) {
       try {
         let updatedText = `🎁 <b>Giveaway Aprovado</b>\n\n🎰 <b>Casino:</b> ${approval.casino}\n💰 <b>Prêmio:</b> ${approval.prize}\n👤 <b>Usuário:</b> ${approval.userTag}\n🎫 <b>Ticket:</b> #${approval.ticketNumber}`;
-        
-        // Adicionar ID BCGame se existir
         if (approval.bcGameId) {
           updatedText += `\n🆔 <b>ID BCGame:</b> ${approval.bcGameId}`;
         }
-        
-        // Adicionar endereço LTC
         updatedText += `\n💳 <b>Endereço LTC:</b> ${approval.ltcAddress}`;
-        
-        // Adicionar status de rejeição
         updatedText += `\n\n❌ <b>Não aprovado por @${from.username}</b>\n📝 <b>Motivo:</b> ${reason}`;
-        
-        await fetch(`${this.baseUrl}/editMessageText`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            chat_id: this.chatId,
-            message_id: messageId,
-            text: updatedText,
-            parse_mode: 'HTML',
-            reply_markup: JSON.stringify({ inline_keyboard: [] }) // Remove botões
-          })
-        });
+
+        // Se for BCGame e tiver imagem, editar como foto
+        if (approval.casino === 'BCGame' && approval.bcGameProfileImage) {
+          await fetch(`${this.baseUrl}/editMessageMedia`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: this.chatId,
+              message_id: messageId,
+              media: JSON.stringify({
+                type: 'photo',
+                media: approval.bcGameProfileImage,
+                caption: updatedText,
+                parse_mode: 'HTML'
+              }),
+              reply_markup: JSON.stringify({ inline_keyboard: [] })
+            })
+          });
+        } else {
+          // Editar como texto normal
+          await fetch(`${this.baseUrl}/editMessageText`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: this.chatId,
+              message_id: messageId,
+              text: updatedText,
+              parse_mode: 'HTML',
+              reply_markup: JSON.stringify({ inline_keyboard: [] })
+            })
+          });
+        }
       } catch (error) {
         console.error('[TELEGRAM] Erro ao editar mensagem:', error);
       }
@@ -502,14 +514,9 @@ class TelegramService {
       if (ticketChannel) {
         const EmbedFactory = require('../utils/embeds');
         const ComponentFactory = require('../utils/components');
-        
         const embed = EmbedFactory.rejectionReason(reason);
         const components = ComponentFactory.rejectionButtons();
-
-        await ticketChannel.send({
-          embeds: [embed],
-          components: [components]
-        });
+        await ticketChannel.send({ embeds: [embed], components: [components] });
       }
     } catch (error) {
       console.error('[TELEGRAM] Erro ao enviar mensagem para ticket Discord:', error);
@@ -523,19 +530,12 @@ class TelegramService {
         const messages = await approveChannel.messages.fetch({ limit: 100 });
         const approvalMessage = messages.find(m => {
           if (m.embeds.length === 0) return false;
-          
           const embed = m.embeds[0];
-          const embedText = [
-            embed.title,
-            embed.description,
-            ...(embed.fields || []).map(f => f.value)
-          ].filter(Boolean).join(' ');
-          
+          const embedText = [embed.title, embed.description, ...(embed.fields || []).map(f => f.value)].filter(Boolean).join(' ');
           return embedText.includes(`#${approval.ticketNumber}`) || 
                  embedText.includes(`Ticket #${approval.ticketNumber}`) ||
                  embedText.includes(`ticket-${approval.ticketNumber}`);
         });
-        
         if (approvalMessage) {
           await approvalMessage.delete();
           console.log(`🗑️ Deleted approval message for ticket #${approval.ticketNumber}`);
@@ -549,6 +549,15 @@ class TelegramService {
 
     // Log da ação
     await client.db.logAction(approval.ticketChannelId, from.id, 'giveaway_rejected_telegram', `Ticket #${approval.ticketNumber} - Rejeitado por @${from.username} - Motivo: ${reason}`);
+
+    // NOVO: Apagar mensagem de confirmação de rejeição após 10 segundos (opcional)
+    // (Só se quiser evitar poluição no chat)
+    // Exemplo:
+    // if (this.lastRejectionConfirmationId) {
+    //   setTimeout(() => {
+    //     this.deleteMessage(this.lastRejectionConfirmationId);
+    //   }, 10000);
+    // }
   }
 
   // Função para configurar webhook (opcional)

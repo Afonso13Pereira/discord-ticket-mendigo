@@ -113,11 +113,9 @@ module.exports = {
           
           return message.reply({
             embeds: [EmbedFactory.info(
-              '🎁 **Qual o giveaway que ganhou?**\n\n' +
-              'Por favor, explique:\n' +
-              '• **O que ganhou** (prêmio, valor, etc.)\n' +
-              '• **Se foi relacionado com a Twitch**, escreva o motivo e coloque o perfil da Twitch\n\n' +
-              '📝 **Exemplo:** "Ganhei 50€ no sorteio da Twitch do canal XYZ, perfil: @username"'
+              '🎁 **Que giveaway foi ganho?**\n\n' +
+              '• **Se foi um BBB coloca print da twitch**\n' +
+              '• **Se foi relacionado com a Twitch**, escreve o motivo e coloca print do perfil da twitch'
             )]
           });
         }
