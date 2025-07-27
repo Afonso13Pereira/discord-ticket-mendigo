@@ -473,9 +473,10 @@ class TelegramService {
     }
 
     if (data.startsWith('reject_reason_')) {
-      const parts = data.split('_');
-      const approvalId = parts[3];
-      const reason = parts[4];
+      const dataWithoutPrefix = data.replace('reject_reason_', '');
+      const lastUnderscoreIndex = dataWithoutPrefix.lastIndexOf('_');
+      const approvalId = dataWithoutPrefix.substring(0, lastUnderscoreIndex);
+      const reason = dataWithoutPrefix.substring(lastUnderscoreIndex + 1);
       
       console.log(`[TELEGRAM] Processando rejeição com motivo para approval: ${approvalId}, motivo: ${reason}`);
       
