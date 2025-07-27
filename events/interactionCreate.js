@@ -211,10 +211,36 @@ module.exports = {
           });
         }
 
+        // Verificar tipo de giveaway e processar adequadamente
+        const ticketState = client.ticketStates.get(submission.ticketChannelId);
+        let finalPrize = prize;
+        let prizeDescription = prize;
+
+        if (ticketState?.gwType === 'gtb') {
+          // GTB - usar valor padrão se não especificado
+          finalPrize = prize || '30';
+          prizeDescription = `GTB - ${finalPrize}€`;
+        } else if (ticketState?.gwType === 'telegram') {
+          // Telegram - usar valor do ticket state ou fornecido
+          finalPrize = prize || ticketState.prize || 'N/A';
+          prizeDescription = `Prêmio Telegram - ${finalPrize}€`;
+        } else if (ticketState?.gwType === 'other') {
+          // Outro giveaway - usar descrição completa
+          finalPrize = prize;
+          prizeDescription = `Outro Giveaway: ${prize}`;
+        } else {
+          // Giveaway normal
+          finalPrize = prize;
+          prizeDescription = `${finalPrize}€`;
+        }
+
+        const Logger = require('../utils/logger');
+        Logger.ticket(`Prize confirmed: ${prizeDescription}`, submission.ticketNumber);
+
         // NOVO: Verificar se o usuário tem cargo de verificação para este casino
         const member = await interaction.guild.members.fetch(submission.userId);
         const isVerified = isUserVerifiedForCasino(member, submission.casino);
-        console.log('[APPROVAL][VERIFICATION] Usuário verificado para', submission.casino, ':', isVerified);
+        Logger.ticket(`User verified for ${submission.casino}: ${isVerified}`, submission.ticketNumber);
 
         // NOVO: Buscar imagem do perfil BCGame e bcGameId se for BCGame
         let bcGameProfileImage = null;
@@ -319,14 +345,14 @@ module.exports = {
         }
 
         // Create approval
-        console.log('[APPROVAL][SUBMIT] ltcAddress:', submission.ltcAddress);
+        Logger.ticket(`Creating approval with ltcAddress: ${submission.ltcAddress}`, submission.ticketNumber);
         const approvalId = await client.db.saveApproval(
           submission.ticketChannelId,
           submission.ticketNumber,
           submission.userId,
           submission.userTag,
           submission.casino,
-          prize,
+          finalPrize, // Usar o valor processado do prêmio
           submission.ltcAddress,
           bcGameId,
           bcGameProfileImage,
@@ -334,21 +360,21 @@ module.exports = {
         );
         
         if (!approvalId) {
-          console.error('[APPROVAL][ERROR] Falha ao criar approval');
+          Logger.error(`Failed to create approval for ticket #${submission.ticketNumber}`);
           return interaction.reply({
             embeds: [EmbedFactory.error('Erro ao criar aprovação. Tente novamente.')],
             flags: 64
           });
         }
         
-        console.log('[APPROVAL][SUCCESS] approvalId criado:', approvalId);
+        Logger.success(`Approval created: ${approvalId}`, submission.ticketNumber);
 
         // Send to approval channel
         const approveChannel = await interaction.guild.channels.fetch(CHANNELS.APPROVE);
         console.log('[APPROVAL][EMBED] Criando embed com bcGameId:', bcGameId, 'isVerified:', isVerified);
         const embed = EmbedFactory.approvalFinal(
           submission.casino,
-          prize,
+          finalPrize, // Usar o valor processado do prêmio
           submission.userTag,
           submission.ticketNumber,
           submission.ltcAddress,
@@ -372,9 +398,9 @@ module.exports = {
         if (approval) {
           try {
             await telegramService.sendApprovalMessage(approval);
-            console.log(`[TELEGRAM] Mensagem de aprovação enviada para o Telegram - Ticket #${submission.ticketNumber}`);
+            Logger.telegram(`Approval message sent for ticket #${submission.ticketNumber}`);
           } catch (error) {
-            console.error('[TELEGRAM] Erro ao enviar mensagem para o Telegram:', error);
+            Logger.error(`Telegram error: ${error.message}`);
           }
         }
 
@@ -429,9 +455,187 @@ module.exports = {
         }
 
         return interaction.reply({
-          embeds: [EmbedFactory.success(MESSAGES.GIVEAWAYS.APPROVED.replace('{prize}', prize))],
+          embeds: [EmbedFactory.success(MESSAGES.GIVEAWAYS.APPROVED.replace('{prize}', finalPrize))],
           flags: 64
         });
+      }
+
+      // Edit Modals
+      if (interaction.customId.startsWith('edit_approval_')) {
+        const approvalId = interaction.customId.split('_')[2];
+        const casino = interaction.fields.getTextInputValue('casino').trim();
+        const prize = interaction.fields.getTextInputValue('prize').trim();
+        const bcGameId = interaction.fields.getTextInputValue('bcgame_id').trim() || null;
+        const ltcAddress = interaction.fields.getTextInputValue('ltc_address').trim();
+        
+        const Logger = require('../utils/logger');
+        Logger.edit(`Editing approval ${approvalId}`);
+        
+        try {
+          const approval = await client.db.getApproval(approvalId);
+          if (!approval) {
+            return interaction.reply({
+              embeds: [EmbedFactory.error('Aprovação não encontrada.')],
+              flags: 64
+            });
+          }
+
+          // Update approval
+          await client.db.Approval.updateOne(
+            { approvalId: approvalId },
+            { 
+              $set: { 
+                casino, 
+                prize, 
+                bcGameId, 
+                ltcAddress,
+                updatedAt: new Date()
+              }
+            }
+          );
+
+          // Update ticket state
+          await client.db.TicketState.updateOne(
+            { channelId: approval.ticketChannelId },
+            { 
+              $set: { 
+                casino, 
+                prize, 
+                bcGameId, 
+                ltcAddress,
+                updatedAt: new Date()
+              }
+            }
+          );
+
+          // Update submission if exists
+          await client.db.Submission.updateOne(
+            { ticketChannelId: approval.ticketChannelId },
+            { 
+              $set: { 
+                casino, 
+                prize, 
+                bcGameId, 
+                ltcAddress
+              }
+            }
+          );
+
+          Logger.success(`Approval ${approvalId} updated successfully`);
+          
+          return interaction.reply({
+            embeds: [EmbedFactory.success('✅ Informações atualizadas com sucesso!')],
+            flags: 64
+          });
+
+        } catch (error) {
+          Logger.error(`Error updating approval: ${error.message}`);
+          return interaction.reply({
+            embeds: [EmbedFactory.error('Erro ao atualizar informações.')],
+            flags: 64
+          });
+        }
+      }
+
+      if (interaction.customId.startsWith('edit_submission_')) {
+        const submissionId = interaction.customId.split('_')[2];
+        const casino = interaction.fields.getTextInputValue('casino').trim();
+        const prize = interaction.fields.getTextInputValue('prize').trim();
+        const bcGameId = interaction.fields.getTextInputValue('bcgame_id').trim() || null;
+        const ltcAddress = interaction.fields.getTextInputValue('ltc_address').trim();
+        
+        console.log(`[EDIT] Editing submission ${submissionId}`);
+        
+        try {
+          const submission = await client.db.getSubmission(submissionId);
+          if (!submission) {
+            return interaction.reply({
+              embeds: [EmbedFactory.error('Submissão não encontrada.')],
+              flags: 64
+            });
+          }
+
+          // Update submission
+          await client.db.Submission.updateOne(
+            { submissionId: submissionId },
+            { 
+              $set: { 
+                casino, 
+                prize, 
+                bcGameId, 
+                ltcAddress
+              }
+            }
+          );
+
+          // Update ticket state
+          await client.db.TicketState.updateOne(
+            { channelId: submission.ticketChannelId },
+            { 
+              $set: { 
+                casino, 
+                prize, 
+                bcGameId, 
+                ltcAddress,
+                updatedAt: new Date()
+              }
+            }
+          );
+
+          console.log(`[EDIT] Submission ${submissionId} updated successfully`);
+          
+          return interaction.reply({
+            embeds: [EmbedFactory.success('✅ Informações atualizadas com sucesso!')],
+            flags: 64
+          });
+
+        } catch (error) {
+          console.error('[EDIT] Error updating submission:', error);
+          return interaction.reply({
+            embeds: [EmbedFactory.error('Erro ao atualizar informações.')],
+            flags: 64
+          });
+        }
+      }
+
+      if (interaction.customId.startsWith('edit_ticket_')) {
+        const channelId = interaction.customId.split('_')[2];
+        const casino = interaction.fields.getTextInputValue('casino').trim();
+        const prize = interaction.fields.getTextInputValue('prize').trim();
+        const bcGameId = interaction.fields.getTextInputValue('bcgame_id').trim() || null;
+        const ltcAddress = interaction.fields.getTextInputValue('ltc_address').trim();
+        
+        console.log(`[EDIT] Editing ticket ${channelId}`);
+        
+        try {
+          // Update ticket state
+          await client.db.TicketState.updateOne(
+            { channelId: channelId },
+            { 
+              $set: { 
+                casino, 
+                prize, 
+                bcGameId, 
+                ltcAddress,
+                updatedAt: new Date()
+              }
+            }
+          );
+
+          console.log(`[EDIT] Ticket ${channelId} updated successfully`);
+          
+          return interaction.reply({
+            embeds: [EmbedFactory.success('✅ Informações atualizadas com sucesso!')],
+            flags: 64
+          });
+
+        } catch (error) {
+          console.error('[EDIT] Error updating ticket:', error);
+          return interaction.reply({
+            embeds: [EmbedFactory.error('Erro ao atualizar informações.')],
+            flags: 64
+          });
+        }
       }
 
       // Rejection Modal - Handle both submission and approval rejections
@@ -1678,17 +1882,39 @@ module.exports = {
           });
         }
 
+        // Determinar tipo de giveaway e criar modal apropriado
+        const ticketState = client.ticketStates.get(submission.ticketChannelId);
+        let modalTitle = '💰 Confirmar Valor do Prêmio';
+        let modalLabel = 'Valor do Prêmio';
+        let modalPlaceholder = 'Ex: 50, 100, 200';
+        
+        // Verificar tipo de giveaway
+        if (ticketState?.gwType === 'gtb') {
+          modalTitle = '💰 GTB - 30€ Default';
+          modalLabel = 'Confirmar valor (default: 30€)';
+          modalPlaceholder = '30';
+        } else if (ticketState?.gwType === 'telegram') {
+          const telegramValue = ticketState.prize || 'N/A';
+          modalTitle = `💰 Prêmio Telegram - ${telegramValue}€`;
+          modalLabel = 'Confirmar valor do prêmio';
+          modalPlaceholder = telegramValue;
+        } else if (ticketState?.gwType === 'other') {
+          modalTitle = '💰 Outro Giveaway';
+          modalLabel = 'Explicar o giveaway ganho';
+          modalPlaceholder = 'Descreva o giveaway que ganhou...';
+        }
+        
         // Show prize modal
         const modal = new ModalBuilder()
           .setCustomId(`prize_modal_${submissionId}`)
-          .setTitle(`💰 ${MESSAGES.LABELS.PRIZE_VALUE}`)
+          .setTitle(modalTitle)
           .addComponents(
             new ActionRowBuilder().addComponents(
               new TextInputBuilder()
                 .setCustomId('prize_value')
-                .setLabel(MESSAGES.LABELS.PRIZE_VALUE)
-                .setStyle(TextInputStyle.Short)
-                .setPlaceholder(MESSAGES.PLACEHOLDERS.PRIZE_VALUE)
+                .setLabel(modalLabel)
+                .setStyle(ticketState?.gwType === 'other' ? TextInputStyle.Paragraph : TextInputStyle.Short)
+                .setPlaceholder(modalPlaceholder)
                 .setRequired(true)
             )
           );
