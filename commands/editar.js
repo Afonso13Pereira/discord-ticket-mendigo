@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits, ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const EmbedFactory = require('../utils/embeds');
-const { ROLES } = require('../config/constants');
+const ComponentFactory = require('../utils/components');
+const { ROLES, CHANNELS } = require('../config/constants');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -29,47 +30,35 @@ module.exports = {
         });
       }
 
-      // Verificar se há submission pendente
-      const submissions = await client.db.Submission.find({ 
-        ticketChannelId: channelId, 
-        status: 'pending' 
-      });
-
       // Verificar se há approval pendente
-      const approvals = await client.db.Approval.find({ 
+      const approval = await client.db.Approval.findOne({ 
         ticketChannelId: channelId, 
         status: 'pending' 
       });
 
       // Verificar se há approval pago
-      const paidApprovals = await client.db.Approval.find({ 
+      const paidApproval = await client.db.Approval.findOne({ 
         ticketChannelId: channelId, 
         status: 'paid' 
       });
 
-      if (paidApprovals.length > 0) {
+      if (paidApproval) {
         return interaction.reply({
           embeds: [EmbedFactory.error('Este giveaway já foi pago. Entre em contacto com o suporte para dúvidas ou correções.')],
           flags: 64
         });
       }
 
-      if (approvals.length > 0) {
+      if (approval) {
         // Fase de aprovação - editar approval
-        const approval = approvals[0];
         await this.editApproval(interaction, approval, client);
-      } else if (submissions.length > 0) {
-        // Fase de submissão - editar submission
-        const submission = submissions[0];
-        await this.editSubmission(interaction, submission, client);
       } else {
         // Fase de ticket - editar ticket state
         await this.editTicketState(interaction, ticketState, client);
       }
 
     } catch (error) {
-      const Logger = require('../utils/logger');
-      Logger.error(`Erro ao editar ticket: ${error.message}`, 'EDITAR');
+      console.error('Erro ao editar ticket:', error);
       return interaction.reply({
         embeds: [EmbedFactory.error('Erro ao editar ticket. Tente novamente.')],
         flags: 64
@@ -78,7 +67,6 @@ module.exports = {
   },
 
   async editApproval(interaction, approval, client) {
-    console.log(`🔧 [EDIT_MODAL] Creating approval edit modal for: ${approval.approvalId}`);
     const modal = new ModalBuilder()
       .setCustomId(`edit_approval_${approval.approvalId}`)
       .setTitle('✏️ Editar Giveaway Aprovado')
@@ -113,48 +101,6 @@ module.exports = {
             .setLabel('Endereço LTC')
             .setStyle(TextInputStyle.Short)
             .setValue(approval.ltcAddress || '')
-            .setRequired(true)
-        )
-      );
-
-    return interaction.showModal(modal);
-  },
-
-  async editSubmission(interaction, submission, client) {
-    const modal = new ModalBuilder()
-      .setCustomId(`edit_submission_${submission.submissionId}`)
-      .setTitle('✏️ Editar Submissão')
-      .addComponents(
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder()
-            .setCustomId('casino')
-            .setLabel('Casino')
-            .setStyle(TextInputStyle.Short)
-            .setValue(submission.casino || '')
-            .setRequired(true)
-        ),
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder()
-            .setCustomId('prize')
-            .setLabel('Prêmio')
-            .setStyle(TextInputStyle.Short)
-            .setValue(submission.prize || '')
-            .setRequired(true)
-        ),
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder()
-            .setCustomId('bcgame_id')
-            .setLabel('ID BCGame (opcional)')
-            .setStyle(TextInputStyle.Short)
-            .setValue(submission.bcGameId || '')
-            .setRequired(false)
-        ),
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder()
-            .setCustomId('ltc_address')
-            .setLabel('Endereço LTC')
-            .setStyle(TextInputStyle.Short)
-            .setValue(submission.ltcAddress || '')
             .setRequired(true)
         )
       );

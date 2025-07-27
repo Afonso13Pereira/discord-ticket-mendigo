@@ -389,17 +389,14 @@ module.exports = {
           components: [components]
         });
 
-        console.log(`🔧 [SAVE_IDS] Discord message sent with ID: ${approvalMessage.id}`);
-
         // Update approval with message info
         await client.db.updateApproval(approvalId, 'pending', approvalMessage.id);
 
-        // NOVO: Salvar ID da mensagem do Discord no approval
+        // Salvar ID da mensagem do Discord no approval
         await client.db.Approval.updateOne(
           { approvalId: approvalId },
           { $set: { discordMessageId: approvalMessage.id } }
         );
-        console.log(`🔧 [SAVE_IDS] Discord message ID saved to database: ${approvalMessage.id}`);
 
         // NOVO: Enviar mensagem para o Telegram
         const telegramService = require('../utils/telegram');
@@ -407,16 +404,12 @@ module.exports = {
         if (approval) {
           try {
             const telegramMessage = await telegramService.sendApprovalMessage(approval);
-            console.log(`🔧 [SAVE_IDS] Telegram message response:`, telegramMessage);
-            // NOVO: Salvar ID da mensagem do Telegram no approval
+            // Salvar ID da mensagem do Telegram no approval
             if (telegramMessage && telegramMessage.message_id) {
               await client.db.Approval.updateOne(
                 { approvalId: approvalId },
                 { $set: { telegramMessageId: telegramMessage.message_id } }
               );
-              console.log(`🔧 [SAVE_IDS] Telegram message ID saved to database: ${telegramMessage.message_id}`);
-            } else {
-              console.log(`🔧 [SAVE_IDS] No Telegram message ID found in response`);
             }
             Logger.telegram(`Approval message sent for ticket #${submission.ticketNumber}`);
           } catch (error) {
@@ -482,19 +475,14 @@ module.exports = {
 
       // Edit Modals
       if (interaction.customId.startsWith('edit_approval_')) {
-        console.log(`🔧 [EDIT_TRIGGER] Edit approval triggered for: ${interaction.customId}`);
         const approvalId = interaction.customId.split('_')[2];
         const casino = interaction.fields.getTextInputValue('casino').trim();
         const prize = interaction.fields.getTextInputValue('prize').trim();
         const bcGameId = interaction.fields.getTextInputValue('bcgame_id').trim() || null;
         const ltcAddress = interaction.fields.getTextInputValue('ltc_address').trim();
         
-        console.log(`🔧 [EDIT_TRIGGER] Data to update:`, { approvalId, casino, prize, bcGameId, ltcAddress });
-        
-        const Logger = require('../utils/logger');
-        Logger.edit(`Editing approval ${approvalId}`);
-        
         try {
+          // Buscar approval atual
           const approval = await client.db.getApproval(approvalId);
           if (!approval) {
             return interaction.reply({
@@ -503,7 +491,7 @@ module.exports = {
             });
           }
 
-          // Update approval
+          // Atualizar approval no banco
           await client.db.Approval.updateOne(
             { approvalId: approvalId },
             { 
@@ -517,7 +505,7 @@ module.exports = {
             }
           );
 
-          // Update ticket state
+          // Atualizar ticket state
           await client.db.TicketState.updateOne(
             { channelId: approval.ticketChannelId },
             { 
@@ -531,85 +519,55 @@ module.exports = {
             }
           );
 
-          // Update submission if exists
-          await client.db.Submission.updateOne(
-            { ticketChannelId: approval.ticketChannelId },
-            { 
-              $set: { 
-                casino, 
-                prize, 
-                bcGameId, 
-                ltcAddress
-              }
-            }
-          );
-
-          // NOVO: Buscar approval atualizado para ter os dados mais recentes
+          // Buscar approval atualizado
           const updatedApproval = await client.db.getApproval(approvalId);
-          console.log(`🔧 [EDIT_TRIGGER] Updated approval data:`, {
-            approvalId: updatedApproval.approvalId,
-            discordMessageId: updatedApproval.discordMessageId,
-            telegramMessageId: updatedApproval.telegramMessageId
-          });
 
-          // NOVO: Atualizar mensagem no Discord
-          console.log(`🔧 [EDIT_TRIGGER] Checking Discord message update...`);
-          console.log(`🔧 [EDIT_TRIGGER] CHANNELS.APPROVE: ${CHANNELS.APPROVE}`);
+          // Atualizar mensagem no Discord
           if (updatedApproval.discordMessageId) {
             try {
               const approveChannel = await interaction.guild.channels.fetch(CHANNELS.APPROVE);
-              console.log(`🔧 [EDIT_TRIGGER] Approve channel found: ${approveChannel.name}`);
-              const discordMessage = await approveChannel.messages.fetch(updatedApproval.discordMessageId).catch(() => null);
+              const discordMessage = await approveChannel.messages.fetch(updatedApproval.discordMessageId);
               
-              if (discordMessage) {
-                const updatedEmbed = EmbedFactory.approvalFinal(
-                  casino,
-                  prize,
-                  updatedApproval.userTag,
-                  updatedApproval.ticketNumber,
-                  ltcAddress,
-                  bcGameId,
-                  updatedApproval.isVerified,
-                  updatedApproval.bcGameProfileImage
-                );
-                const components = ComponentFactory.approvalButtons(approvalId, updatedApproval.ticketChannelId);
-                
-                await discordMessage.edit({
-                  embeds: [updatedEmbed],
-                  components: [components]
-                });
-                console.log(`✅ Discord message updated for approval ${approvalId}`);
-              }
+              const updatedEmbed = EmbedFactory.approvalFinal(
+                casino,
+                prize,
+                updatedApproval.userTag,
+                updatedApproval.ticketNumber,
+                ltcAddress,
+                bcGameId,
+                updatedApproval.isVerified,
+                updatedApproval.bcGameProfileImage
+              );
+              const components = ComponentFactory.approvalButtons(approvalId, updatedApproval.ticketChannelId);
+              
+              await discordMessage.edit({
+                embeds: [updatedEmbed],
+                components: [components]
+              });
             } catch (error) {
-              Logger.error(`Error updating Discord message: ${error.message}`);
+              console.error('Erro ao atualizar mensagem do Discord:', error);
             }
           }
 
-          // NOVO: Atualizar mensagem no Telegram
-          console.log(`🔧 [EDIT_TRIGGER] Checking Telegram message update...`);
+          // Atualizar mensagem no Telegram
           if (updatedApproval.telegramMessageId) {
             try {
               const telegramService = require('../utils/telegram');
               await telegramService.updateApprovalMessage(updatedApproval);
-              console.log(`✅ Telegram message updated for approval ${approvalId}`);
             } catch (error) {
-              Logger.error(`Error updating Telegram message: ${error.message}`);
+              console.error('Erro ao atualizar mensagem do Telegram:', error);
             }
-          } else {
-            console.log(`🔧 [EDIT_TRIGGER] No Telegram message ID found`);
           }
 
-          Logger.success(`Approval ${approvalId} updated successfully`);
-          
           return interaction.reply({
-            embeds: [EmbedFactory.success('✅ Informações atualizadas com sucesso!')],
+            embeds: [EmbedFactory.success('✅ **Giveaway atualizado com sucesso!**\n\nAs mensagens no Discord e Telegram foram atualizadas.')],
             flags: 64
           });
 
         } catch (error) {
-          Logger.error(`Error updating approval: ${error.message}`);
+          console.error('Erro ao editar approval:', error);
           return interaction.reply({
-            embeds: [EmbedFactory.error('Erro ao atualizar informações.')],
+            embeds: [EmbedFactory.error('Erro ao editar approval. Tente novamente.')],
             flags: 64
           });
         }

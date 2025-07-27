@@ -50,8 +50,6 @@ class TelegramService {
       }
 
       console.log('[TELEGRAM] Mensagem enviada com sucesso');
-      console.log('[TELEGRAM] Result object:', result);
-      console.log('[TELEGRAM] Message ID from result:', result.result?.message_id);
       return result.result;
     } catch (error) {
       console.error('[TELEGRAM] Erro ao enviar mensagem:', error);
