@@ -475,11 +475,14 @@ module.exports = {
 
       // Edit Modals
       if (interaction.customId.startsWith('edit_approval_')) {
+        console.log(`🔧 [EDIT_TRIGGER] Edit approval triggered for: ${interaction.customId}`);
         const approvalId = interaction.customId.split('_')[2];
         const casino = interaction.fields.getTextInputValue('casino').trim();
         const prize = interaction.fields.getTextInputValue('prize').trim();
         const bcGameId = interaction.fields.getTextInputValue('bcgame_id').trim() || null;
         const ltcAddress = interaction.fields.getTextInputValue('ltc_address').trim();
+        
+        console.log(`🔧 [EDIT_TRIGGER] Data to update:`, { approvalId, casino, prize, bcGameId, ltcAddress });
         
         const Logger = require('../utils/logger');
         Logger.edit(`Editing approval ${approvalId}`);
@@ -536,11 +539,19 @@ module.exports = {
 
           // NOVO: Buscar approval atualizado para ter os dados mais recentes
           const updatedApproval = await client.db.getApproval(approvalId);
+          console.log(`🔧 [EDIT_TRIGGER] Updated approval data:`, {
+            approvalId: updatedApproval.approvalId,
+            discordMessageId: updatedApproval.discordMessageId,
+            telegramMessageId: updatedApproval.telegramMessageId
+          });
 
           // NOVO: Atualizar mensagem no Discord
+          console.log(`🔧 [EDIT_TRIGGER] Checking Discord message update...`);
+          console.log(`🔧 [EDIT_TRIGGER] CHANNELS.APPROVE: ${CHANNELS.APPROVE}`);
           if (updatedApproval.discordMessageId) {
             try {
               const approveChannel = await interaction.guild.channels.fetch(CHANNELS.APPROVE);
+              console.log(`🔧 [EDIT_TRIGGER] Approve channel found: ${approveChannel.name}`);
               const discordMessage = await approveChannel.messages.fetch(updatedApproval.discordMessageId).catch(() => null);
               
               if (discordMessage) {
@@ -568,6 +579,7 @@ module.exports = {
           }
 
           // NOVO: Atualizar mensagem no Telegram
+          console.log(`🔧 [EDIT_TRIGGER] Checking Telegram message update...`);
           if (updatedApproval.telegramMessageId) {
             try {
               const telegramService = require('../utils/telegram');
@@ -576,6 +588,8 @@ module.exports = {
             } catch (error) {
               Logger.error(`Error updating Telegram message: ${error.message}`);
             }
+          } else {
+            console.log(`🔧 [EDIT_TRIGGER] No Telegram message ID found`);
           }
 
           Logger.success(`Approval ${approvalId} updated successfully`);

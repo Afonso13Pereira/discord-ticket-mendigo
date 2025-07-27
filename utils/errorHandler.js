@@ -44,7 +44,7 @@ class ErrorHandler {
     });
 
     process.on('SIGTERM', () => {
-      console.log('🔄 Received SIGTERM, shutting down gracefully...');
+      image.png('🔄 Received SIGTERM, shutting down gracefully...');
       this.gracefulShutdown();
     });
 

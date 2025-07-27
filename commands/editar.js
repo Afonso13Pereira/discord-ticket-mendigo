@@ -78,6 +78,7 @@ module.exports = {
   },
 
   async editApproval(interaction, approval, client) {
+    console.log(`🔧 [EDIT_MODAL] Creating approval edit modal for: ${approval.approvalId}`);
     const modal = new ModalBuilder()
       .setCustomId(`edit_approval_${approval.approvalId}`)
       .setTitle('✏️ Editar Giveaway Aprovado')
