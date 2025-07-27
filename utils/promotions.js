@@ -22,7 +22,7 @@ async function initDatabase() {
               Object.assign(promos, freshPromos);
               
               initialized = true;
-              console.log(`✅ Loaded ${Object.keys(promos).length} promotions from database`);
+              // Loaded ${Object.keys(promos).length} promotions from database
               
               resolve();
             } catch (error) {
@@ -101,7 +101,7 @@ async function list() {
 
 async function ensureInitialized() {
   if (!initialized || !db || !db.connected) {
-    console.log('🔄 Promotions not initialized or DB not connected, initializing...');
+    // Promotions not initialized or DB not connected, initializing...
     await initDatabase();
   }
 }
@@ -111,16 +111,16 @@ async function refreshPromotions() {
   
   if (db && db.connected) {
     try {
-      console.log('🔄 Refreshing promotions from database...');
+      // Refreshing promotions from database...
       const freshPromos = await db.getPromotions();
       
-      console.log(`🔍 Database returned ${Object.keys(freshPromos).length} promotions`);
+              // Database returned ${Object.keys(freshPromos).length} promotions
       
       // CORREÇÃO CRÍTICA: Limpar completamente e recarregar
       Object.keys(promos).forEach(key => delete promos[key]);
       Object.assign(promos, freshPromos);
       
-      console.log(`✅ Refreshed ${Object.keys(promos).length} promotions in memory`);
+              // Refreshed ${Object.keys(promos).length} promotions in memory
       
       return promos;
     } catch (error) {
@@ -128,7 +128,7 @@ async function refreshPromotions() {
       return promos;
     }
   } else {
-    console.log('❌ Database not connected, cannot refresh promotions');
+          // Database not connected, cannot refresh promotions
     return promos;
   }
 }

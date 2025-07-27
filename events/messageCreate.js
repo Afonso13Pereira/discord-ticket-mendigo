@@ -156,7 +156,7 @@ module.exports = {
       
       // Verificar se foi realmente salvo na DB
       const savedState = await client.db.getTicketState(message.channel.id);
-      console.log('[LTC_ONLY][COMPLETE] Verificação DB - ltcAddress:', savedState?.ltcAddress);
+      // [LTC_ONLY][COMPLETE] Verificação DB - ltcAddress: ${savedState?.ltcAddress}
       
       return message.reply({
         embeds: [EmbedFactory.success(MESSAGES.GIVEAWAYS.VERIFIED_USER_COMPLETE)],

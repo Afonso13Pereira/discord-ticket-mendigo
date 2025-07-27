@@ -40,7 +40,7 @@ async function restoreTicketStates() {
     }
     
     if (!client.db || !client.db.connected) {
-      console.log('⚠️ Database not available, starting with empty ticket states');
+      // Database not available, starting with empty ticket states
       return;
     }
     
@@ -48,7 +48,7 @@ async function restoreTicketStates() {
       const savedStates = await client.db.getAllTicketStates();
       client.ticketStates = savedStates;
       
-      console.log(`✅ Restored ${savedStates.size} ticket states from MongoDB`);
+      // Restored ${savedStates.size} ticket states from MongoDB
     } catch (error) {
       console.error('Error restoring ticket states:', error);
     }
@@ -161,10 +161,10 @@ setInterval(async () => {
     const cleanedTranscripts = await db.cleanupExpiredTranscripts();
     
     if (cleanedTickets > 0) {
-      console.log(`🧹 Cleaned up ${cleanedTickets} old ticket states from MongoDB`);
+      // Cleaned up ${cleanedTickets} old ticket states from MongoDB
     }
     if (cleanedTranscripts > 0) {
-      console.log(`🧹 Cleaned up ${cleanedTranscripts} expired transcripts from MongoDB`);
+      // Cleaned up ${cleanedTranscripts} expired transcripts from MongoDB
     }
   } catch (error) {
     console.error('Error during cleanup:', error);

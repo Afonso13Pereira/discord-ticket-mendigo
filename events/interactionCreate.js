@@ -1834,7 +1834,7 @@ module.exports = {
       
       // Verificar estado final antes de criar submission
       const finalState = await client.db.getTicketState(interaction.channel.id);
-      console.log('[FINISH_TICKET][DB_CHECK] Estado final na DB:', finalState?.ltcAddress);
+      // [FINISH_TICKET][DB_CHECK] Estado final na DB: ${finalState?.ltcAddress}
 
       console.log('[FINISH_TICKET][DEBUG] bcGameId no ticketState:', ticketState.bcGameId);
       const submissionId = await client.db.saveSubmission(
@@ -1849,7 +1849,7 @@ module.exports = {
         ticketState.bcGameId
       );
       console.log('[FINISH_TICKET][DEBUG] Submission criada com ID:', submissionId);
-      console.log('[FINISH_TICKET][DEBUG] ltcAddress enviado para DB:', ticketState.ltcAddress);
+      // [FINISH_TICKET][DEBUG] ltcAddress enviado para DB: ${ticketState.ltcAddress}
       if (!submissionId) {
         console.error('[FINISH_TICKET][ERRO] submissionId retornou null! Não foi possível criar a submissão.');
         await interaction.channel.send({

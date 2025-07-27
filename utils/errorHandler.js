@@ -221,7 +221,7 @@ class ErrorHandler {
       // Close database connections
       if (this.client.db) {
         await this.client.db.close();
-        console.log('✅ Database connections closed');
+        // Database connections closed
       }
       
       // Destroy Discord client

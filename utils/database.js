@@ -182,14 +182,14 @@ class DatabaseManager {
 
       this.connected = true;
       this.connectionAttempts = 0; // Reset on successful connection
-      console.log('✅ Connected to MongoDB (mendigo/DiscordBot + reedems)');
+              // Connected to MongoDB (mendigo/DiscordBot + reedems)
     } catch (error) {
       console.error('❌ MongoDB connection error:', error);
       this.connected = false;
       
       // Retry connection after 5 seconds
       if (this.connectionAttempts < this.maxRetries) {
-        console.log(`🔄 Retrying connection in 5 seconds... (${this.connectionAttempts}/${this.maxRetries})`);
+        // Retrying connection in 5 seconds... (${this.connectionAttempts}/${this.maxRetries})
         setTimeout(() => {
           this.connect();
         }, 5000);
@@ -490,17 +490,7 @@ class DatabaseManager {
       // CRÍTICO: Garantir que ltcAddress nunca seja null
       const finalLtcAddress = ltcAddress || 'N/A - Não fornecido';
       
-      console.log('[DB][saveSubmission] Dados recebidos:');
-      console.log('  - ticketChannelId:', ticketChannelId);
-      console.log('  - ticketNumber:', ticketNumber);
-      console.log('  - userId:', userId);
-      console.log('  - userTag:', userTag);
-      console.log('  - gwType:', gwType);
-      console.log('  - casino:', casino);
-      console.log('  - prize:', prize);
-      console.log('  - ltcAddress original:', ltcAddress);
-      console.log('  - ltcAddress final:', finalLtcAddress);
-      console.log('  - bcGameId:', bcGameId);
+      // [DB][saveSubmission] Dados recebidos
       
       const submission = new this.Submission({
         submissionId,
@@ -516,7 +506,7 @@ class DatabaseManager {
       });
       
       await submission.save();
-      console.log('[DB][saveSubmission] Submission salva com sucesso, ID:', submissionId);
+      // [DB][saveSubmission] Submission salva com sucesso, ID: ${submissionId}
       return submissionId;
     } catch (error) {
       console.error('Error saving submission:', error);
@@ -528,15 +518,14 @@ class DatabaseManager {
     if (!this.connected) return null;
     
     try {
-      console.log('[DB][getSubmission] Buscando submissionId:', submissionId);
+      // [DB][getSubmission] Buscando submissionId: ${submissionId}
       const doc = await this.Submission.findOne({ submissionId });
       if (!doc) {
-        console.log('[DB][getSubmission] Submission não encontrada:', submissionId);
+        // [DB][getSubmission] Submission não encontrada: ${submissionId}
         return null;
       }
       
-      console.log('[DB][getSubmission] Submission encontrada:', submissionId);
-      console.log('[DB][getSubmission] ltcAddress na DB:', doc.ltcAddress);
+              // [DB][getSubmission] Submission encontrada: ${submissionId}
       
       return {
         submissionId: doc.submissionId,
@@ -583,19 +572,7 @@ class DatabaseManager {
       // CRÍTICO: Garantir que ltcAddress nunca seja null
       const finalLtcAddress = ltcAddress || 'N/A - Não fornecido';
       
-      console.log('[DB][saveApproval] Dados recebidos:');
-      console.log('  - ticketChannelId:', ticketChannelId);
-      console.log('  - ticketNumber:', ticketNumber);
-      console.log('  - userId:', userId);
-      console.log('  - userTag:', userTag);
-      console.log('  - casino:', casino);
-      console.log('  - prize:', prize);
-      console.log('  - ltcAddress original:', ltcAddress);
-      console.log('  - ltcAddress final:', finalLtcAddress);
-      console.log('  - bcGameId:', bcGameId);
-      console.log('  - bcGameProfileImage:', bcGameProfileImage);
-      console.log('  - messageId:', messageId);
-      console.log('  - approvalId gerado:', approvalId);
+      // [DB][saveApproval] Dados recebidos
       
       // Try to create approval with retry mechanism
       let attempts = 0;
@@ -620,12 +597,12 @@ class DatabaseManager {
           });
           
           await approval.save();
-          console.log('[DB][saveApproval] Approval salva com sucesso, ID:', currentApprovalId);
+          // [DB][saveApproval] Approval salva com sucesso, ID: ${currentApprovalId}
           return currentApprovalId;
           
         } catch (saveError) {
           attempts++;
-          console.log(`[DB][saveApproval] Tentativa ${attempts} falhou:`, saveError.message);
+          // [DB][saveApproval] Tentativa ${attempts} falhou: ${saveError.message}
           
           if (attempts >= 3) {
             throw saveError;
@@ -642,7 +619,7 @@ class DatabaseManager {
       
       // If it's a duplicate key error, try to clean up and retry once more
       if (error.code === 11000) {
-        console.log('[DB][saveApproval] Duplicate key error, tentando limpeza...');
+        // [DB][saveApproval] Duplicate key error, tentando limpeza...
         try {
           // Try to remove any problematic entries with null messageId
           await this.Approval.deleteMany({ 
@@ -667,7 +644,7 @@ class DatabaseManager {
           });
           
           await retryApproval.save();
-          console.log('[DB][saveApproval] Retry bem-sucedido, ID:', retryApprovalId);
+          // [DB][saveApproval] Retry bem-sucedido, ID: ${retryApprovalId}
           return retryApprovalId;
           
         } catch (retryError) {
@@ -683,15 +660,14 @@ class DatabaseManager {
     if (!this.connected) return null;
     
     try {
-      console.log('[DB][getApproval] Buscando approvalId:', approvalId);
+      // [DB][getApproval] Buscando approvalId: ${approvalId}
       const doc = await this.Approval.findOne({ approvalId });
       if (!doc) {
-        console.log('[DB][getApproval] Approval não encontrada:', approvalId);
+        // [DB][getApproval] Approval não encontrada: ${approvalId}
         return null;
       }
       
-      console.log('[DB][getApproval] Approval encontrada:', doc.approvalId);
-      console.log('[DB][getApproval] ltcAddress na DB:', doc.ltcAddress);
+              // [DB][getApproval] Approval encontrada: ${doc.approvalId}
       
       return {
         approvalId: doc.approvalId,
@@ -1076,12 +1052,12 @@ class DatabaseManager {
   // === RESET DATABASE ===
   async resetDatabase() {
     if (!this.connected) {
-      console.log('❌ Database not connected, cannot reset');
+      // Database not connected, cannot reset
       return false;
     }
     
     try {
-      console.log('🔄 Starting database reset...');
+      // Starting database reset...
       
       // Delete all collections
       const collections = [
@@ -1108,7 +1084,7 @@ class DatabaseManager {
         }
       }
       
-      console.log(`✅ Database reset completed! Total documents deleted: ${totalDeleted}`);
+      // Database reset completed! Total documents deleted: ${totalDeleted}
       return true;
     } catch (error) {
       console.error('❌ Error resetting database:', error);
@@ -1119,7 +1095,7 @@ class DatabaseManager {
   // === CLEAN TICKETS ONLY ===
   async cleanTicketsOnly() {
     if (!this.connected) {
-      console.log('❌ Database not connected, cannot clean tickets');
+      // Database not connected, cannot clean tickets
       return false;
     }
     
@@ -1158,7 +1134,7 @@ class DatabaseManager {
     if (this.connected) {
       await mongoose.connection.close();
       this.connected = false;
-      console.log('🔌 MongoDB connection closed');
+      // MongoDB connection closed
     }
   }
 }

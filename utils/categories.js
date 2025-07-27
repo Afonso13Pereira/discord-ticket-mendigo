@@ -22,7 +22,7 @@ async function initDatabase() {
               Object.assign(cats, freshCats);
               
               initialized = true;
-              console.log(`✅ Loaded ${Object.keys(cats).length} categories from database:`, Object.keys(cats));
+              // Loaded ${Object.keys(cats).length} categories from database
               
               // Log each category for debugging
               Object.entries(cats).forEach(([id, cat]) => {
@@ -35,7 +35,7 @@ async function initDatabase() {
               setTimeout(checkConnection, 1000);
             }
           } else {
-            console.log('⏳ Waiting for database connection...');
+            // Waiting for database connection...
             setTimeout(checkConnection, 500);
           }
         };
@@ -95,7 +95,7 @@ async function list() {
 
 async function ensureInitialized() {
   if (!initialized || !db || !db.connected) {
-    console.log('🔄 Categories not initialized or DB not connected, initializing...');
+    // Categories not initialized or DB not connected, initializing...
     await initDatabase();
   }
 }
@@ -105,10 +105,10 @@ async function refreshCategories() {
   
   if (db && db.connected) {
     try {
-      console.log('🔄 Refreshing categories from database...');
+      // Refreshing categories from database...
       const freshCats = await db.getCategories();
       
-      console.log(`🔍 Database returned ${Object.keys(freshCats).length} categories:`, Object.keys(freshCats));
+              // Database returned ${Object.keys(freshCats).length} categories
       
       // CORREÇÃO CRÍTICA: Limpar completamente e recarregar
       Object.keys(cats).forEach(key => delete cats[key]);
@@ -126,7 +126,7 @@ async function refreshCategories() {
       return cats;
     }
   } else {
-    console.log('❌ Database not connected, cannot refresh categories');
+          // Database not connected, cannot refresh categories
     return cats;
   }
 }
