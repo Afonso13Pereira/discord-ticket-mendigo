@@ -522,13 +522,21 @@ module.exports = {
           // Buscar approval atualizado
           const updatedApproval = await client.db.getApproval(approvalId);
 
-          // Atualizar mensagem no Discord
+          // Atualizar mensagem no Discord - SOLUÇÃO DE ÚLTIMO CASO
           if (updatedApproval.discordMessageId) {
             try {
               const approveChannel = await interaction.guild.channels.fetch(CHANNELS.APPROVE);
-              const discordMessage = await approveChannel.messages.fetch(updatedApproval.discordMessageId);
               
-              const updatedEmbed = EmbedFactory.approvalFinal(
+              // Tentar apagar a mensagem antiga
+              try {
+                const oldMessage = await approveChannel.messages.fetch(updatedApproval.discordMessageId);
+                await oldMessage.delete();
+              } catch (deleteError) {
+                console.error('Erro ao apagar mensagem antiga:', deleteError);
+              }
+              
+              // Enviar nova mensagem corrigida
+              const newEmbed = EmbedFactory.approvalFinal(
                 casino,
                 prize,
                 updatedApproval.userTag,
@@ -540,27 +548,50 @@ module.exports = {
               );
               const components = ComponentFactory.approvalButtons(approvalId, updatedApproval.ticketChannelId);
               
-              await discordMessage.edit({
-                embeds: [updatedEmbed],
+              const newMessage = await approveChannel.send({
+                embeds: [newEmbed],
                 components: [components]
               });
+              
+              // Salvar o novo ID da mensagem
+              await client.db.Approval.updateOne(
+                { approvalId: approvalId },
+                { $set: { discordMessageId: newMessage.id } }
+              );
             } catch (error) {
               console.error('Erro ao atualizar mensagem do Discord:', error);
             }
           }
 
-          // Atualizar mensagem no Telegram
+          // Atualizar mensagem no Telegram - SOLUÇÃO DE ÚLTIMO CASO
           if (updatedApproval.telegramMessageId) {
             try {
               const telegramService = require('../utils/telegram');
-              await telegramService.updateApprovalMessage(updatedApproval);
+              
+              // Tentar apagar a mensagem antiga
+              try {
+                await telegramService.deleteMessage(updatedApproval.telegramMessageId);
+              } catch (deleteError) {
+                console.error('Erro ao apagar mensagem antiga do Telegram:', deleteError);
+              }
+              
+              // Enviar nova mensagem corrigida
+              const newTelegramMessage = await telegramService.sendApprovalMessage(updatedApproval);
+              
+              // Salvar o novo ID da mensagem
+              if (newTelegramMessage && newTelegramMessage.message_id) {
+                await client.db.Approval.updateOne(
+                  { approvalId: approvalId },
+                  { $set: { telegramMessageId: newTelegramMessage.message_id } }
+                );
+              }
             } catch (error) {
               console.error('Erro ao atualizar mensagem do Telegram:', error);
             }
           }
 
           return interaction.reply({
-            embeds: [EmbedFactory.success('✅ **Giveaway atualizado com sucesso!**\n\nAs mensagens no Discord e Telegram foram atualizadas.')],
+            embeds: [EmbedFactory.success('✅ **Giveaway atualizado com sucesso!**\n\nAs mensagens no Discord e Telegram foram recriadas com os novos dados.')],
             flags: 64
           });
 

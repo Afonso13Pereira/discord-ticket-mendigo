@@ -100,6 +100,33 @@ class TelegramService {
     }
   }
 
+  async deleteMessage(messageId) {
+    try {
+      const response = await fetch(`${this.baseUrl}/deleteMessage`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chat_id: this.chatId,
+          message_id: messageId
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('[TELEGRAM] Error deleting message:', errorData);
+        return false;
+      } else {
+        console.log('[TELEGRAM] Message deleted successfully');
+        return true;
+      }
+    } catch (error) {
+      console.error('[TELEGRAM] Error deleting message:', error);
+      return false;
+    }
+  }
+
   formatApprovalMessage(approval) {
     let text = `🎁 <b>Giveaway Aprovado</b>\n\n`;
     text += `🎰 <b>Casino:</b> ${approval.casino}\n`;
