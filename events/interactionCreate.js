@@ -449,19 +449,20 @@ module.exports = {
           console.error('Error deleting submission message:', error);
         }
 
-        // NOVO: Apagar mensagens do ticket (Finalizar e Aprovar/Não Aprovar)
+        // NOVO: Apagar apenas a mensagem do botão "Finalizar" para evitar spam
         try {
           const ticketChannel = await interaction.guild.channels.fetch(submission.ticketChannelId);
           const ticketMessages = await ticketChannel.messages.fetch({ limit: 20 });
           for (const msg of ticketMessages.values()) {
-            // Só apagar se tiver botão 'finish_ticket' (não apaga aprovações nem outros)
+            // Apagar apenas se tiver botão 'finish_ticket' (botão Finalizar)
             const hasFinish = msg.components?.some(row => row.components.some(btn => btn.customId === 'finish_ticket'));
             if (hasFinish) {
               try { await msg.delete(); } catch (e) { /* ignore */ }
+              console.log(`🗑️ Deleted "Finalizar" button message for ticket #${submission.ticketNumber}`);
             }
           }
         } catch (error) {
-          console.error('Erro ao apagar mensagem de finalizar do ticket:', error);
+          console.error('Erro ao apagar mensagem do botão Finalizar:', error);
         }
 
         return interaction.reply({
