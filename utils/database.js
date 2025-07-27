@@ -90,6 +90,7 @@ const SubmissionSchema = new mongoose.Schema({
   prize: { type: String, default: null },
   ltcAddress: { type: String, default: 'N/A' },
   bcGameId: { type: String, default: null },
+  discordMessageId: { type: String, default: null }, // NOVO: ID da mensagem do Discord
   status: { type: String, default: 'pending' },
   createdAt: { type: Date, default: Date.now }
 });
@@ -106,8 +107,12 @@ const ApprovalSchema = new mongoose.Schema({
   bcGameId: { type: String, default: null },
   bcGameProfileImage: { type: String, default: null }, // NOVO: URL da imagem do perfil BCGame
   messageId: { type: String, default: null }, // NOVO: Campo para ID da mensagem de aprovação
+  discordMessageId: { type: String, default: null }, // NOVO: ID da mensagem do Discord
+  telegramMessageId: { type: String, default: null }, // NOVO: ID da mensagem do Telegram
+  isVerified: { type: Boolean, default: false }, // NOVO: Se o usuário é verificado
   status: { type: String, default: 'pending' },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
 });
 
 // NOVO: Remover índice problemático e criar um mais seguro

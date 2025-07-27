@@ -534,27 +534,33 @@ module.exports = {
             }
           );
 
+          // NOVO: Buscar approval atualizado para ter os dados mais recentes
+          const updatedApproval = await client.db.getApproval(approvalId);
+
           // NOVO: Atualizar mensagem no Discord
-          if (approval.discordMessageId) {
+          if (updatedApproval.discordMessageId) {
             try {
               const approveChannel = await interaction.guild.channels.fetch(CHANNELS.APPROVE);
-              const discordMessage = await approveChannel.messages.fetch(approval.discordMessageId).catch(() => null);
+              const discordMessage = await approveChannel.messages.fetch(updatedApproval.discordMessageId).catch(() => null);
+              
               if (discordMessage) {
                 const updatedEmbed = EmbedFactory.approvalFinal(
                   casino,
                   prize,
-                  approval.userTag,
-                  approval.ticketNumber,
+                  updatedApproval.userTag,
+                  updatedApproval.ticketNumber,
                   ltcAddress,
                   bcGameId,
-                  approval.isVerified,
-                  approval.bcGameProfileImage
+                  updatedApproval.isVerified,
+                  updatedApproval.bcGameProfileImage
                 );
-                const components = ComponentFactory.approvalButtons(approvalId, approval.ticketChannelId);
+                const components = ComponentFactory.approvalButtons(approvalId, updatedApproval.ticketChannelId);
+                
                 await discordMessage.edit({
                   embeds: [updatedEmbed],
                   components: [components]
                 });
+                console.log(`✅ Discord message updated for approval ${approvalId}`);
               }
             } catch (error) {
               Logger.error(`Error updating Discord message: ${error.message}`);
@@ -562,10 +568,11 @@ module.exports = {
           }
 
           // NOVO: Atualizar mensagem no Telegram
-          if (approval.telegramMessageId) {
+          if (updatedApproval.telegramMessageId) {
             try {
               const telegramService = require('../utils/telegram');
-              await telegramService.updateApprovalMessage(approval);
+              await telegramService.updateApprovalMessage(updatedApproval);
+              console.log(`✅ Telegram message updated for approval ${approvalId}`);
             } catch (error) {
               Logger.error(`Error updating Telegram message: ${error.message}`);
             }
