@@ -25,7 +25,7 @@ for (const file of commandFiles) {
 
 const rest = new REST({ version: '10' }).setToken(TOKEN);
 
-(async () => {
+async function deployCommands() {
   try {
     if (GUILDID) {
       console.log(`🔄  Atualizando ${commands.length} comandos PARA A GUILD ${GUILDID}…`);
@@ -38,5 +38,14 @@ const rest = new REST({ version: '10' }).setToken(TOKEN);
     }
   } catch (err) {
     console.error(err);
+    throw err;
   }
-})();
+}
+
+// Export the function for use in index.js
+module.exports = { deployCommands };
+
+// Run deploy if this file is executed directly
+if (require.main === module) {
+  deployCommands();
+}

@@ -192,11 +192,21 @@ setInterval(async () => {
   }
 }, 24 * 60 * 60 * 1000); // 24 hours
 
-client.once('ready', () => {
+client.once('ready', async () => {
   console.log(`✅ Bot online como ${client.user.tag}`);
   
   // Initialize error handler after client is ready
   errorHandler = new ErrorHandler(client);
+  
+  // Deploy commands automatically
+  try {
+    console.log('🔄 Deploying commands...');
+    const { deployCommands } = require('./deploy-comands');
+    await deployCommands();
+    console.log('✅ Commands deployed successfully');
+  } catch (error) {
+    console.error('❌ Error deploying commands:', error);
+  }
   
   restoreTicketStates();
   

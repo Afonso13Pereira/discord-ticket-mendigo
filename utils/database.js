@@ -685,8 +685,12 @@ class DatabaseManager {
         ltcAddress: doc.ltcAddress,
         bcGameId: doc.bcGameId,
         bcGameProfileImage: doc.bcGameProfileImage,
+        discordMessageId: doc.discordMessageId,
+        telegramMessageId: doc.telegramMessageId,
+        isVerified: doc.isVerified,
         status: doc.status,
-        createdAt: doc.createdAt
+        createdAt: doc.createdAt,
+        updatedAt: doc.updatedAt
       };
     } catch (error) {
       console.error('Error getting approval:', error);
