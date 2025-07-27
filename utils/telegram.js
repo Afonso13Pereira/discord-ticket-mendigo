@@ -473,9 +473,26 @@ class TelegramService {
     }
 
     if (data.startsWith('reject_reason_')) {
-      const parts = data.split('_');
-      const approvalId = parts[3];
-      const reason = parts[4];
+      // O formato é: reject_reason_${approvalId}_${reason}
+      // Como o approvalId pode conter underscores, preciso usar uma abordagem diferente
+      const dataWithoutPrefix = data.replace('reject_reason_', '');
+      
+      // Os reasons possíveis são: nao_afiliado, address_errado, outro
+      let approvalId, reason;
+      
+      if (dataWithoutPrefix.endsWith('_nao_afiliado')) {
+        approvalId = dataWithoutPrefix.replace('_nao_afiliado', '');
+        reason = 'nao_afiliado';
+      } else if (dataWithoutPrefix.endsWith('_address_errado')) {
+        approvalId = dataWithoutPrefix.replace('_address_errado', '');
+        reason = 'address_errado';
+      } else if (dataWithoutPrefix.endsWith('_outro')) {
+        approvalId = dataWithoutPrefix.replace('_outro', '');
+        reason = 'outro';
+      } else {
+        console.error('[TELEGRAM] Reason não reconhecido:', dataWithoutPrefix);
+        return;
+      }
       
       console.log(`[TELEGRAM] Processando rejeição com motivo para approval: ${approvalId}, motivo: ${reason}`);
       
