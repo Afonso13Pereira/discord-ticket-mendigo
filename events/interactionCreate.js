@@ -389,6 +389,8 @@ module.exports = {
           components: [components]
         });
 
+        console.log(`🔧 [SAVE_IDS] Discord message sent with ID: ${approvalMessage.id}`);
+
         // Update approval with message info
         await client.db.updateApproval(approvalId, 'pending', approvalMessage.id);
 
@@ -397,6 +399,7 @@ module.exports = {
           { approvalId: approvalId },
           { $set: { discordMessageId: approvalMessage.id } }
         );
+        console.log(`🔧 [SAVE_IDS] Discord message ID saved to database: ${approvalMessage.id}`);
 
         // NOVO: Enviar mensagem para o Telegram
         const telegramService = require('../utils/telegram');
@@ -404,12 +407,16 @@ module.exports = {
         if (approval) {
           try {
             const telegramMessage = await telegramService.sendApprovalMessage(approval);
+            console.log(`🔧 [SAVE_IDS] Telegram message response:`, telegramMessage);
             // NOVO: Salvar ID da mensagem do Telegram no approval
             if (telegramMessage && telegramMessage.message_id) {
               await client.db.Approval.updateOne(
                 { approvalId: approvalId },
                 { $set: { telegramMessageId: telegramMessage.message_id } }
               );
+              console.log(`🔧 [SAVE_IDS] Telegram message ID saved to database: ${telegramMessage.message_id}`);
+            } else {
+              console.log(`🔧 [SAVE_IDS] No Telegram message ID found in response`);
             }
             Logger.telegram(`Approval message sent for ticket #${submission.ticketNumber}`);
           } catch (error) {
