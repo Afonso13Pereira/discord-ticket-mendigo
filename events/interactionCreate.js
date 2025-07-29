@@ -1992,7 +1992,11 @@ module.exports = {
           modalLabel = 'Confirmar valor (default: 30€)';
           modalPlaceholder = '30';
         } else if (ticketState?.gwType === 'telegram') {
-          const telegramValue = ticketState.prize || 'N/A';
+          // Corrigir para buscar o valor do prêmio corretamente
+          let telegramValue = ticketState.prize;
+          if (!telegramValue || telegramValue === 'N/A') {
+            telegramValue = submission.prize || 'Indefinido';
+          }
           modalTitle = `💰 Prêmio Telegram - ${telegramValue}€`;
           modalLabel = 'Confirmar valor do prêmio';
           modalPlaceholder = telegramValue;

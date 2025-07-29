@@ -48,7 +48,7 @@ module.exports = {
           await client.saveTicketState(message.channel.id, ticketState);
           await message.channel.send({
             embeds: [EmbedFactory.success('Perfil da Twitch recebido! Agora escolha o casino.')] });
-          return askCasino(message.channel);
+          return askCasino(message.channel, ticketState);
         } else {
           await message.reply({ embeds: [EmbedFactory.warning('Ainda falta enviar o nome e a foto do perfil da Twitch!')] });
           return;
@@ -301,7 +301,7 @@ module.exports = {
           }
           await client.saveTicketState(message.channel.id, ticketState);
           // Prosseguir para o fluxo normal após preencher casino/prize
-          return askCasino(message.channel);
+          return askCasino(message.channel, ticketState);
         } catch (err) {
           console.error('Erro ao buscar dados do giveaway no canal de logs:', err);
           return message.reply({ embeds: [EmbedFactory.error('Erro ao buscar dados do giveaway no canal de logs.')] });
@@ -445,13 +445,29 @@ function findCasinoId(name) {
   }
 }
 
-function askCasino(channel) {
+function askCasino(channel, ticketState = null) {
+  let casinosToShow = CASINOS;
+  let description = MESSAGES.GIVEAWAYS.CASINO_SELECTION_ALL;
+
+  if (ticketState && ticketState.casino && ticketState.casino.toLowerCase() !== 'todos') {
+    // Suporta múltiplos casinos separados por vírgula ou ponto e vírgula
+    const raw = ticketState.casino;
+    const sep = raw.includes(';') ? ';' : ',';
+    const casinoNames = raw.split(sep).map(c => c.trim().toLowerCase());
+    casinosToShow = Object.fromEntries(
+      Object.entries(CASINOS).filter(([id, c]) =>
+        casinoNames.includes(id.toLowerCase()) || casinoNames.includes(c.label.toLowerCase())
+      )
+    );
+    description = `⭐ **Podes escolher apenas entre:** ${Object.values(casinosToShow).map(c => c.label).join(', ')}`;
+  }
+
   channel.send({
     embeds: [EmbedFactory.casino(
       MESSAGES.GIVEAWAYS.CASINO_SELECTION_TITLE,
-      MESSAGES.GIVEAWAYS.CASINO_SELECTION_ALL
+      description
     )],
-    components: [ComponentFactory.casinoSelectMenu(CASINOS)]
+    components: [ComponentFactory.casinoSelectMenu(casinosToShow)]
   });
 }
 
