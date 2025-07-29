@@ -1118,27 +1118,46 @@ module.exports = {
             if (originalTicketState) {
               originalTicketState.awaitingSupport = false;
               await client.saveTicketState(originalTicket, originalTicketState);
+              
+              // Continuar o fluxo do ticket original
+              const originalChannel = await interaction.guild.channels.fetch(originalTicket).catch(() => null);
+              if (originalChannel) {
+                await originalChannel.send({
+                  embeds: [EmbedFactory.success('✅ **Ticket liberado pelo suporte**\n\nPode continuar com o seu ticket normalmente.')]
+                });
+                
+                // Continuar do ponto onde parou
+                if (originalTicketState.gwType === 'telegram' && originalTicketState.casino) {
+                  // Já tem casino, continuar com checklist
+                  await askChecklist(originalChannel, originalTicketState);
+                } else if (originalTicketState.gwType === 'telegram' && !originalTicketState.casino) {
+                  // Ainda não tem casino, continuar com seleção
+                  await askCasino(originalChannel, originalTicketState);
+                }
+              }
             }
 
             const currentTicketState = client.ticketStates.get(currentTicket);
             if (currentTicketState) {
               currentTicketState.awaitingSupport = false;
               await client.saveTicketState(currentTicket, currentTicketState);
-            }
-
-            // Notificar ambos os tickets
-            const originalChannel = await interaction.guild.channels.fetch(originalTicket).catch(() => null);
-            if (originalChannel) {
-              await originalChannel.send({
-                embeds: [EmbedFactory.success('✅ **Ticket liberado pelo suporte**\n\nPode continuar com o seu ticket normalmente.')]
-              });
-            }
-
-            const currentChannel = await interaction.guild.channels.fetch(currentTicket).catch(() => null);
-            if (currentChannel) {
-              await currentChannel.send({
-                embeds: [EmbedFactory.success('✅ **Ticket liberado pelo suporte**\n\nPode continuar com o seu ticket normalmente.')]
-              });
+              
+              // Continuar o fluxo do ticket atual
+              const currentChannel = await interaction.guild.channels.fetch(currentTicket).catch(() => null);
+              if (currentChannel) {
+                await currentChannel.send({
+                  embeds: [EmbedFactory.success('✅ **Ticket liberado pelo suporte**\n\nPode continuar com o seu ticket normalmente.')]
+                });
+                
+                // Continuar do ponto onde parou
+                if (currentTicketState.gwType === 'telegram' && currentTicketState.casino) {
+                  // Já tem casino, continuar com checklist
+                  await askChecklist(currentChannel, currentTicketState);
+                } else if (currentTicketState.gwType === 'telegram' && !currentTicketState.casino) {
+                  // Ainda não tem casino, continuar com seleção
+                  await askCasino(currentChannel, currentTicketState);
+                }
+              }
             }
 
             return interaction.reply({
@@ -1159,6 +1178,15 @@ module.exports = {
             await channel.send({
               embeds: [EmbedFactory.success('✅ **Ticket liberado pelo suporte**\n\nPode continuar com o seu ticket normalmente.')]
             });
+            
+            // Continuar do ponto onde parou
+            if (ticketState.gwType === 'telegram' && ticketState.casino) {
+              // Já tem casino, continuar com checklist
+              await askChecklist(channel, ticketState);
+            } else if (ticketState.gwType === 'telegram' && !ticketState.casino) {
+              // Ainda não tem casino, continuar com seleção
+              await askCasino(channel, ticketState);
+            }
           }
 
           return interaction.reply({

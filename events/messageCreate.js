@@ -28,6 +28,13 @@ module.exports = {
       const ticketState = client.ticketStates.get(message.channel.id);
       if (!ticketState) return;
 
+      // Verificar se o ticket está pausado para suporte
+      if (ticketState.awaitingSupport) {
+        return message.reply({ 
+          embeds: [EmbedFactory.error('⏳ **Ticket pausado para revisão**\n\nAguarde enquanto o suporte analisa a situação.')] 
+        });
+      }
+
       // --- TWITCH PROFILE (GTB) ---
       if (ticketState.awaitTwitchProfile) {
         let updated = false;
@@ -269,10 +276,11 @@ module.exports = {
           // Código duplicado detectado
           console.log(`🚨 Código duplicado detectado: ${ticketState.telegramCode}`);
           
-          // Pausar ambos os tickets
+          // Pausar o ticket atual
           ticketState.awaitingSupport = true;
           await client.saveTicketState(message.channel.id, ticketState);
           
+          // Pausar o ticket original
           const originalTicketState = client.ticketStates.get(existingCode.ticketChannelId);
           if (originalTicketState) {
             originalTicketState.awaitingSupport = true;
@@ -283,6 +291,14 @@ module.exports = {
           await message.reply({ 
             embeds: [EmbedFactory.error('O código já foi usado, aguarde o suporte')] 
           });
+
+          // Notificar o ticket original
+          const originalChannel = await client.channels.fetch(existingCode.ticketChannelId).catch(() => null);
+          if (originalChannel) {
+            await originalChannel.send({
+              embeds: [EmbedFactory.error('🚨 **Código duplicado detectado**\n\nO seu código foi usado em outro ticket. Aguarde o suporte.')]
+            });
+          }
 
           // Enviar alerta para o canal GIVEAWAYSHELP
           const giveawaysHelpChannel = await client.channels.fetch(CHANNELS.GIVEAWAYSHELP);
