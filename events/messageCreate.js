@@ -249,60 +249,63 @@ module.exports = {
       // --- TELEGRAM CODE + SCREENSHOT ---
       if (ticketState.gwType === 'telegram' && !ticketState.casino) {
         if (!ticketState.telegramData) ticketState.telegramData = {};
-        if (message.attachments.size > 0) {
-          ticketState.telegramData.hasImage = true;
-          console.log('[TELEGRAM] Print recebido:', message.attachments.first()?.url);
-        }
+        if (message.attachments.size > 0) ticketState.telegramData.hasImage = true;
         const codeMatch = message.content.match(/[a-f0-9]{8}/i);
         if (codeMatch) {
           ticketState.telegramData.hasCode = true;
           ticketState.telegramCode = codeMatch[0].toLowerCase();
-          console.log('[TELEGRAM] Código recebido:', ticketState.telegramCode);
         }
         await client.saveTicketState(message.channel.id, ticketState);
         if (!ticketState.telegramData.hasCode || !ticketState.telegramData.hasImage) {
           const missing = [];
           if (!ticketState.telegramData.hasCode) missing.push('**código**');
           if (!ticketState.telegramData.hasImage) missing.push('**screenshot**');
-          console.log('[TELEGRAM] Faltando:', missing.join(' e '));
           return message.reply({ embeds: [EmbedFactory.error(MESSAGES.GIVEAWAYS.TELEGRAM_CODE_MISSING.replace('{missing}', missing.join(' e ')))] });
         }
-        // Buscar casino correto no canal de logs
-        const logsChannel = message.guild.channels.cache.get(process.env.LOGS_CHANNEL_ID);
-        if (!logsChannel) {
-          console.log('[TELEGRAM] LOGS_CHANNEL_ID não encontrado:', process.env.LOGS_CHANNEL_ID);
-          return message.reply({ embeds: [EmbedFactory.error('Canal de logs não encontrado.')] });
+        // Buscar dados do giveaway no canal de logs
+        const LOGS_CHANNEL_ID = process.env.LOGS_CHANNEL_ID;
+        if (!LOGS_CHANNEL_ID) {
+          return message.reply({ embeds: [EmbedFactory.error('Canal de logs não configurado.')] });
         }
-        console.log('[TELEGRAM] Procurando código no canal de logs:', ticketState.telegramCode);
-        // Buscar últimas 100 mensagens do canal de logs
-        const fetched = await logsChannel.messages.fetch({ limit: 100 });
-        let foundCasino = null;
-        fetched.forEach(msg => {
-          if (msg.content && msg.content.includes(ticketState.telegramCode)) {
-            // Extrair casino da mensagem
-            const casinoMatch = msg.content.match(/Casino:\s*(\w+)/i);
-            if (casinoMatch) {
-              foundCasino = casinoMatch[1];
-              console.log('[TELEGRAM] Casino encontrado no log:', foundCasino);
+        try {
+          const logChannel = await client.channels.fetch(LOGS_CHANNEL_ID);
+          if (!logChannel) throw new Error('Canal de logs não encontrado');
+          const messages = await logChannel.messages.fetch({ limit: 100 });
+          let found = false;
+          for (const msg of messages.values()) {
+            // Exemplo: parsing de embed
+            if (msg.embeds.length > 0) {
+              const embed = msg.embeds[0];
+              const codeField = embed.fields?.find(f => f.value && f.value.toLowerCase().includes(ticketState.telegramCode));
+              if (codeField) {
+                // Extrair dados do embed
+                const casino = embed.fields?.find(f => f.name.toLowerCase().includes('casino'))?.value;
+                const premio = embed.fields?.find(f => f.name.toLowerCase().includes('prêmio') || f.name.toLowerCase().includes('premio'))?.value;
+                ticketState.casino = casino ? casino.trim() : null;
+                ticketState.prize = premio ? premio.trim() : null;
+                found = true;
+                break;
+              }
+            } else if (msg.content && msg.content.toLowerCase().includes(ticketState.telegramCode)) {
+              // Exemplo: parsing de texto puro
+              const casinoMatch = msg.content.match(/Casino:\s*(.+)/i);
+              const premioMatch = msg.content.match(/Pr[ê|e]mio:\s*(.+)/i);
+              ticketState.casino = casinoMatch?.[1]?.trim() || null;
+              ticketState.prize = premioMatch?.[1]?.trim() || null;
+              found = true;
+              break;
             }
           }
-        });
-        if (!foundCasino) {
-          console.log('[TELEGRAM] Código não encontrado nos logs:', ticketState.telegramCode);
-          return message.reply({ embeds: [EmbedFactory.error('Código não encontrado nos logs do Telegram.')] });
+          if (!found) {
+            return message.reply({ embeds: [EmbedFactory.error('Não foi possível encontrar os dados deste giveaway no canal de logs.')] });
+          }
+          await client.saveTicketState(message.channel.id, ticketState);
+          // Prosseguir para o fluxo normal após preencher casino/prize
+          return askCasino(message.channel);
+        } catch (err) {
+          console.error('Erro ao buscar dados do giveaway no canal de logs:', err);
+          return message.reply({ embeds: [EmbedFactory.error('Erro ao buscar dados do giveaway no canal de logs.')] });
         }
-        // Verificar se o casino existe no sistema
-        const CASINOS = require('./casinos');
-        if (!CASINOS[foundCasino]) {
-          console.log('[TELEGRAM] Casino encontrado não está configurado:', foundCasino);
-          return message.reply({ embeds: [EmbedFactory.error('Casino não configurado no sistema')] });
-        }
-        ticketState.casino = foundCasino;
-        ticketState.step = 0;
-        ticketState.awaitProof = true;
-        await client.saveTicketState(message.channel.id, ticketState);
-        console.log('[TELEGRAM] Estado salvo, chamando askChecklist', ticketState);
-        return askChecklist(message.channel, ticketState);
       }
 
       // --- CHECKLIST DOS CASINOS ---
@@ -310,29 +313,35 @@ module.exports = {
         const casino = CASINOS[ticketState.casino];
         if (!casino || !casino.checklist) return;
         const stepIndex = ticketState.step ?? 0;
-        // CORREÇÃO: garantir inicialização
         if (!ticketState.stepData) ticketState.stepData = {};
         if (!ticketState.stepData[stepIndex]) ticketState.stepData[stepIndex] = {};
         const stepTypes = Array.isArray(casino.checklist[stepIndex]?.type) ? casino.checklist[stepIndex].type : [];
-        let updated = false;
         if (stepTypes.includes('image') && message.attachments.size > 0) {
           ticketState.stepData[stepIndex].hasImage = true;
-          updated = true;
+          if (ticketState.casino === 'BCGame' && stepIndex === 1) {
+            const attachment = message.attachments.first();
+            if (attachment.contentType && attachment.contentType.startsWith('image/')) {
+              ticketState.bcGameProfileImage = attachment.url;
+              await client.saveTicketState(message.channel.id, ticketState);
+            }
+          }
         }
         if (stepTypes.includes('text') && message.content && message.content.trim().length >= 5) {
           ticketState.stepData[stepIndex].hasText = true;
           ticketState.stepData[stepIndex].textContent = message.content.trim();
-          updated = true;
           const textContent = message.content.trim();
           if (textContent.length >= 25 && (textContent.startsWith('L') || textContent.startsWith('M') || textContent.startsWith('ltc1'))) {
             ticketState.ltcAddress = textContent;
+            await client.saveTicketState(message.channel.id, ticketState);
           } else if (textContent.length >= 10 && !ticketState.ltcAddress) {
             ticketState.ltcAddress = textContent;
+            await client.saveTicketState(message.channel.id, ticketState);
           }
           if (ticketState.casino === 'BCGame' && !ticketState.bcGameId) {
             if (/^\d+$/.test(textContent) && textContent.length >= 5 && textContent.length <= 15) {
               if (textContent !== ticketState.ticketNumber?.toString()) {
                 ticketState.bcGameId = textContent;
+                await client.saveTicketState(message.channel.id, ticketState);
               }
             }
             const idMatch = textContent.match(/(?:bcgame\s*id|id)\s*:?\s*(\d{5,15})/i);
@@ -340,12 +349,11 @@ module.exports = {
               const extractedId = idMatch[1];
               if (extractedId !== ticketState.ticketNumber?.toString()) {
                 ticketState.bcGameId = extractedId;
+                await client.saveTicketState(message.channel.id, ticketState);
               }
             }
           }
         }
-        // Salvar estado se houve atualização
-        if (updated) await client.saveTicketState(message.channel.id, ticketState);
         const allRequirementsMet = stepTypes.every(type => {
           if (type === 'image') return ticketState.stepData[stepIndex].hasImage;
           if (type === 'text') return ticketState.stepData[stepIndex].hasText;

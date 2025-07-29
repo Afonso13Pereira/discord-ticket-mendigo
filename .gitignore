@@ -1,2 +1,32 @@
 node_modules/
 .env
+Backup discord/utils/transcripts.js
+Backup discord/utils/store.js
+Backup discord/utils/promotions.js
+Backup discord/utils/embeds.js
+Backup discord/utils/database.js
+Backup discord/utils/components.js
+Backup discord/utils/categories.js
+Backup discord/README.md
+Backup discord/package.json
+Backup discord/package-lock.json
+Backup discord/index.js
+Backup discord/events/messageReactionAdd.js
+Backup discord/events/messageCreate.js
+Backup discord/events/interactionCreate.js
+Backup discord/events/casinos/readme.md
+Backup discord/events/casinos/index.js
+Backup discord/events/casinos/hexabet.js
+Backup discord/events/casinos/bcgame.js
+Backup discord/events/casinos/1xbit.js
+Backup discord/deploy-comands.js
+Backup discord/config/message.js
+Backup discord/config/constants.js
+Backup discord/commands/transcript.js
+Backup discord/commands/tickets.js
+Backup discord/commands/stats.js
+Backup discord/commands/promos.js
+Backup discord/commands/debug.js
+Backup discord/commands/close-ticket.js
+Backup discord/commands/atualizartickets.js
+Backup discord/.gitattributes
