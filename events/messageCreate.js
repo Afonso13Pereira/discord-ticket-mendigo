@@ -271,35 +271,29 @@ module.exports = {
         const casino = CASINOS[ticketState.casino];
         if (!casino || !casino.checklist) return;
         const stepIndex = ticketState.step ?? 0;
+        // CORREÇÃO: garantir inicialização
         if (!ticketState.stepData) ticketState.stepData = {};
         if (!ticketState.stepData[stepIndex]) ticketState.stepData[stepIndex] = {};
         const stepTypes = Array.isArray(casino.checklist[stepIndex]?.type) ? casino.checklist[stepIndex].type : [];
+        let updated = false;
         if (stepTypes.includes('image') && message.attachments.size > 0) {
           ticketState.stepData[stepIndex].hasImage = true;
-          if (ticketState.casino === 'BCGame' && stepIndex === 1) {
-            const attachment = message.attachments.first();
-            if (attachment.contentType && attachment.contentType.startsWith('image/')) {
-              ticketState.bcGameProfileImage = attachment.url;
-              await client.saveTicketState(message.channel.id, ticketState);
-            }
-          }
+          updated = true;
         }
         if (stepTypes.includes('text') && message.content && message.content.trim().length >= 5) {
           ticketState.stepData[stepIndex].hasText = true;
           ticketState.stepData[stepIndex].textContent = message.content.trim();
+          updated = true;
           const textContent = message.content.trim();
           if (textContent.length >= 25 && (textContent.startsWith('L') || textContent.startsWith('M') || textContent.startsWith('ltc1'))) {
             ticketState.ltcAddress = textContent;
-            await client.saveTicketState(message.channel.id, ticketState);
           } else if (textContent.length >= 10 && !ticketState.ltcAddress) {
             ticketState.ltcAddress = textContent;
-            await client.saveTicketState(message.channel.id, ticketState);
           }
           if (ticketState.casino === 'BCGame' && !ticketState.bcGameId) {
             if (/^\d+$/.test(textContent) && textContent.length >= 5 && textContent.length <= 15) {
               if (textContent !== ticketState.ticketNumber?.toString()) {
                 ticketState.bcGameId = textContent;
-                await client.saveTicketState(message.channel.id, ticketState);
               }
             }
             const idMatch = textContent.match(/(?:bcgame\s*id|id)\s*:?\s*(\d{5,15})/i);
@@ -307,11 +301,12 @@ module.exports = {
               const extractedId = idMatch[1];
               if (extractedId !== ticketState.ticketNumber?.toString()) {
                 ticketState.bcGameId = extractedId;
-                await client.saveTicketState(message.channel.id, ticketState);
               }
             }
           }
         }
+        // Salvar estado se houve atualização
+        if (updated) await client.saveTicketState(message.channel.id, ticketState);
         const allRequirementsMet = stepTypes.every(type => {
           if (type === 'image') return ticketState.stepData[stepIndex].hasImage;
           if (type === 'text') return ticketState.stepData[stepIndex].hasText;
