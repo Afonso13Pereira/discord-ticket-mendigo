@@ -279,6 +279,46 @@ class TelegramService {
           return;
         }
 
+        // Verificar se já foi processada
+        if (approval.status === 'paid') {
+          // Se já está pago, apenas atualizar a interface do Telegram
+          console.log(`[TELEGRAM] Approval já está paga, atualizando interface apenas`);
+          
+          // Editar a mensagem original no Telegram para mostrar como pago
+          try {
+            let updatedText = `🎁 <b>Giveaway Aprovado</b>\n\n🎰 <b>Casino:</b> ${approval.casino}\n💰 <b>Prêmio:</b> ${approval.prize}\n👤 <b>Usuário:</b> ${approval.userTag}\n🎫 <b>Ticket:</b> #${approval.ticketNumber}`;
+            
+            // Adicionar ID BCGame se existir
+            if (approval.bcGameId) {
+              updatedText += `\n🆔 <b>ID BCGame:</b> ${approval.bcGameId}`;
+            }
+            
+            // Adicionar endereço LTC
+            updatedText += `\n💳 <b>Endereço LTC:</b> ${approval.ltcAddress}`;
+            
+            // Adicionar status de pagamento
+            updatedText += `\n\n✅ <b>Pago com sucesso</b>`;
+            
+            await fetch(`${this.baseUrl}/editMessageText`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                chat_id: this.chatId,
+                message_id: message.message_id,
+                text: updatedText,
+                parse_mode: 'HTML',
+                reply_markup: JSON.stringify({ inline_keyboard: [] }) // Remove botões
+              })
+            });
+          } catch (error) {
+            console.error('[TELEGRAM] Erro ao editar mensagem:', error);
+          }
+          
+          return;
+        }
+
         if (approval.status !== 'pending') {
           await this.sendMessage(`❌ Approval já foi processada (status: ${approval.status})`);
           return;
@@ -413,7 +453,10 @@ class TelegramService {
           return;
         }
 
-        if (approval.status !== 'pending') {
+        // Verificar se já foi processada
+        if (approval.status === 'paid') {
+          console.log(`[TELEGRAM] Approval já está paga, mas permitindo rejeição`);
+        } else if (approval.status !== 'pending') {
           await this.sendMessage(`❌ Approval já foi processada (status: ${approval.status})`);
           return;
         }
@@ -452,7 +495,9 @@ class TelegramService {
             // Editar como texto normal
             await fetch(`${this.baseUrl}/editMessageText`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                'Content-Type': 'application/json',
+              },
               body: JSON.stringify({
                 chat_id: this.chatId,
                 message_id: message.message_id,
@@ -504,7 +549,10 @@ class TelegramService {
           return;
         }
 
-        if (approval.status !== 'pending') {
+        // Verificar se já foi processada
+        if (approval.status === 'paid') {
+          console.log(`[TELEGRAM] Approval já está paga, mas permitindo rejeição`);
+        } else if (approval.status !== 'pending') {
           await this.sendMessage(`❌ Approval já foi processada (status: ${approval.status})`);
           return;
         }
@@ -671,4 +719,4 @@ class TelegramService {
   }
 }
 
-module.exports = new TelegramService(); 
+module.exports = new TelegramService();
