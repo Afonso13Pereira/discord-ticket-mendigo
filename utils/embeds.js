@@ -571,27 +571,6 @@ class EmbedFactory {
         iconURL: 'https://i.imgur.com/Zkymy68.png'
       });
   }
-
-  static duplicateCodeAlert(originalTicket, currentTicket, code) {
-    return new EmbedBuilder()
-      .setColor(COLORS.DANGER)
-      .setTitle(`🚨 ${MESSAGES.DUPLICATE_CODES.ALERT_TITLE}`)
-      .setDescription(MESSAGES.DUPLICATE_CODES.ALERT_DESCRIPTION
-        .replace('{code}', code)
-        .replace('{originalTicket}', originalTicket.ticketNumber)
-        .replace('{originalUser}', originalTicket.userTag)
-        .replace('{originalCasino}', originalTicket.casino || 'N/A')
-        .replace('{originalDate}', new Date(originalTicket.usedAt).toLocaleString('pt-PT'))
-        .replace('{currentTicket}', currentTicket.ticketNumber)
-        .replace('{currentUser}', currentTicket.userTag)
-        .replace('{currentChannel}', `<#${currentTicket.channelId}>`))
-      .setTimestamp()
-      .setFooter({ 
-        text: 'MENDIGOTV.COM | 18+ GAMBLEAWARE',
-        iconURL: 'https://i.imgur.com/Zkymy68.png'
-      });
-  }
-
   // === STATISTICS EMBED ===
   static ticketStatistics(stats) {
     const embed = new EmbedBuilder()

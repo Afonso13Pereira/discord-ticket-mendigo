@@ -312,6 +312,9 @@ module.exports = {
               prize: existingCode.prize,
               usedAt: existingCode.usedAt
             });
+
+            console.log(ticketState, existingCode);
+            
             
             const embed = EmbedFactory.duplicateCodeAlert(
               ticketState.telegramCode,
