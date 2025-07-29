@@ -267,9 +267,37 @@ module.exports = {
           console.log('[TELEGRAM] Faltando:', missing.join(' e '));
           return message.reply({ embeds: [EmbedFactory.error(MESSAGES.GIVEAWAYS.TELEGRAM_CODE_MISSING.replace('{missing}', missing.join(' e ')))] });
         }
-        delete ticketState.telegramData;
-        console.log('[TELEGRAM] Recebido print e código, avançando para checklist.');
-        ticketState.casino = 'Telegram'; // Ajuste conforme o nome no CASINOS
+        // Buscar casino correto no canal de logs
+        const logsChannel = message.guild.channels.cache.get(process.env.LOGS_CHANNEL_ID);
+        if (!logsChannel) {
+          console.log('[TELEGRAM] LOGS_CHANNEL_ID não encontrado:', process.env.LOGS_CHANNEL_ID);
+          return message.reply({ embeds: [EmbedFactory.error('Canal de logs não encontrado.')] });
+        }
+        console.log('[TELEGRAM] Procurando código no canal de logs:', ticketState.telegramCode);
+        // Buscar últimas 100 mensagens do canal de logs
+        const fetched = await logsChannel.messages.fetch({ limit: 100 });
+        let foundCasino = null;
+        fetched.forEach(msg => {
+          if (msg.content && msg.content.includes(ticketState.telegramCode)) {
+            // Extrair casino da mensagem
+            const casinoMatch = msg.content.match(/Casino:\s*(\w+)/i);
+            if (casinoMatch) {
+              foundCasino = casinoMatch[1];
+              console.log('[TELEGRAM] Casino encontrado no log:', foundCasino);
+            }
+          }
+        });
+        if (!foundCasino) {
+          console.log('[TELEGRAM] Código não encontrado nos logs:', ticketState.telegramCode);
+          return message.reply({ embeds: [EmbedFactory.error('Código não encontrado nos logs do Telegram.')] });
+        }
+        // Verificar se o casino existe no sistema
+        const CASINOS = require('./casinos');
+        if (!CASINOS[foundCasino]) {
+          console.log('[TELEGRAM] Casino encontrado não está configurado:', foundCasino);
+          return message.reply({ embeds: [EmbedFactory.error('Casino não configurado no sistema')] });
+        }
+        ticketState.casino = foundCasino;
         ticketState.step = 0;
         ticketState.awaitProof = true;
         await client.saveTicketState(message.channel.id, ticketState);
