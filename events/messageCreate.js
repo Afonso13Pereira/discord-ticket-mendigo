@@ -306,7 +306,7 @@ module.exports = {
             
             await giveawaysHelpChannel.send({
               embeds: [embed],
-              components: [components]
+              components: components
             });
           }
 

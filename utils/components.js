@@ -427,47 +427,20 @@ class ComponentFactory {
 
   // === DUPLICATE CODE BUTTONS ===
   static duplicateCodeButtons(originalTicketId, currentTicketId, code) {
-    const row1 = new ActionRowBuilder()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId(`goto_original_${originalTicketId}`)
-          .setLabel('Ir para Ticket Original')
-          .setStyle(ButtonStyle.Primary)
-          .setEmoji('🎫'),
-        new ButtonBuilder()
-          .setCustomId(`goto_current_${currentTicketId}`)
-          .setLabel('Ir para Ticket Atual')
-          .setStyle(ButtonStyle.Primary)
-          .setEmoji('🎫')
-      );
+    const row1 = this.createButtonRow(
+      this.createButton(`goto_original_${originalTicketId}`, 'Ir para Ticket Original', ButtonStyle.Primary, '🎫'),
+      this.createButton(`goto_current_${currentTicketId}`, 'Ir para Ticket Atual', ButtonStyle.Primary, '🎫')
+    );
 
-    const row2 = new ActionRowBuilder()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId(`release_original_${originalTicketId}_${code}`)
-          .setLabel('Liberar Ticket Original')
-          .setStyle(ButtonStyle.Success)
-          .setEmoji('✅'),
-        new ButtonBuilder()
-          .setCustomId(`release_current_${currentTicketId}_${code}`)
-          .setLabel('Liberar Ticket Atual')
-          .setStyle(ButtonStyle.Success)
-          .setEmoji('✅'),
-        new ButtonBuilder()
-          .setCustomId(`release_both_${originalTicketId}_${currentTicketId}_${code}`)
-          .setLabel('Liberar Ambos')
-          .setStyle(ButtonStyle.Success)
-          .setEmoji('✅')
-      );
+    const row2 = this.createButtonRow(
+      this.createButton(`release_original_${originalTicketId}_${code}`, 'Liberar Ticket Original', ButtonStyle.Success, '✅'),
+      this.createButton(`release_current_${currentTicketId}_${code}`, 'Liberar Ticket Atual', ButtonStyle.Success, '✅'),
+      this.createButton(`release_both_${originalTicketId}_${currentTicketId}_${code}`, 'Liberar Ambos', ButtonStyle.Success, '✅')
+    );
 
-    const row3 = new ActionRowBuilder()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId(`mark_resolved_${originalTicketId}_${currentTicketId}_${code}`)
-          .setLabel('Marcar como Resolvido')
-          .setStyle(ButtonStyle.Danger)
-          .setEmoji('🔒')
-      );
+    const row3 = this.createButtonRow(
+      this.createButton(`mark_resolved_${originalTicketId}_${currentTicketId}_${code}`, 'Marcar como Resolvido', ButtonStyle.Danger, '🔒')
+    );
 
     return [row1, row2, row3];
   }
