@@ -10,7 +10,7 @@ module.exports = {
   checklist: [
     {
       title: 'Passo 1',
-      description: '👋 Hello, já tens conta na 1xBit? Se sim podes avançar para o proximo passo. Se não, regista-te atraves do link: https://bit.ly/_1xBit',
+      description: '👋 Hello, já tens conta na 1xBit? Se sim podes avançar para o proximo passo. Se não, regista-te atraves do link: https://bit.ly/_1xBit e usa o codigo "MENDIGOTV"',
       type: [],
       image: 'https://mendigotv.com/assets/1xbit-59FBzNPj.png'
     },
