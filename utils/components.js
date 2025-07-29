@@ -424,6 +424,53 @@ class ComponentFactory {
       this.createButton('not_received_support', 'Passaram 48h e ainda não recebi', ButtonStyle.Danger, '⏰')
     );
   }
+
+  // === DUPLICATE CODE BUTTONS ===
+  static duplicateCodeButtons(originalTicketId, currentTicketId, code) {
+    const row1 = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId(`goto_original_${originalTicketId}`)
+          .setLabel('Ir para Ticket Original')
+          .setStyle(ButtonStyle.Primary)
+          .setEmoji('🎫'),
+        new ButtonBuilder()
+          .setCustomId(`goto_current_${currentTicketId}`)
+          .setLabel('Ir para Ticket Atual')
+          .setStyle(ButtonStyle.Primary)
+          .setEmoji('🎫')
+      );
+
+    const row2 = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId(`release_original_${originalTicketId}_${code}`)
+          .setLabel('Liberar Ticket Original')
+          .setStyle(ButtonStyle.Success)
+          .setEmoji('✅'),
+        new ButtonBuilder()
+          .setCustomId(`release_current_${currentTicketId}_${code}`)
+          .setLabel('Liberar Ticket Atual')
+          .setStyle(ButtonStyle.Success)
+          .setEmoji('✅'),
+        new ButtonBuilder()
+          .setCustomId(`release_both_${originalTicketId}_${currentTicketId}_${code}`)
+          .setLabel('Liberar Ambos')
+          .setStyle(ButtonStyle.Success)
+          .setEmoji('✅')
+      );
+
+    const row3 = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId(`mark_resolved_${originalTicketId}_${currentTicketId}_${code}`)
+          .setLabel('Marcar como Resolvido')
+          .setStyle(ButtonStyle.Danger)
+          .setEmoji('🔒')
+      );
+
+    return [row1, row2, row3];
+  }
 }
 
 module.exports = ComponentFactory;

@@ -1060,8 +1060,10 @@ module.exports = {
       });
     }
 
-    // NOVO: Botão para resolver códigos duplicados
-    if (interaction.isButton() && interaction.customId.startsWith('duplicate_resolved_')) {
+    // Duplicate Code Resolution Buttons
+    if (interaction.isButton() && (interaction.customId.startsWith('goto_') || 
+                                   interaction.customId.startsWith('release_') || 
+                                   interaction.customId.startsWith('mark_resolved_'))) {
       // Check if user has mod role
       if (!interaction.member.roles.cache.has(ROLES.MOD)) {
         return interaction.reply({
@@ -1070,59 +1072,117 @@ module.exports = {
         });
       }
 
-      const parts = interaction.customId.split('_');
-      const currentTicketId = parts[2];
-      const originalTicketId = parts[3];
-
       try {
-        // Reativar ambos os tickets
-        const currentTicketState = client.ticketStates.get(currentTicketId);
-        if (currentTicketState) {
-          currentTicketState.awaitingSupport = false;
-          await client.saveTicketState(currentTicketId, currentTicketState);
-        }
+        const parts = interaction.customId.split('_');
+        const action = parts[0];
+        const target = parts[1];
 
-        if (originalTicketId && originalTicketId !== 'undefined') {
-          const originalTicketState = client.ticketStates.get(originalTicketId);
-          if (originalTicketState) {
-            originalTicketState.awaitingSupport = false;
-            await client.saveTicketState(originalTicketId, originalTicketState);
-          }
-        }
-
-        // Notificar ambos os tickets
-        const currentChannel = await interaction.guild.channels.fetch(currentTicketId).catch(() => null);
-        if (currentChannel) {
-          await currentChannel.send({
-            embeds: [EmbedFactory.success('✅ **Situação resolvida pelo suporte**\n\nPode continuar com o seu ticket normalmente.')]
-          });
-        }
-
-        if (originalTicketId && originalTicketId !== 'undefined') {
-          const originalChannel = await interaction.guild.channels.fetch(originalTicketId).catch(() => null);
-          if (originalChannel) {
-            await originalChannel.send({
-              embeds: [EmbedFactory.success('✅ **Situação resolvida pelo suporte**\n\nPode continuar com o seu ticket normalmente.')]
+        if (action === 'goto') {
+          // Botões para ir para os tickets - não apagar a mensagem
+          const ticketId = parts[2];
+          const channel = await interaction.guild.channels.fetch(ticketId).catch(() => null);
+          
+          if (channel) {
+            return interaction.reply({
+              embeds: [EmbedFactory.success(`Redirecionando para o ticket <#${ticketId}>`)],
+              flags: 64
+            });
+          } else {
+            return interaction.reply({
+              embeds: [EmbedFactory.error('Ticket não encontrado')],
+              flags: 64
             });
           }
         }
 
-        // Delete the alert message
-        try {
-          await interaction.message.delete();
-        } catch (error) {
-          console.error('Error deleting duplicate code alert message:', error);
+        // Para todas as outras ações, apagar a mensagem
+        await interaction.message.delete();
+
+        if (action === 'release') {
+          let ticketToRelease = null;
+          let code = null;
+
+          if (target === 'original') {
+            ticketToRelease = parts[2];
+            code = parts[3];
+          } else if (target === 'current') {
+            ticketToRelease = parts[2];
+            code = parts[3];
+          } else if (target === 'both') {
+            const originalTicket = parts[2];
+            const currentTicket = parts[3];
+            code = parts[4];
+
+            // Liberar ambos os tickets
+            const originalTicketState = client.ticketStates.get(originalTicket);
+            if (originalTicketState) {
+              originalTicketState.awaitingSupport = false;
+              await client.saveTicketState(originalTicket, originalTicketState);
+            }
+
+            const currentTicketState = client.ticketStates.get(currentTicket);
+            if (currentTicketState) {
+              currentTicketState.awaitingSupport = false;
+              await client.saveTicketState(currentTicket, currentTicketState);
+            }
+
+            // Notificar ambos os tickets
+            const originalChannel = await interaction.guild.channels.fetch(originalTicket).catch(() => null);
+            if (originalChannel) {
+              await originalChannel.send({
+                embeds: [EmbedFactory.success('✅ **Ticket liberado pelo suporte**\n\nPode continuar com o seu ticket normalmente.')]
+              });
+            }
+
+            const currentChannel = await interaction.guild.channels.fetch(currentTicket).catch(() => null);
+            if (currentChannel) {
+              await currentChannel.send({
+                embeds: [EmbedFactory.success('✅ **Ticket liberado pelo suporte**\n\nPode continuar com o seu ticket normalmente.')]
+              });
+            }
+
+            return interaction.reply({
+              embeds: [EmbedFactory.success('✅ Ambos os tickets foram liberados')],
+              flags: 64
+            });
+          }
+
+          // Liberar ticket específico
+          const ticketState = client.ticketStates.get(ticketToRelease);
+          if (ticketState) {
+            ticketState.awaitingSupport = false;
+            await client.saveTicketState(ticketToRelease, ticketState);
+          }
+
+          const channel = await interaction.guild.channels.fetch(ticketToRelease).catch(() => null);
+          if (channel) {
+            await channel.send({
+              embeds: [EmbedFactory.success('✅ **Ticket liberado pelo suporte**\n\nPode continuar com o seu ticket normalmente.')]
+            });
+          }
+
+          return interaction.reply({
+            embeds: [EmbedFactory.success(`✅ Ticket liberado com sucesso`)],
+            flags: 64
+          });
         }
 
-        return interaction.reply({
-          embeds: [EmbedFactory.success(MESSAGES.DUPLICATE_CODES.SITUATION_RESOLVED)],
-          flags: 64
-        });
+        if (action === 'mark' && target === 'resolved') {
+          const originalTicket = parts[2];
+          const currentTicket = parts[3];
+          const code = parts[4];
+
+          // Marcar como resolvido - não liberar os tickets
+          return interaction.reply({
+            embeds: [EmbedFactory.success('✅ Situação marcada como resolvida')],
+            flags: 64
+          });
+        }
 
       } catch (error) {
-        console.error('Error resolving duplicate code situation:', error);
+        console.error('Error handling duplicate code resolution:', error);
         return interaction.reply({
-          embeds: [EmbedFactory.error(MESSAGES.DUPLICATE_CODES.RESOLUTION_ERROR)],
+          embeds: [EmbedFactory.error('Erro ao processar a ação')],
           flags: 64
         });
       }
@@ -1994,10 +2054,10 @@ module.exports = {
         } else if (ticketState?.gwType === 'telegram') {
           // Corrigir para buscar o valor do prêmio corretamente
           let telegramValue = ticketState.prize;
-          if (!telegramValue || telegramValue === 'N/A') {
-            telegramValue = submission.prize || 'Indefinido';
+          if (!telegramValue || telegramValue === 'N/A' || telegramValue === 'Indefinido') {
+            telegramValue = '';
           }
-          modalTitle = `💰 Prêmio Telegram - ${telegramValue}€`;
+          modalTitle = `💰 Prêmio Telegram - ${telegramValue ? telegramValue + '€' : ''}`;
           modalLabel = 'Confirmar valor do prêmio';
           modalPlaceholder = telegramValue;
         } else if (ticketState?.gwType === 'other') {

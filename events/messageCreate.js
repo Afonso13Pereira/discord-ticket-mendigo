@@ -262,6 +262,56 @@ module.exports = {
           if (!ticketState.telegramData.hasImage) missing.push('**screenshot**');
           return message.reply({ embeds: [EmbedFactory.error(MESSAGES.GIVEAWAYS.TELEGRAM_CODE_MISSING.replace('{missing}', missing.join(' e ')))] });
         }
+
+        // Verificar se o código já foi usado
+        const existingCode = await client.db.checkTelegramCode(ticketState.telegramCode);
+        if (existingCode && existingCode.ticketChannelId !== message.channel.id) {
+          // Código duplicado detectado
+          console.log(`🚨 Código duplicado detectado: ${ticketState.telegramCode}`);
+          
+          // Pausar ambos os tickets
+          ticketState.awaitingSupport = true;
+          await client.saveTicketState(message.channel.id, ticketState);
+          
+          const originalTicketState = client.ticketStates.get(existingCode.ticketChannelId);
+          if (originalTicketState) {
+            originalTicketState.awaitingSupport = true;
+            await client.saveTicketState(existingCode.ticketChannelId, originalTicketState);
+          }
+
+          // Notificar o ticket atual
+          await message.reply({ 
+            embeds: [EmbedFactory.error('O código já foi usado, aguarde o suporte')] 
+          });
+
+          // Enviar alerta para o canal GIVEAWAYSHELP
+          const giveawaysHelpChannel = await client.channels.fetch(CHANNELS.GIVEAWAYSHELP);
+          if (giveawaysHelpChannel) {
+            const embed = EmbedFactory.duplicateCodeAlert(
+              ticketState.telegramCode,
+              existingCode.ticketNumber,
+              existingCode.userTag,
+              existingCode.casino || 'N/A',
+              new Date(existingCode.usedAt).toLocaleString('pt-BR'),
+              ticketState.ticketNumber,
+              ticketState.ownerTag,
+              message.channel.id
+            );
+            
+            const components = ComponentFactory.duplicateCodeButtons(
+              existingCode.ticketChannelId,
+              message.channel.id,
+              ticketState.telegramCode
+            );
+            
+            await giveawaysHelpChannel.send({
+              embeds: [embed],
+              components: [components]
+            });
+          }
+
+          return;
+        }
         // Buscar dados do giveaway no canal de logs
         const LOGS_CHANNEL_ID = process.env.LOGS_CHANNEL_ID;
         if (!LOGS_CHANNEL_ID) {
@@ -280,7 +330,7 @@ module.exports = {
               if (codeField) {
                 // Extrair dados do embed
                 const casino = embed.fields?.find(f => f.name.toLowerCase().includes('casino'))?.value;
-                const premio = embed.fields?.find(f => f.name.toLowerCase().includes('prêmio') || f.name.toLowerCase().includes('premio'))?.value;
+                const premio = embed.fields?.find(f => f.name.toLowerCase().includes('prendas'))?.value;
                 ticketState.casino = casino ? casino.trim() : null;
                 ticketState.prize = premio ? premio.trim() : null;
                 found = true;
@@ -289,7 +339,7 @@ module.exports = {
             } else if (msg.content && msg.content.toLowerCase().includes(ticketState.telegramCode)) {
               // Exemplo: parsing de texto puro
               const casinoMatch = msg.content.match(/Casino:\s*(.+)/i);
-              const premioMatch = msg.content.match(/Pr[ê|e]mio:\s*(.+)/i);
+              const premioMatch = msg.content.match(/Prendas:\s*(\d+)/i);
               ticketState.casino = casinoMatch?.[1]?.trim() || null;
               ticketState.prize = premioMatch?.[1]?.trim() || null;
               found = true;
@@ -299,6 +349,18 @@ module.exports = {
           if (!found) {
             return message.reply({ embeds: [EmbedFactory.error('Não foi possível encontrar os dados deste giveaway no canal de logs.')] });
           }
+          
+          // Salvar o código do Telegram no banco de dados
+          await client.db.saveTelegramCode(
+            ticketState.telegramCode,
+            message.channel.id,
+            ticketState.ticketNumber,
+            message.author.id,
+            message.author.tag,
+            ticketState.casino,
+            ticketState.prize
+          );
+          
           await client.saveTicketState(message.channel.id, ticketState);
           // Prosseguir para o fluxo normal após preencher casino/prize
           return askCasino(message.channel, ticketState);

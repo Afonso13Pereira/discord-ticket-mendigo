@@ -513,6 +513,35 @@ class EmbedFactory {
       });
   }
 
+  static duplicateCodeAlert(code, originalTicket, originalUser, originalCasino, originalDate, currentTicket, currentUser, currentChannel) {
+    return new EmbedBuilder()
+      .setColor(COLORS.DANGER)
+      .setTitle(`${EMOJIS.ERROR} CÓDIGO TELEGRAM DUPLICADO DETECTADO`)
+      .setDescription([
+        '**🚨 CÓDIGO TELEGRAM DUPLICADO DETECTADO**',
+        '',
+        `🔴 **Código:** \`${code}\``,
+        '',
+        '📋 **Uso Original:**',
+        `• Ticket: #${originalTicket}`,
+        `• Usuário: ${originalUser}`,
+        `• Casino: ${originalCasino}`,
+        `• Data: ${originalDate}`,
+        '',
+        '🆕 **Tentativa Atual:**',
+        `• Ticket: #${currentTicket}`,
+        `• Usuário: ${currentUser}`,
+        `• Canal: <#${currentChannel}>`,
+        '',
+        '⚠️ **AMBOS os tickets foram pausados para revisão manual**'
+      ].join('\n'))
+      .setTimestamp()
+      .setFooter({ 
+        text: 'MENDIGOTV.COM | 18+ GAMBLEAWARE',
+        iconURL: 'https://i.imgur.com/Zkymy68.png'
+      });
+  }
+
   static reviewRequest(reason, ticketNumber, userTag) {
     return new EmbedBuilder()
       .setColor(COLORS.WARNING)
