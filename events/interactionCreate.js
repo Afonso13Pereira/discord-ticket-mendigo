@@ -1061,8 +1061,7 @@ module.exports = {
     }
 
     // Duplicate Code Resolution Buttons
-    if (interaction.isButton() && (interaction.customId.startsWith('goto_') || 
-                                   interaction.customId.startsWith('release_') || 
+    if (interaction.isButton() && (interaction.customId.startsWith('release_') || 
                                    interaction.customId.startsWith('mark_resolved_'))) {
       // Check if user has mod role
       if (!interaction.member.roles.cache.has(ROLES.MOD)) {
@@ -1077,25 +1076,7 @@ module.exports = {
         const action = parts[0];
         const target = parts[1];
 
-        if (action === 'goto') {
-          // Botões para ir para os tickets - não apagar a mensagem
-          const ticketId = parts[2];
-          const channel = await interaction.guild.channels.fetch(ticketId).catch(() => null);
-          
-          if (channel) {
-            return interaction.reply({
-              embeds: [EmbedFactory.success(`Redirecionando para o ticket <#${ticketId}>`)],
-              flags: 64
-            });
-          } else {
-            return interaction.reply({
-              embeds: [EmbedFactory.error('Ticket não encontrado')],
-              flags: 64
-            });
-          }
-        }
-
-        // Para todas as outras ações, apagar a mensagem
+        // Para todas as ações, apagar a mensagem
         await interaction.message.delete();
 
         if (action === 'release') {

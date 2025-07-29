@@ -303,12 +303,22 @@ module.exports = {
           // Enviar alerta para o canal GIVEAWAYSHELP
           const giveawaysHelpChannel = await client.channels.fetch(CHANNELS.GIVEAWAYSHELP);
           if (giveawaysHelpChannel) {
+            // Debug: Log dos dados do código existente
+            console.log('🔍 Dados do código existente:', {
+              code: existingCode.code,
+              ticketNumber: existingCode.ticketNumber,
+              userTag: existingCode.userTag,
+              casino: existingCode.casino,
+              prize: existingCode.prize,
+              usedAt: existingCode.usedAt
+            });
+            
             const embed = EmbedFactory.duplicateCodeAlert(
               ticketState.telegramCode,
               existingCode.ticketNumber,
               existingCode.userTag,
-              existingCode.casino || 'N/A',
-              new Date(existingCode.usedAt).toLocaleString('pt-BR'),
+              existingCode.casino,
+              existingCode.usedAt ? new Date(existingCode.usedAt).toLocaleString('pt-BR') : 'Data não disponível',
               ticketState.ticketNumber,
               ticketState.ownerTag,
               message.channel.id
@@ -366,7 +376,17 @@ module.exports = {
             return message.reply({ embeds: [EmbedFactory.error('Não foi possível encontrar os dados deste giveaway no canal de logs.')] });
           }
           
-          // Salvar o código do Telegram no banco de dados
+          await client.saveTicketState(message.channel.id, ticketState);
+          
+          // Salvar o código do Telegram no banco de dados APÓS extrair os dados
+          console.log('💾 Salvando código do Telegram:', {
+            code: ticketState.telegramCode,
+            ticketNumber: ticketState.ticketNumber,
+            userTag: message.author.tag,
+            casino: ticketState.casino,
+            prize: ticketState.prize
+          });
+          
           await client.db.saveTelegramCode(
             ticketState.telegramCode,
             message.channel.id,
@@ -377,7 +397,6 @@ module.exports = {
             ticketState.prize
           );
           
-          await client.saveTicketState(message.channel.id, ticketState);
           // Prosseguir para o fluxo normal após preencher casino/prize
           return askCasino(message.channel, ticketState);
         } catch (err) {

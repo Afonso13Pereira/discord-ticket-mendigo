@@ -428,8 +428,16 @@ class ComponentFactory {
   // === DUPLICATE CODE BUTTONS ===
   static duplicateCodeButtons(originalTicketId, currentTicketId, code) {
     const row1 = this.createButtonRow(
-      this.createButton(`goto_original_${originalTicketId}`, 'Ir para Ticket Original', ButtonStyle.Primary, '🎫'),
-      this.createButton(`goto_current_${currentTicketId}`, 'Ir para Ticket Atual', ButtonStyle.Primary, '🎫')
+      this.createLinkButton(
+        `https://discord.com/channels/${process.env.GUILD_ID || '@me'}/${originalTicketId}`,
+        'Ir para Ticket Original',
+        '🎫'
+      ),
+      this.createLinkButton(
+        `https://discord.com/channels/${process.env.GUILD_ID || '@me'}/${currentTicketId}`,
+        'Ir para Ticket Atual',
+        '🎫'
+      )
     );
 
     const row2 = this.createButtonRow(

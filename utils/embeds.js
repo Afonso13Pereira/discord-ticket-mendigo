@@ -518,20 +518,18 @@ class EmbedFactory {
       .setColor(COLORS.DANGER)
       .setTitle(`${EMOJIS.ERROR} CÓDIGO TELEGRAM DUPLICADO DETECTADO`)
       .setDescription([
-        '**🚨 CÓDIGO TELEGRAM DUPLICADO DETECTADO**',
-        '',
         `🔴 **Código:** \`${code}\``,
         '',
         '📋 **Uso Original:**',
-        `• Ticket: #${originalTicket}`,
-        `• Usuário: ${originalUser}`,
-        `• Casino: ${originalCasino}`,
-        `• Data: ${originalDate}`,
+        `• Ticket: #${originalTicket || 'Não encontrado'}`,
+        `• Usuário: ${originalUser || 'Não encontrado'}`,
+        `• Casino: ${originalCasino || 'Não definido'}`,
+        `• Data: ${originalDate || 'Não disponível'}`,
         '',
         '🆕 **Tentativa Atual:**',
-        `• Ticket: #${currentTicket}`,
-        `• Usuário: ${currentUser}`,
-        `• Canal: <#${currentChannel}>`,
+        `• Ticket: #${currentTicket || 'Não encontrado'}`,
+        `• Usuário: ${currentUser || 'Não encontrado'}`,
+        `• Canal: <#${currentChannel || 'Não encontrado'}>`,
         '',
         '⚠️ **AMBOS os tickets foram pausados para revisão manual**'
       ].join('\n'))
