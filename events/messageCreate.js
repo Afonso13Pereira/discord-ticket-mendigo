@@ -249,21 +249,32 @@ module.exports = {
       // --- TELEGRAM CODE + SCREENSHOT ---
       if (ticketState.gwType === 'telegram' && !ticketState.casino) {
         if (!ticketState.telegramData) ticketState.telegramData = {};
-        if (message.attachments.size > 0) ticketState.telegramData.hasImage = true;
+        if (message.attachments.size > 0) {
+          ticketState.telegramData.hasImage = true;
+          console.log('[TELEGRAM] Print recebido:', message.attachments.first()?.url);
+        }
         const codeMatch = message.content.match(/[a-f0-9]{8}/i);
         if (codeMatch) {
           ticketState.telegramData.hasCode = true;
           ticketState.telegramCode = codeMatch[0].toLowerCase();
+          console.log('[TELEGRAM] Código recebido:', ticketState.telegramCode);
         }
         await client.saveTicketState(message.channel.id, ticketState);
         if (!ticketState.telegramData.hasCode || !ticketState.telegramData.hasImage) {
           const missing = [];
           if (!ticketState.telegramData.hasCode) missing.push('**código**');
           if (!ticketState.telegramData.hasImage) missing.push('**screenshot**');
+          console.log('[TELEGRAM] Faltando:', missing.join(' e '));
           return message.reply({ embeds: [EmbedFactory.error(MESSAGES.GIVEAWAYS.TELEGRAM_CODE_MISSING.replace('{missing}', missing.join(' e ')))] });
         }
         delete ticketState.telegramData;
-        // ... (restante da lógica de verificação de código duplicado, etc)
+        console.log('[TELEGRAM] Recebido print e código, avançando para checklist.');
+        ticketState.casino = 'Telegram'; // Ajuste conforme o nome no CASINOS
+        ticketState.step = 0;
+        ticketState.awaitProof = true;
+        await client.saveTicketState(message.channel.id, ticketState);
+        console.log('[TELEGRAM] Estado salvo, chamando askChecklist', ticketState);
+        return askChecklist(message.channel, ticketState);
       }
 
       // --- CHECKLIST DOS CASINOS ---
