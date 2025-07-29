@@ -299,19 +299,57 @@ class TelegramService {
             // Adicionar status de pagamento
             updatedText += `\n\n✅ <b>Pago com sucesso</b>`;
             
-            await fetch(`${this.baseUrl}/editMessageText`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                chat_id: this.chatId,
-                message_id: message.message_id,
-                text: updatedText,
-                parse_mode: 'HTML',
-                reply_markup: JSON.stringify({ inline_keyboard: [] }) // Remove botões
-              })
-            });
+            console.log(`[TELEGRAM] Tentando editar mensagem para ticket #${approval.ticketNumber}`);
+            console.log(`[TELEGRAM] Casino: ${approval.casino}, Tem imagem: ${!!approval.bcGameProfileImage}`);
+            
+            // Se for BCGame e tiver imagem, editar como foto
+            if (approval.casino === 'BCGame' && approval.bcGameProfileImage) {
+              console.log(`[TELEGRAM] Editando como foto para BCGame`);
+              const response = await fetch(`${this.baseUrl}/editMessageMedia`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: this.chatId,
+                  message_id: message.message_id,
+                  media: JSON.stringify({
+                    type: 'photo',
+                    media: approval.bcGameProfileImage,
+                    caption: updatedText,
+                    parse_mode: 'HTML'
+                  }),
+                  reply_markup: JSON.stringify({ inline_keyboard: [] }) // Remove botões
+                })
+              });
+              
+              const result = await response.json();
+              if (!result.ok) {
+                console.error('[TELEGRAM] Erro ao editar mensagem como foto:', result);
+              } else {
+                console.log('[TELEGRAM] Mensagem editada com sucesso como foto');
+              }
+            } else {
+              console.log(`[TELEGRAM] Editando como texto normal`);
+              const response = await fetch(`${this.baseUrl}/editMessageText`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  chat_id: this.chatId,
+                  message_id: message.message_id,
+                  text: updatedText,
+                  parse_mode: 'HTML',
+                  reply_markup: JSON.stringify({ inline_keyboard: [] }) // Remove botões
+                })
+              });
+              
+              const result = await response.json();
+              if (!result.ok) {
+                console.error('[TELEGRAM] Erro ao editar mensagem como texto:', result);
+              } else {
+                console.log('[TELEGRAM] Mensagem editada com sucesso como texto');
+              }
+            }
           } catch (error) {
             console.error('[TELEGRAM] Erro ao editar mensagem:', error);
           }
@@ -342,19 +380,57 @@ class TelegramService {
           // Adicionar status de pagamento
           updatedText += `\n\n✅ <b>Pago com sucesso por @${from.username}</b>`;
           
-          await fetch(`${this.baseUrl}/editMessageText`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              chat_id: this.chatId,
-              message_id: message.message_id,
-              text: updatedText,
-              parse_mode: 'HTML',
-              reply_markup: JSON.stringify({ inline_keyboard: [] }) // Remove botões
-            })
-          });
+          console.log(`[TELEGRAM] Tentando editar mensagem para ticket #${approval.ticketNumber} (pagamento normal)`);
+          console.log(`[TELEGRAM] Casino: ${approval.casino}, Tem imagem: ${!!approval.bcGameProfileImage}`);
+          
+          // Se for BCGame e tiver imagem, editar como foto
+          if (approval.casino === 'BCGame' && approval.bcGameProfileImage) {
+            console.log(`[TELEGRAM] Editando como foto para BCGame (pagamento normal)`);
+            const response = await fetch(`${this.baseUrl}/editMessageMedia`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: this.chatId,
+                message_id: message.message_id,
+                media: JSON.stringify({
+                  type: 'photo',
+                  media: approval.bcGameProfileImage,
+                  caption: updatedText,
+                  parse_mode: 'HTML'
+                }),
+                reply_markup: JSON.stringify({ inline_keyboard: [] }) // Remove botões
+              })
+            });
+            
+            const result = await response.json();
+            if (!result.ok) {
+              console.error('[TELEGRAM] Erro ao editar mensagem como foto (pagamento normal):', result);
+            } else {
+              console.log('[TELEGRAM] Mensagem editada com sucesso como foto (pagamento normal)');
+            }
+          } else {
+            console.log(`[TELEGRAM] Editando como texto normal (pagamento normal)`);
+            const response = await fetch(`${this.baseUrl}/editMessageText`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                chat_id: this.chatId,
+                message_id: message.message_id,
+                text: updatedText,
+                parse_mode: 'HTML',
+                reply_markup: JSON.stringify({ inline_keyboard: [] }) // Remove botões
+              })
+            });
+            
+            const result = await response.json();
+            if (!result.ok) {
+              console.error('[TELEGRAM] Erro ao editar mensagem como texto (pagamento normal):', result);
+            } else {
+              console.log('[TELEGRAM] Mensagem editada com sucesso como texto (pagamento normal)');
+            }
+          }
         } catch (error) {
           console.error('[TELEGRAM] Erro ao editar mensagem:', error);
         }
