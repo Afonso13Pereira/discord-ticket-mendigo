@@ -242,19 +242,19 @@ class TelegramService {
       inline_keyboard: [
         [
           {
-            text: '❌ Não afiliado',
+            text: '❌ Hello, não és nosso afiliado',
             callback_data: `reject_reason_${approvalId}_nao_afiliado`
           }
         ],
         [
           {
-            text: '❌ Address errado',
+            text: '❌ O adress está errado, por favor, verifica-o',
             callback_data: `reject_reason_${approvalId}_address_errado`
           }
         ],
         [
           {
-            text: '❌ Outro, contacta o suporte',
+            text: '❌ Giveaway não foi pago, entra em contacto com o suporte',
             callback_data: `reject_reason_${approvalId}_outro`
           }
         ]
