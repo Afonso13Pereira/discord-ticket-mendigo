@@ -440,8 +440,10 @@ class TelegramService {
           const ticketChannel = await client.channels.fetch(approval.ticketChannelId);
           if (ticketChannel) {
             const EmbedFactory = require('../utils/embeds');
+            const ComponentFactory = require('../utils/components');
             await ticketChannel.send({
-              embeds: [EmbedFactory.giveawayPaid()]
+              embeds: [EmbedFactory.giveawayPaid()],
+              components: [ComponentFactory.giveawayPaidButtons()]
             });
           }
         } catch (error) {
