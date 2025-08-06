@@ -393,10 +393,7 @@ module.exports = {
         await client.db.updateApproval(approvalId, 'pending', approvalMessage.id);
 
         // Salvar ID da mensagem do Discord no approval
-        await client.db.Approval.updateOne(
-          { approvalId: approvalId },
-          { $set: { discordMessageId: approvalMessage.id } }
-        );
+        await client.db.updateApproval(approvalId, 'pending', approvalMessage.id);
 
         // NOVO: Enviar mensagem para o Telegram
         const telegramService = require('../utils/telegram');
@@ -406,10 +403,9 @@ module.exports = {
             const telegramMessage = await telegramService.sendApprovalMessage(approval);
             // Salvar ID da mensagem do Telegram no approval
             if (telegramMessage && telegramMessage.message_id) {
-              await client.db.Approval.updateOne(
-                { approvalId: approvalId },
-                { $set: { telegramMessageId: telegramMessage.message_id } }
-              );
+              // Note: The updateApproval method doesn't support telegramMessageId yet
+              // This would need to be added to the database manager if needed
+              console.log(`Telegram message ID: ${telegramMessage.message_id} for approval ${approvalId}`);
             }
             Logger.telegram(`Approval message sent for ticket #${submission.ticketNumber}`);
           } catch (error) {
@@ -490,32 +486,20 @@ module.exports = {
           }
 
           // Atualizar approval no banco
-          await client.db.Approval.updateOne(
-            { approvalId: approvalId },
-            { 
-              $set: { 
-                casino, 
-                prize, 
-                bcGameId, 
-                ltcAddress,
-                updatedAt: new Date()
-              }
-            }
-          );
+          await client.db.updateApprovalFields(approvalId, {
+            casino,
+            prize,
+            bcGameId,
+            ltcAddress
+          });
 
           // Atualizar ticket state
-          await client.db.TicketState.updateOne(
-            { channelId: approval.ticketChannelId },
-            { 
-              $set: { 
-                casino, 
-                prize, 
-                bcGameId, 
-                ltcAddress,
-                updatedAt: new Date()
-              }
-            }
-          );
+          await client.db.updateTicketState(approval.ticketChannelId, {
+            casino,
+            prize,
+            bcGameId,
+            ltcAddress
+          });
 
           // Buscar approval atualizado
           const updatedApproval = await client.db.getApproval(approvalId);
@@ -590,17 +574,12 @@ module.exports = {
           }
 
           // Update submission
-          await client.db.Submission.updateOne(
-            { submissionId: submissionId },
-            { 
-              $set: { 
-                casino, 
-                prize, 
-                bcGameId, 
-                ltcAddress
-              }
-            }
-          );
+          await client.db.updateSubmissionFields(submissionId, {
+            casino,
+            prize,
+            bcGameId,
+            ltcAddress
+          });
 
           // NOVO: Atualizar mensagem de submissão no Discord
           if (submission.discordMessageId) {
@@ -625,18 +604,12 @@ module.exports = {
           }
 
           // Update ticket state
-          await client.db.TicketState.updateOne(
-            { channelId: submission.ticketChannelId },
-            { 
-              $set: { 
-                casino, 
-                prize, 
-                bcGameId, 
-                ltcAddress,
-                updatedAt: new Date()
-              }
-            }
-          );
+          await client.db.updateTicketState(submission.ticketChannelId, {
+            casino,
+            prize,
+            bcGameId,
+            ltcAddress
+          });
 
           console.log(`[EDIT] Submission ${submissionId} updated successfully`);
           
@@ -665,18 +638,12 @@ module.exports = {
         
         try {
           // Update ticket state
-          await client.db.TicketState.updateOne(
-            { channelId: channelId },
-            { 
-              $set: { 
-                casino, 
-                prize, 
-                bcGameId, 
-                ltcAddress,
-                updatedAt: new Date()
-              }
-            }
-          );
+          await client.db.updateTicketState(channelId, {
+            casino,
+            prize,
+            bcGameId,
+            ltcAddress
+          });
 
           console.log(`[EDIT] Ticket ${channelId} updated successfully`);
           
@@ -1995,10 +1962,9 @@ module.exports = {
       await client.db.updateSubmission(submissionId, 'pending');
       
       // NOVO: Salvar ID da mensagem de submissão
-      await client.db.Submission.updateOne(
-        { submissionId: submissionId },
-        { $set: { discordMessageId: submissionMessage.id } }
-      );
+      await client.db.updateSubmissionFields(submissionId, {
+        discordMessageId: submissionMessage.id
+      });
       
       // NOVO: Apagar a mensagem com o botão "Finalizar" para evitar spam
       try {
@@ -2261,29 +2227,31 @@ module.exports = {
       // Fechar ticket com transcript
       const ticketState = client.ticketStates.get(interaction.channel.id);
       if (ticketState) {
-        // Criar transcript
-        const transcriptId = await client.db.createTranscript(
-          interaction.channel.id,
-          interaction.channel.name,
-          ticketState.ticketNumber,
-          ticketState.ownerTag,
-          ticketState.category || 'Giveaway'
-        );
+        // Criar transcript usando TranscriptManager
+        const TranscriptManager = require('../utils/transcripts');
+        const transcriptManager = new TranscriptManager(client.db);
         
-        if (transcriptId) {
-          // Enviar transcript para o canal de logs
-          const logsChannel = await interaction.guild.channels.fetch(CHANNELS.LOGS);
-          if (logsChannel) {
-            const transcriptEmbed = EmbedFactory.transcriptCreated(
-              transcriptId,
-              interaction.channel.name,
-              ticketState.ticketNumber,
-              ticketState.ownerTag,
-              ticketState.category || 'Giveaway'
-            );
-            const transcriptButtons = ComponentFactory.transcriptButtons(transcriptId);
-            await logsChannel.send({ embeds: [transcriptEmbed], components: [transcriptButtons] });
+        try {
+          const transcriptId = await transcriptManager.generateTranscript(interaction.channel, ticketState);
+          
+          if (transcriptId) {
+            // Enviar transcript para o canal de logs
+            const logsChannel = await interaction.guild.channels.fetch(CHANNELS.LOGS);
+            if (logsChannel) {
+              const transcriptEmbed = EmbedFactory.transcriptCreated(
+                transcriptId,
+                interaction.channel.name,
+                ticketState.ticketNumber,
+                ticketState.ownerTag,
+                ticketState.category || 'Giveaway'
+              );
+              const transcriptButtons = ComponentFactory.transcriptButtons(transcriptId);
+              await logsChannel.send({ embeds: [transcriptEmbed], components: [transcriptButtons] });
+            }
           }
+        } catch (error) {
+          console.error('Error generating transcript:', error);
+          // Continue with closing the ticket even if transcript generation fails
         }
       }
       

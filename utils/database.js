@@ -717,6 +717,48 @@ class DatabaseManager {
     }
   }
 
+  async updateApprovalFields(approvalId, fields) {
+    if (!this.connected) return;
+    
+    try {
+      await this.Approval.findOneAndUpdate(
+        { approvalId },
+        { $set: { ...fields, updatedAt: new Date() } },
+        { new: true }
+      );
+    } catch (error) {
+      console.error('Error updating approval fields:', error);
+    }
+  }
+
+  async updateTicketState(channelId, fields) {
+    if (!this.connected) return;
+    
+    try {
+      await this.TicketState.findOneAndUpdate(
+        { channelId },
+        { $set: { ...fields, updatedAt: new Date() } },
+        { new: true }
+      );
+    } catch (error) {
+      console.error('Error updating ticket state:', error);
+    }
+  }
+
+  async updateSubmissionFields(submissionId, fields) {
+    if (!this.connected) return;
+    
+    try {
+      await this.Submission.findOneAndUpdate(
+        { submissionId },
+        { $set: { ...fields, updatedAt: new Date() } },
+        { new: true }
+      );
+    } catch (error) {
+      console.error('Error updating submission fields:', error);
+    }
+  }
+
   // === STATISTICS ===
   async getTicketStatistics() {
     if (!this.connected) return null;
