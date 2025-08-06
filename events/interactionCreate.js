@@ -2235,9 +2235,9 @@ module.exports = {
           const transcriptId = await transcriptManager.generateTranscript(interaction.channel, ticketState);
           
           if (transcriptId) {
-            // Enviar transcript para o canal de logs
-            const logsChannel = await interaction.guild.channels.fetch(CHANNELS.LOGS);
-            if (logsChannel) {
+            // Enviar transcript para o canal de transcripts
+            const transcriptsChannel = await interaction.guild.channels.fetch(CHANNELS.TRANSCRIPTS);
+            if (transcriptsChannel) {
               const transcriptEmbed = EmbedFactory.transcriptCreated(
                 transcriptId,
                 interaction.channel.name,
@@ -2246,7 +2246,7 @@ module.exports = {
                 ticketState.category || 'Giveaway'
               );
               const transcriptButtons = ComponentFactory.transcriptButtons(transcriptId);
-              await logsChannel.send({ embeds: [transcriptEmbed], components: [transcriptButtons] });
+              await transcriptsChannel.send({ embeds: [transcriptEmbed], components: [transcriptButtons] });
             }
           }
         } catch (error) {
