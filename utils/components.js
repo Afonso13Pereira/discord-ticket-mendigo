@@ -20,7 +20,13 @@ class ComponentFactory {
       .setStyle(style)
       .setDisabled(disabled);
     
-    if (emoji) button.setEmoji(emoji);
+    // Validate emoji before setting it
+    if (emoji && this.isValidEmoji(emoji)) {
+      button.setEmoji(emoji);
+    } else if (emoji) {
+      console.warn(`⚠️ Invalid emoji "${emoji}" for button "${label}", removing emoji`);
+    }
+    
     return button;
   }
 
@@ -30,8 +36,38 @@ class ComponentFactory {
       .setLabel(label)
       .setStyle(ButtonStyle.Link);
     
-    if (emoji) button.setEmoji(emoji);
+    // Validate emoji before setting it
+    if (emoji && this.isValidEmoji(emoji)) {
+      button.setEmoji(emoji);
+    } else if (emoji) {
+      console.warn(`⚠️ Invalid emoji "${emoji}" for link button "${label}", removing emoji`);
+    }
+    
     return button;
+  }
+
+  // Helper method to validate emojis
+  static isValidEmoji(emoji) {
+    if (!emoji || typeof emoji !== 'string') return false;
+    
+    // Check if it's a Unicode emoji (single character)
+    if (emoji.length === 2 || emoji.length === 1) {
+      return true;
+    }
+    
+    // Check if it's a custom Discord emoji (format: <:name:id>)
+    const customEmojiRegex = /^<a?:[a-zA-Z0-9_]+:\d+>$/;
+    if (customEmojiRegex.test(emoji)) {
+      return true;
+    }
+    
+    // Check if it's a valid emoji name (alphanumeric + underscore)
+    const emojiNameRegex = /^[a-zA-Z0-9_]+$/;
+    if (emojiNameRegex.test(emoji)) {
+      return true;
+    }
+    
+    return false;
   }
 
   static createButtonRow(...buttons) {
@@ -293,12 +329,15 @@ class ComponentFactory {
         currentRow = new ActionRowBuilder();
       }
 
+      // Validate emoji before creating button
+      const safeEmoji = cat.emoji && this.isValidEmoji(cat.emoji) ? cat.emoji : null;
+      
       currentRow.addComponents(
         this.createButton(
           `category_${cat.id}`,
           cat.label,
           this.styleMap[cat.color] || ButtonStyle.Secondary,
-          cat.emoji
+          safeEmoji
         )
       );
     }
@@ -316,12 +355,15 @@ class ComponentFactory {
         currentRow = new ActionRowBuilder();
       }
 
+      // Validate emoji before creating button
+      const safeEmoji = cat.emoji && this.isValidEmoji(cat.emoji) ? cat.emoji : null;
+      
       currentRow.addComponents(
         this.createButton(
           `category_${id}`,
           cat.name,
           this.styleMap[cat.color] || ButtonStyle.Secondary,
-          cat.emoji
+          safeEmoji
         )
       );
     }
@@ -347,12 +389,15 @@ class ComponentFactory {
         currentRow = new ActionRowBuilder();
       }
 
+      // Validate emoji before creating button
+      const safeEmoji = promo.emoji && this.isValidEmoji(promo.emoji) ? promo.emoji : EMOJIS.FIRE;
+      
       currentRow.addComponents(
         this.createButton(
           `gw_promo_${pid}`,
           promo.name,
           this.styleMap[promo.color] || ButtonStyle.Success,
-          promo.emoji || EMOJIS.FIRE
+          safeEmoji
         )
       );
     }

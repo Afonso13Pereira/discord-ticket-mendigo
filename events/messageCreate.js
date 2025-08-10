@@ -174,6 +174,57 @@ module.exports = {
         });
       }
 
+      // --- STEP EXTRA PARA GTB ---
+      if (ticketState.awaitGtbExtra) {
+        const casino = CASINOS[ticketState.casino];
+        const stepIndex = casino.checklist.length; // Step extra
+        
+        // Inicializar stepData se não existir
+        if (!ticketState.stepData) ticketState.stepData = {};
+        if (!ticketState.stepData[stepIndex]) ticketState.stepData[stepIndex] = {};
+        
+        // Processar imagem se for anexada
+        if (message.attachments.size > 0) {
+          const attachment = message.attachments.first();
+          if (attachment.contentType && attachment.contentType.startsWith('image/')) {
+            ticketState.stepData[stepIndex].hasImage = true;
+            ticketState.stepData[stepIndex].imageUrl = attachment.url;
+            console.log(`[GTB][STEP_EXTRA] Imagem recebida: ${attachment.url}`);
+          }
+        }
+        
+        // Processar texto se for username
+        if (message.content.trim().length > 0) {
+          ticketState.stepData[stepIndex].textContent = message.content.trim();
+          ticketState.stepData[stepIndex].hasText = true;
+          console.log(`[GTB][STEP_EXTRA] Username recebido: ${message.content.trim()}`);
+        }
+        
+        // Verificar se tem ambos (username e print)
+        if (ticketState.stepData[stepIndex].hasText && ticketState.stepData[stepIndex].hasImage) {
+          // Step extra completo
+          ticketState.awaitGtbExtra = false;
+          ticketState.awaitProof = false;
+          await client.saveTicketState(message.channel.id, ticketState);
+          
+          return message.reply({
+            embeds: [EmbedFactory.success('✅ Step extra GTB completo! Agora pode finalizar o ticket.')],
+            components: [ComponentFactory.finishButtons()]
+          });
+        } else {
+          // Ainda falta algo
+          const missing = [];
+          if (!ticketState.stepData[stepIndex].hasText) missing.push('**username**');
+          if (!ticketState.stepData[stepIndex].hasImage) missing.push('**print**');
+          
+          await client.saveTicketState(message.channel.id, ticketState);
+          return message.reply({
+            embeds: [EmbedFactory.info(`📝 Ainda falta: ${missing.join(' e ')}`)],
+            flags: 64
+          });
+        }
+      }
+
       // --- DESCRIÇÃO (DÚVIDAS, OUTROS, WEBSITE BUG) ---
       if (ticketState.awaitDescription) {
         if (message.content.trim().length < 10) {
@@ -505,6 +556,22 @@ module.exports = {
             });
           }
           
+          // NOVO: Step extra para GTB
+          if (ticketState.gwType === 'gtb') {
+            ticketState.step = casino.checklist.length; // Step extra após o checklist
+            ticketState.awaitGtbExtra = true;
+            await client.saveTicketState(message.channel.id, ticketState);
+            
+            return message.reply({
+              embeds: [EmbedFactory.info(
+                '🎯 **Step Extra GTB**\n\n' +
+                'Para finalizar o ticket GTB, forneça:\n' +
+                '• **Username** em texto\n' +
+                '• **Print** da stream/ganho'
+              )]
+            });
+          }
+          
           return message.reply({ embeds: [EmbedFactory.success(MESSAGES.CHECKLIST.COMPLETED)], components: [ComponentFactory.finishButtons()] });
         } else {
           await client.saveTicketState(message.channel.id, ticketState);
@@ -570,35 +637,74 @@ function askCasino(channel, ticketState = null) {
 
 function askChecklist(channel, ticketState) {
   const casino = CASINOS[ticketState.casino];
-  if (!casino) {
+  if (!casino || !casino.checklist) {
     return channel.send({
-      embeds: [EmbedFactory.error(MESSAGES.ERRORS.CASINO_NOT_CONFIGURED)]
+      embeds: [EmbedFactory.error(`Casino '${ticketState.casino}' não configurado corretamente`)]
     });
   }
 
   const stepIndex = ticketState.step ?? 0;
   
-  // NOVO: Handle new checklist structure (objects with title, description, type, image)
+  // NOVO: Verificar se é o step extra de GTB
+  if (ticketState.gwType === 'gtb' && stepIndex >= casino.checklist.length) {
+    // Step extra de GTB - pedir username + print
+    const embed = EmbedFactory.checklist(
+      stepIndex + 1,
+      casino.checklist.length + 1, // +1 para incluir o step extra
+      '🎯 **Step Extra GTB**\n\nPara finalizar o ticket GTB, forneça:\n• **Username** em texto\n• **Print** da stream/ganho',
+      null // Sem imagem para este step
+    );
+    
+    return channel.send({
+      embeds: [embed],
+      components: [ComponentFactory.stepButtons()]
+    });
+  }
+  
+  // NOVO: Verificar se é o step extra de giveaway "outro"
+  if (ticketState.gwType === 'other' && stepIndex >= casino.checklist.length) {
+    // Step extra de giveaway "outro" - pedir descrição
+    const embed = EmbedFactory.checklist(
+      stepIndex + 1,
+      casino.checklist.length + 1, // +1 para incluir o step extra
+      '🎁 **Step Extra Giveaway**\n\nPara finalizar o ticket, explique qual giveaway ganhou:',
+      null // Sem imagem para este step
+    );
+    
+    return channel.send({
+      embeds: [embed],
+      components: [ComponentFactory.stepButtons()]
+    });
+  }
+  
+  if (stepIndex >= casino.checklist.length) {
+    return channel.send({
+      embeds: [EmbedFactory.success(MESSAGES.CHECKLIST.COMPLETED)],
+      components: [ComponentFactory.finishButtons()]
+    });
+  }
+
+  const currentStep = casino.checklist[stepIndex];
+  
+  // Handle new checklist structure (objects with title, description, type, image)
   let stepDescription, stepImage;
-  if (typeof casino.checklist[stepIndex] === 'object' && casino.checklist[stepIndex] !== null) {
-    // New structure: object with title, description, type, image
-    stepDescription = casino.checklist[stepIndex].description;
-    stepImage = casino.checklist[stepIndex].image;
+  if (typeof currentStep === 'object' && currentStep !== null) {
+    stepDescription = currentStep.description;
+    stepImage = casino.images?.[stepIndex];
   } else {
     // Old structure: just a string
-    stepDescription = casino.checklist[stepIndex];
+    stepDescription = currentStep;
     stepImage = casino.images?.[stepIndex];
   }
   
   const embed = EmbedFactory.checklist(
     stepIndex + 1,
-    casino.checklist.length,
+    casino.checklist.length + (ticketState.gwType === 'gtb' || ticketState.gwType === 'other' ? 1 : 0), // +1 se tiver step extra
     stepDescription,
     stepImage
   );
 
   // Check if current step requires any input
-  const currentStep = casino.checklist[stepIndex];
   let stepTypes = [];
   if (typeof currentStep === 'object' && currentStep !== null && Array.isArray(currentStep.type)) {
     stepTypes = currentStep.type;

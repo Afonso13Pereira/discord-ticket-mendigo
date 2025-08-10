@@ -50,7 +50,7 @@ async function updateTicketMessage(guild, client) {
     await refreshCategories();
     
     // Wait a bit for the refresh to complete
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
     console.log(`📋 Creating ticket message with categories:`, Object.keys(cats));
     console.log(`📋 All categories:`, cats);
@@ -65,7 +65,7 @@ async function updateTicketMessage(guild, client) {
     console.log(`📋 Created ${components.length} component rows for ticket message`);
 
     // Try to find existing ticket message to edit
-    const messages = await ticketChannel.messages.fetch({ limit: 10 });
+    const messages = await ticketChannel.messages.fetch({ limit: 20 });
     console.log(`🔍 Searching for existing ticket message in ${messages.size} messages`);
     
     let existingMessage = messages.find(msg => 
@@ -89,6 +89,7 @@ async function updateTicketMessage(guild, client) {
 
     if (existingMessage) {
       // Edit existing message
+      console.log('✏️ Editing existing ticket message...');
       await existingMessage.edit({
         embeds: [embed],
         components: components
@@ -97,10 +98,19 @@ async function updateTicketMessage(guild, client) {
     } else {
       // Send new message if no existing message found
       console.log('📝 No existing ticket message found, sending new one');
-      await ticketChannel.send({
+      const newMessage = await ticketChannel.send({
         embeds: [embed],
         components: components
       });
+      
+      // Try to pin the message if possible
+      try {
+        await newMessage.pin();
+        console.log('📌 New ticket message pinned');
+      } catch (pinError) {
+        console.log('⚠️ Could not pin message (may not have permission):', pinError.message);
+      }
+      
       console.log('✅ New ticket message sent in channel:', ticketChannel.name);
     }
 
