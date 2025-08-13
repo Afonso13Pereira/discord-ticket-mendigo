@@ -356,7 +356,8 @@ module.exports = {
           submission.ltcAddress,
           bcGameId,
           bcGameProfileImage,
-          null // messageId será atualizado depois quando a mensagem for enviada
+          null, // messageId será atualizado depois quando a mensagem for enviada
+          isVerified // NOVO: Passar o status de verificação
         );
         
         if (!approvalId) {
@@ -475,22 +476,47 @@ module.exports = {
         const bcGameId = interaction.fields.getTextInputValue('bcgame_id').trim() || null;
         const ltcAddress = interaction.fields.getTextInputValue('ltc_address').trim();
         
+        console.log('[EDIT][DEBUG] Editando approval:', approvalId, { casino, prize, bcGameId, ltcAddress });
+        
         try {
           // Buscar approval atual
           const approval = await client.db.getApproval(approvalId);
           if (!approval) {
+            console.log('[EDIT][ERROR] Approval não encontrada:', approvalId);
             return interaction.reply({
               embeds: [EmbedFactory.error('Aprovação não encontrada.')],
               flags: 64
             });
           }
 
+          console.log('[EDIT][DEBUG] Approval encontrada:', {
+            casino: approval.casino,
+            isVerified: approval.isVerified,
+            hasImage: !!approval.bcGameProfileImage,
+            telegramMessageId: approval.telegramMessageId
+          });
+
           // Atualizar approval no banco
-          await client.db.updateApprovalFields(approvalId, {
+          const updatedApproval = await client.db.updateApprovalFields(approvalId, {
             casino,
             prize,
             bcGameId,
             ltcAddress
+          });
+
+          if (!updatedApproval) {
+            console.log('[EDIT][ERROR] Falha ao atualizar approval no banco');
+            return interaction.reply({
+              embeds: [EmbedFactory.error('Erro ao atualizar approval no banco de dados.')],
+              flags: 64
+            });
+          }
+
+          console.log('[EDIT][DEBUG] Approval atualizada no banco:', {
+            casino: updatedApproval.casino,
+            isVerified: updatedApproval.isVerified,
+            hasImage: !!updatedApproval.bcGameProfileImage,
+            telegramMessageId: updatedApproval.telegramMessageId
           });
 
           // Atualizar ticket state
@@ -501,44 +527,72 @@ module.exports = {
             ltcAddress
           });
 
-          // Buscar approval atualizado
-          const updatedApproval = await client.db.getApproval(approvalId);
+          // Buscar approval atualizada do banco para garantir dados corretos
+          const finalApproval = await client.db.getApproval(approvalId);
+          if (!finalApproval) {
+            console.log('[EDIT][ERROR] Falha ao buscar approval atualizada');
+            return interaction.reply({
+              embeds: [EmbedFactory.error('Erro ao buscar approval atualizada.')],
+              flags: 64
+            });
+          }
+
+          console.log('[EDIT][DEBUG] Approval final para atualização:', {
+            casino: finalApproval.casino,
+            isVerified: finalApproval.isVerified,
+            hasImage: !!finalApproval.bcGameProfileImage,
+            telegramMessageId: finalApproval.telegramMessageId
+          });
 
           // Atualizar mensagem no Discord
-          if (updatedApproval.discordMessageId) {
+          if (finalApproval.discordMessageId) {
             try {
               const approveChannel = await interaction.guild.channels.fetch(CHANNELS.APPROVE);
-              const discordMessage = await approveChannel.messages.fetch(updatedApproval.discordMessageId);
+              const discordMessage = await approveChannel.messages.fetch(finalApproval.discordMessageId);
               
               const updatedEmbed = EmbedFactory.approvalFinal(
                 casino,
                 prize,
-                updatedApproval.userTag,
-                updatedApproval.ticketNumber,
+                finalApproval.userTag,
+                finalApproval.ticketNumber,
                 ltcAddress,
                 bcGameId,
-                updatedApproval.isVerified,
-                updatedApproval.bcGameProfileImage
+                finalApproval.isVerified,
+                finalApproval.bcGameProfileImage
               );
-              const components = ComponentFactory.approvalButtons(approvalId, updatedApproval.ticketChannelId);
+              const components = ComponentFactory.approvalButtons(approvalId, finalApproval.ticketChannelId);
               
               await discordMessage.edit({
                 embeds: [updatedEmbed],
                 components: [components]
               });
+              
+              console.log('[EDIT][DEBUG] Mensagem Discord atualizada com sucesso');
             } catch (error) {
-              console.error('Erro ao atualizar mensagem do Discord:', error);
+              console.error('[EDIT][ERROR] Erro ao atualizar mensagem do Discord:', error);
             }
           }
 
           // Atualizar mensagem no Telegram
-          if (updatedApproval.telegramMessageId) {
+          if (finalApproval.telegramMessageId) {
             try {
+              console.log('[EDIT][DEBUG] Atualizando mensagem Telegram...');
+              console.log('[EDIT][DEBUG] Dados finais para Telegram:', {
+                approvalId: finalApproval.approvalId,
+                casino: finalApproval.casino,
+                isVerified: finalApproval.isVerified,
+                hasImage: !!finalApproval.bcGameProfileImage,
+                telegramMessageId: finalApproval.telegramMessageId
+              });
+              
               const telegramService = require('../utils/telegram');
-              await telegramService.updateApprovalMessage(updatedApproval);
+              await telegramService.updateApprovalMessage(finalApproval);
+              console.log('[EDIT][DEBUG] Mensagem Telegram atualizada com sucesso');
             } catch (error) {
-              console.error('Erro ao atualizar mensagem do Telegram:', error);
+              console.error('[EDIT][ERROR] Erro ao atualizar mensagem do Telegram:', error);
             }
+          } else {
+            console.log('[EDIT][DEBUG] Approval não tem telegramMessageId, pulando atualização Telegram');
           }
 
           return interaction.reply({
@@ -547,7 +601,7 @@ module.exports = {
           });
 
         } catch (error) {
-          console.error('Erro ao editar approval:', error);
+          console.error('[EDIT][ERROR] Erro ao editar approval:', error);
           return interaction.reply({
             embeds: [EmbedFactory.error('Erro ao editar approval. Tente novamente.')],
             flags: 64
