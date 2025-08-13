@@ -179,28 +179,15 @@ module.exports = {
         const color = interaction.fields.getTextInputValue('ccolor')?.trim().toLowerCase() || 'grey';
         const emoji = interaction.fields.getTextInputValue('cemoji')?.trim() || null;
         
-        // Validate emoji if provided
-        if (emoji && !require('../utils/components').isValidEmoji(emoji)) {
-          return interaction.reply({
-            embeds: [EmbedFactory.error('Emoji inválido fornecido. Por favor, use um emoji válido ou deixe em branco.')],
-            flags: 64
-          });
-        }
-        
         const id = await createCat(name, color, emoji);
         
         // Log action
         await client.db.logAction(interaction.channel?.id || 'DM', interaction.user.id, 'category_created', `ID: ${id}, Name: ${name}`);
         
-        // Update ticket message after creating category
         try {
-          console.log('🔄 Updating ticket message after category creation...');
-          const { updateTicketMessage } = require('../commands/atualizartickets');
           await updateTicketMessage(interaction.guild, client);
-          console.log('✅ Ticket message updated after category creation');
         } catch (error) {
-          console.error('❌ Error updating ticket message after category creation:', error);
-          // Don't fail the interaction, just log the error
+          console.error('Error updating ticket message after category creation:', error);
         }
         
         return interaction.reply({
@@ -1768,60 +1755,52 @@ module.exports = {
 
       const stepIndex = ticketState.step;
       
-      // NOVO: Verificar se é o step extra de giveaway "outro"
-      if (ticketState.gwType === 'other' && stepIndex >= casino.checklist.length) {
+      // NOVO: Verificar se é o step extra de giveaway "outro" ou "gtb"
+      if ((ticketState.gwType === 'other' || ticketState.gwType === 'gtb') && stepIndex >= casino.checklist.length) {
         // Step extra de giveaway "outro" - verificar se tem texto
-        if (ticketState.stepData && ticketState.stepData[stepIndex] && ticketState.stepData[stepIndex].textContent) {
-          // Tem texto, finalizar
-          ticketState.awaitProof = false;
-          await client.saveTicketState(interaction.channel.id, ticketState);
-          
-          return interaction.followUp({
-            embeds: [EmbedFactory.success('✅ Checklist completo! Agora pode finalizar o ticket.')],
-            components: [ComponentFactory.finishButtons()],
-            flags: 64
-          });
-        } else {
-          // Não tem texto, mostrar erro
-          return interaction.followUp({
-            embeds: [EmbedFactory.error('❌ Por favor, explique o giveaway que ganhou antes de continuar.')],
-            flags: 64
-          });
+        if (ticketState.gwType === 'other') {
+          if (ticketState.stepData && ticketState.stepData[stepIndex] && ticketState.stepData[stepIndex].textContent) {
+            // Tem texto, finalizar
+            ticketState.awaitProof = false;
+            await client.saveTicketState(interaction.channel.id, ticketState);
+            
+            return interaction.followUp({
+              embeds: [EmbedFactory.success('✅ Checklist completo! Agora pode finalizar o ticket.')],
+              components: [ComponentFactory.finishButtons()],
+              flags: 64
+            });
+          } else {
+            // Não tem texto, mostrar erro
+            return interaction.followUp({
+              embeds: [EmbedFactory.error('❌ Por favor, explique o giveaway que ganhou antes de continuar.')],
+              flags: 64
+            });
+          }
         }
-      }
-      
-      // NOVO: Verificar se é o step extra de GTB
-      if (ticketState.gwType === 'gtb' && stepIndex >= casino.checklist.length) {
-        // Step extra de GTB - verificar se tem username e print
-        if (ticketState.stepData && ticketState.stepData[stepIndex]) {
-          const gtbData = ticketState.stepData[stepIndex];
-          if (gtbData.textContent && gtbData.hasImage) {
+        
+        // Step extra de giveaway "gtb" - verificar se tem username e print
+        if (ticketState.gwType === 'gtb') {
+          if (ticketState.stepData && ticketState.stepData[stepIndex] && 
+              ticketState.stepData[stepIndex].textContent && ticketState.stepData[stepIndex].hasImage) {
             // Tem username e print, finalizar
             ticketState.awaitProof = false;
             await client.saveTicketState(interaction.channel.id, ticketState);
             
             return interaction.followUp({
-              embeds: [EmbedFactory.success('✅ Checklist GTB completo! Agora pode finalizar o ticket.')],
+              embeds: [EmbedFactory.success('✅ Checklist completo! Agora pode finalizar o ticket.')],
               components: [ComponentFactory.finishButtons()],
               flags: 64
             });
           } else {
             // Não tem username ou print, mostrar erro
             const missing = [];
-            if (!gtbData.textContent) missing.push('**username**');
-            if (!gtbData.hasImage) missing.push('**print**');
-            
+            if (!ticketState.stepData[stepIndex]?.textContent) missing.push('**username**');
+            if (!ticketState.stepData[stepIndex]?.hasImage) missing.push('**print**');
             return interaction.followUp({
-              embeds: [EmbedFactory.error(`❌ Ainda falta: ${missing.join(' e ')}`)],
+              embeds: [EmbedFactory.error(`❌ Por favor, forneça ${missing.join(' e ')} antes de continuar.`)],
               flags: 64
             });
           }
-        } else {
-          // Não tem dados do step extra, mostrar erro
-          return interaction.followUp({
-            embeds: [EmbedFactory.error('❌ Por favor, forneça o username e print antes de continuar.')],
-            flags: 64
-          });
         }
       }
       
@@ -2484,69 +2463,66 @@ function askCasino(channel) {
 
 function askChecklist(channel, ticketState) {
   const casino = CASINOS[ticketState.casino];
-  if (!casino || !casino.checklist) {
+  if (!casino) {
     return channel.send({
-      embeds: [EmbedFactory.error(`Casino '${ticketState.casino}' não configurado corretamente`)]
+      embeds: [EmbedFactory.error(MESSAGES.ERRORS.CASINO_NOT_CONFIGURED)]
     });
   }
 
   const stepIndex = ticketState.step ?? 0;
   
-  // NOVO: Verificar se é o step extra de GTB
-  if (ticketState.gwType === 'gtb' && stepIndex >= casino.checklist.length) {
-    // Step extra de GTB - pedir username + print
-    const embed = EmbedFactory.checklist(
-      stepIndex + 1,
-      casino.checklist.length + 1, // +1 para incluir o step extra
-      '🎯 **Step Extra GTB**\n\nPara finalizar o ticket GTB, forneça:\n• **Username** em texto\n• **Print** da stream/ganho',
-      null // Sem imagem para este step
-    );
-    
-    return channel.send({
-      embeds: [embed],
-      components: [ComponentFactory.stepButtons()]
-    });
-  }
-  
-  // NOVO: Verificar se é o step extra de giveaway "outro"
-  if (ticketState.gwType === 'other' && stepIndex >= casino.checklist.length) {
-    // Step extra de giveaway "outro" - pedir descrição
-    const embed = EmbedFactory.checklist(
-      stepIndex + 1,
-      casino.checklist.length + 1, // +1 para incluir o step extra
-      '🎁 **Step Extra Giveaway**\n\nPara finalizar o ticket, explique qual giveaway ganhou:',
-      null // Sem imagem para este step
-    );
-    
-    return channel.send({
-      embeds: [embed],
-      components: [ComponentFactory.stepButtons()]
-    });
-  }
-  
-  if (stepIndex >= casino.checklist.length) {
-    return channel.send({
-      embeds: [EmbedFactory.success(MESSAGES.CHECKLIST.COMPLETED)],
-      components: [ComponentFactory.finishButtons()]
-    });
-  }
+  // NOVO: Verificar se é giveaway "outro" ou "gtb" e checklist está completo
+  if ((ticketState.gwType === 'other' || ticketState.gwType === 'gtb') && stepIndex >= casino.checklist.length) {
+    if (ticketState.gwType === 'other') {
+      // Step extra para giveaway "outro" - explicar o motivo
+      const embed = EmbedFactory.checklist(
+        casino.checklist.length + 1,
+        casino.checklist.length + 1,
+        '📝 **Explicar o Giveaway Ganho**\n\nPor favor, descreva detalhadamente o giveaway que ganhou:\n• Qual foi o prêmio?\n• Onde ganhou?\n• Quando aconteceu?\n• Qualquer informação relevante',
+        null
+      );
 
-  const currentStep = casino.checklist[stepIndex];
+      const components = [ComponentFactory.stepButtons()];
+      
+      return channel.send({
+        embeds: [embed],
+        components: components
+      });
+    }
+    
+    if (ticketState.gwType === 'gtb') {
+      // Step extra para giveaway "gtb" - username + print
+      const embed = EmbedFactory.checklist(
+        casino.checklist.length + 1,
+        casino.checklist.length + 1,
+        '🎮 **GTB - Username + Print**\n\nPor favor, forneça:\n• **Username** do jogo em texto\n• **Print** da tela do jogo (imagem)\n\nEste step requer ambos: username e print!',
+        null
+      );
+
+      const components = [ComponentFactory.stepButtons()];
+      
+      return channel.send({
+        embeds: [embed],
+        components: components
+      });
+    }
+  }
   
-  // Handle new checklist structure (objects with title, description, type, image)
+  // NOVO: Handle new checklist structure (objects with title, description, type, image)
   let stepDescription, stepImage;
-  if (typeof currentStep === 'object' && currentStep !== null) {
-    stepDescription = currentStep.description;
-    stepImage = casino.images?.[stepIndex];
+  if (typeof casino.checklist[stepIndex] === 'object' && casino.checklist[stepIndex] !== null) {
+    // New structure: object with title, description, type, image
+    stepDescription = casino.checklist[stepIndex].description;
+    stepImage = casino.checklist[stepIndex].image;
   } else {
     // Old structure: just a string
-    stepDescription = currentStep;
+    stepDescription = casino.checklist[stepIndex];
     stepImage = casino.images?.[stepIndex];
   }
   
   const embed = EmbedFactory.checklist(
     stepIndex + 1,
-    casino.checklist.length + (ticketState.gwType === 'gtb' || ticketState.gwType === 'other' ? 1 : 0), // +1 se tiver step extra
+    casino.checklist.length,
     stepDescription,
     stepImage
   );

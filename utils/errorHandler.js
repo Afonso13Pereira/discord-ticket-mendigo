@@ -3,9 +3,6 @@ const { CHANNELS, COLORS, EMOJIS } = require('../config/constants');
 const MESSAGES = require('../config/messages');
 
 class ErrorHandler {
-  static interactionCooldowns = new Map(); // Track interaction cooldowns
-  static COOLDOWN_TIME = 2000; // 2 seconds cooldown between same user interactions
-  
   constructor(client) {
     this.client = client;
     this.setupErrorHandlers();
@@ -168,140 +165,43 @@ class ErrorHandler {
     }
   }
 
-  static async safeExecuteInteraction(interaction, client) {
+  async safeExecuteInteraction(interaction) {
     try {
-      // Check if user is on cooldown for this interaction
-      const cooldownKey = `${interaction.user.id}_${interaction.customId || interaction.commandName}`;
-      const now = Date.now();
-      const lastInteraction = this.interactionCooldowns.get(cooldownKey);
-      
-      if (lastInteraction && (now - lastInteraction) < this.COOLDOWN_TIME) {
-        console.log(`⏰ Cooldown active for user ${interaction.user.tag} (${interaction.customId || interaction.commandName})`);
-        
-        // Try to acknowledge the interaction to prevent errors
-        try {
-          if (interaction.isRepliable()) {
-            await interaction.reply({
-              content: '⏰ Por favor, aguarde um momento antes de tentar novamente.',
-              ephemeral: true
-            });
-          } else if (interaction.isDeferred()) {
-            await interaction.editReply({
-              content: '⏰ Por favor, aguarde um momento antes de tentar novamente.'
-            });
-          }
-        } catch (ackError) {
-          console.log('Could not acknowledge cooldown interaction:', ackError.message);
-        }
+      // Check if interaction is expired (older than 15 minutes)
+      const interactionAge = Date.now() - interaction.createdTimestamp;
+      if (interactionAge > 15 * 60 * 1000) {
+        console.warn('⚠️ Interaction is too old, skipping execution');
         return;
       }
-      
-      // Update cooldown
-      this.interactionCooldowns.set(cooldownKey, now);
-      
-      // Clean up old cooldowns (older than 1 hour)
-      if (this.interactionCooldowns.size > 1000) {
-        const oneHourAgo = now - (60 * 60 * 1000);
-        for (const [key, timestamp] of this.interactionCooldowns.entries()) {
-          if (timestamp < oneHourAgo) {
-            this.interactionCooldowns.delete(key);
-          }
-        }
-      }
-      
-      // Check if interaction is still valid
-      if (!interaction.isRepliable() && !interaction.isDeferred()) {
-        console.log(`⚠️ Interaction ${interaction.id} is no longer valid`);
-        return;
-      }
-      
-      // Execute the interaction
-      await this.executeInteraction(interaction, client);
-      
-    } catch (error) {
-      await this.handleInteractionError(interaction, error);
-    }
-  }
-  
-  static async executeInteraction(interaction, client) {
-    try {
-      // Handle different interaction types
-      if (interaction.isChatInputCommand()) {
-        await this.handleCommand(interaction, client);
-      } else if (interaction.isButton()) {
-        await this.handleButton(interaction, client);
-      } else if (interaction.isStringSelectMenu()) {
-        await this.handleSelectMenu(interaction, client);
-      } else if (interaction.isModalSubmit()) {
-        await this.handleModalSubmit(interaction, client);
-      } else if (interaction.isAutocomplete()) {
-        await this.handleAutocomplete(interaction, client);
-      } else {
-        console.log(`Unknown interaction type: ${interaction.type}`);
-      }
-    } catch (error) {
-      console.error('Error executing interaction:', error);
-      await this.handleInteractionError(interaction, error);
-    }
-  }
-  
-  static async handleInteractionError(interaction, error) {
-    console.error(`❌ Interaction error for ${interaction.user.tag}:`, error);
-    
-    // Handle specific Discord API errors
-    if (error.code === 10062) {
-      console.log(`⚠️ Interaction ${interaction.id} expired (code 10062)`);
-      return; // Don't try to respond to expired interactions
-    }
-    
-    if (error.code === 50035) {
-      console.log(`⚠️ Invalid form body error (code 50035):`, error.message);
-      // This is the emoji error we saw earlier
-      return;
-    }
-    
-    // Try to send error message to user
-    try {
-      if (interaction.isRepliable() && !interaction.replied) {
-        await interaction.reply({
-          content: '❌ Ocorreu um erro ao processar a sua solicitação. Por favor, tente novamente.',
-          ephemeral: true
-        });
-      } else if (interaction.isDeferred() && !interaction.replied) {
-        await interaction.editReply({
-          content: '❌ Ocorreu um erro ao processar a sua solicitação. Por favor, tente novamente.'
-        });
-      }
-    } catch (responseError) {
-      console.log('Could not send error response:', responseError.message);
-    }
-  }
 
-  static async handleCommand(interaction, client) {
-    const command = client.commands.get(interaction.commandName);
-    if (command) {
-      await this.safeExecuteCommand(interaction, command);
+      // Handle different interaction types safely
+      if (interaction.isChatInputCommand()) {
+        const command = this.client.commands.get(interaction.commandName);
+        if (command) {
+          await this.safeExecuteCommand(interaction, command);
+        }
+      } else if (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isModalSubmit()) {
+        // Import and execute interaction handler safely
+        const { execute } = require('../events/interactionCreate');
+        await this.safeExecuteEvent('interactionCreate', execute, interaction, this.client);
+      }
+    } catch (error) {
+      console.error('🚨 Interaction Handler Error:', error);
+      
+      // Try to send error message to user if possible
+      try {
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({
+            embeds: [this.createSystemErrorEmbed()],
+            flags: 64
+          });
+        }
+      } catch (replyError) {
+        console.error('❌ Failed to send error message to user:', replyError);
+      }
+      
+      await this.sendErrorToSupport(error, 'Interaction Handler');
     }
-  }
-  
-  static async handleButton(interaction, client) {
-    const { execute } = require('../events/interactionCreate');
-    await this.safeExecuteEvent('interactionCreate', execute, interaction, client);
-  }
-  
-  static async handleSelectMenu(interaction, client) {
-    const { execute } = require('../events/interactionCreate');
-    await this.safeExecuteEvent('interactionCreate', execute, interaction, client);
-  }
-  
-  static async handleModalSubmit(interaction, client) {
-    const { execute } = require('../events/interactionCreate');
-    await this.safeExecuteEvent('interactionCreate', execute, interaction, client);
-  }
-  
-  static async handleAutocomplete(interaction, client) {
-    const { execute } = require('../events/interactionCreate');
-    await this.safeExecuteEvent('interactionCreate', execute, interaction, client);
   }
 
   // Helper method to create system error embed
