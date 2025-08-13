@@ -144,7 +144,8 @@ module.exports = {
         ltcAddress,
         bcGameId,
         null, // bcGameProfileImage
-        null  // messageId
+        null, // messageId
+        isVerified // NOVO: Passar o status de verificação
       );
 
       if (!approvalId) {

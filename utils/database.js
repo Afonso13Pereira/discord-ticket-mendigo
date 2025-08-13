@@ -567,7 +567,7 @@ class DatabaseManager {
   }
 
   // === APPROVALS ===
-  async saveApproval(ticketChannelId, ticketNumber, userId, userTag, casino, prize, ltcAddress, bcGameId = null, bcGameProfileImage = null, messageId = null) {
+  async saveApproval(ticketChannelId, ticketNumber, userId, userTag, casino, prize, ltcAddress, bcGameId = null, bcGameProfileImage = null, messageId = null, isVerified = false) {
     if (!this.connected) return null;
     
     try {
@@ -577,7 +577,12 @@ class DatabaseManager {
       // CRÍTICO: Garantir que ltcAddress nunca seja null
       const finalLtcAddress = ltcAddress || 'N/A - Não fornecido';
       
-      // [DB][saveApproval] Dados recebidos
+      console.log('[DATABASE][saveApproval] Dados recebidos:', {
+        casino,
+        bcGameId,
+        bcGameProfileImage: !!bcGameProfileImage,
+        isVerified
+      });
       
       // Try to create approval with retry mechanism
       let attempts = 0;
@@ -598,16 +603,17 @@ class DatabaseManager {
             ltcAddress: finalLtcAddress,
             bcGameId,
             bcGameProfileImage,
-            messageId
+            messageId,
+            isVerified
           });
           
           await approval.save();
-          // [DB][saveApproval] Approval salva com sucesso, ID: ${currentApprovalId}
+          console.log(`[DATABASE][saveApproval] Approval salva com sucesso, ID: ${currentApprovalId}, isVerified: ${isVerified}`);
           return currentApprovalId;
           
         } catch (saveError) {
           attempts++;
-          // [DB][saveApproval] Tentativa ${attempts} falhou: ${saveError.message}
+          console.log(`[DATABASE][saveApproval] Tentativa ${attempts} falhou: ${saveError.message}`);
           
           if (attempts >= 3) {
             throw saveError;
@@ -624,7 +630,7 @@ class DatabaseManager {
       
       // If it's a duplicate key error, try to clean up and retry once more
       if (error.code === 11000) {
-        // [DB][saveApproval] Duplicate key error, tentando limpeza...
+        console.log('[DATABASE][saveApproval] Duplicate key error, tentando limpeza...');
         try {
           // Try to remove any problematic entries with null messageId
           await this.Approval.deleteMany({ 
@@ -645,15 +651,16 @@ class DatabaseManager {
             ltcAddress: finalLtcAddress,
             bcGameId,
             bcGameProfileImage,
-            messageId: messageId || `manual_${Date.now()}` // Garantir que não seja null
+            messageId: messageId || `manual_${Date.now()}`, // Garantir que não seja null
+            isVerified
           });
           
           await retryApproval.save();
-          // [DB][saveApproval] Retry bem-sucedido, ID: ${retryApprovalId}
+          console.log(`[DATABASE][saveApproval] Retry bem-sucedido, ID: ${retryApprovalId}`);
           return retryApprovalId;
           
         } catch (retryError) {
-          console.error('[DB][saveApproval] Retry também falhou:', retryError);
+          console.error('[DATABASE][saveApproval] Retry também falhou:', retryError);
         }
       }
       
@@ -718,16 +725,23 @@ class DatabaseManager {
   }
 
   async updateApprovalFields(approvalId, fields) {
-    if (!this.connected) return;
+    if (!this.connected) return null;
     
     try {
-      await this.Approval.findOneAndUpdate(
+      console.log('[DATABASE][DEBUG] Atualizando approval fields:', approvalId, fields);
+      
+      const updatedApproval = await this.Approval.findOneAndUpdate(
         { approvalId },
         { $set: { ...fields, updatedAt: new Date() } },
         { new: true }
       );
+      
+      console.log('[DATABASE][DEBUG] Approval atualizada com sucesso:', updatedApproval ? 'sim' : 'não');
+      
+      return updatedApproval;
     } catch (error) {
       console.error('Error updating approval fields:', error);
+      return null;
     }
   }
 

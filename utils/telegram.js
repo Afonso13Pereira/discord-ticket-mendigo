@@ -61,8 +61,13 @@ class TelegramService {
     const text = this.formatApprovalMessage(approval);
     const replyMarkup = this.createApprovalButtons(approval.approvalId);
     
-    // NOVO: Se for BCGame e tiver imagem do perfil, enviar com foto
-    if (approval.casino === 'BCGame' && approval.bcGameProfileImage) {
+    // LÓGICA: Enviar foto apenas quando:
+    // - É BCGame
+    // - Tem imagem do perfil
+    // - NÃO está verificado (não afiliado)
+    // Isso permite que moderadores vejam o perfil para verificar se é legítimo
+    if (approval.casino === 'BCGame' && approval.bcGameProfileImage && !approval.isVerified) {
+      console.log('[TELEGRAM][DEBUG] Enviando mensagem BCGame com foto (usuário não verificado)');
       try {
         const response = await fetch(`${this.baseUrl}/sendPhoto`, {
           method: 'POST',
@@ -95,22 +100,48 @@ class TelegramService {
       }
     }
     
-    // Envio normal (sem foto)
+    // Envio normal (sem foto) - para usuários verificados ou outros casinos
+    console.log('[TELEGRAM][DEBUG] Enviando mensagem como texto normal');
     const result = await this.sendMessage(text, replyMarkup);
     return result;
   }
 
   async updateApprovalMessage(approval) {
+    console.log('[TELEGRAM][DEBUG] updateApprovalMessage chamado para approval:', approval.approvalId);
+    console.log('[TELEGRAM][DEBUG] Configuração do bot:', {
+      hasBotToken: !!this.botToken,
+      hasChatId: !!this.chatId,
+      baseUrl: this.baseUrl
+    });
+    console.log('[TELEGRAM][DEBUG] Dados da approval:', {
+      casino: approval.casino,
+      hasImage: !!approval.bcGameProfileImage,
+      isVerified: approval.isVerified,
+      telegramMessageId: approval.telegramMessageId,
+      bcGameId: approval.bcGameId
+    });
+    
+    if (!this.botToken || !this.chatId) {
+      console.error('[TELEGRAM] Bot token ou chat ID não configurados');
+      return;
+    }
+    
     if (!approval.telegramMessageId) {
       console.log('[TELEGRAM] No message ID found for approval:', approval.approvalId);
       return;
     }
 
     const text = this.formatApprovalMessage(approval);
+    console.log('[TELEGRAM][DEBUG] Texto formatado:', text.substring(0, 100) + '...');
+    
     const replyMarkup = this.createApprovalButtons(approval.approvalId);
     
-    // NOVO: Se for BCGame e tiver imagem do perfil, atualizar com foto
-    if (approval.casino === 'BCGame' && approval.bcGameProfileImage) {
+    // LÓGICA: Atualizar com foto apenas quando:
+    // - É BCGame
+    // - Tem imagem do perfil
+    // - NÃO está verificado (não afiliado)
+    if (approval.casino === 'BCGame' && approval.bcGameProfileImage && !approval.isVerified) {
+      console.log('[TELEGRAM][DEBUG] Atualizando mensagem BCGame com foto (usuário não verificado)');
       try {
         const response = await fetch(`${this.baseUrl}/editMessageMedia`, {
           method: 'POST',
@@ -144,12 +175,20 @@ class TelegramService {
         await this.updateTextMessage(approval, text, replyMarkup);
       }
     } else {
-      // Atualização normal (sem foto)
+      console.log('[TELEGRAM][DEBUG] Atualizando mensagem como texto normal');
+      // Atualização normal (sem foto) - para usuários verificados ou outros casinos
       await this.updateTextMessage(approval, text, replyMarkup);
     }
   }
 
   async updateTextMessage(approval, text, replyMarkup) {
+    console.log('[TELEGRAM][DEBUG] updateTextMessage chamado para approval:', approval.approvalId);
+    console.log('[TELEGRAM][DEBUG] Dados da atualização:', {
+      messageId: approval.telegramMessageId,
+      textLength: text.length,
+      hasReplyMarkup: !!replyMarkup
+    });
+    
     try {
       const response = await fetch(`${this.baseUrl}/editMessageText`, {
         method: 'POST',
@@ -211,7 +250,11 @@ class TelegramService {
     text += `🎫 <b>Ticket:</b> #${approval.ticketNumber}\n`;
     
     if (approval.bcGameId) {
-      text += `🆔 <b>ID BCGame:</b> ${approval.bcGameId}\n`;
+      if (approval.casino === 'BCGame' && approval.isVerified) {
+        text += `🆔 <b>ID BCGame:</b> ${approval.bcGameId} - User verificado BCGame\n`;
+      } else {
+        text += `🆔 <b>ID BCGame:</b> ${approval.bcGameId}\n`;
+      }
     }
     
     text += `💳 <b>Endereço LTC:</b> ${approval.ltcAddress}\n\n`;
@@ -302,8 +345,8 @@ class TelegramService {
             console.log(`[TELEGRAM] Tentando editar mensagem para ticket #${approval.ticketNumber}`);
             console.log(`[TELEGRAM] Casino: ${approval.casino}, Tem imagem: ${!!approval.bcGameProfileImage}`);
             
-            // Se for BCGame e tiver imagem, editar como foto
-            if (approval.casino === 'BCGame' && approval.bcGameProfileImage) {
+            // LÓGICA: Editar com foto apenas quando não verificado (para verificação)
+            if (approval.casino === 'BCGame' && approval.bcGameProfileImage && !approval.isVerified) {
               console.log(`[TELEGRAM] Editando como foto para BCGame`);
               const response = await fetch(`${this.baseUrl}/editMessageMedia`, {
                 method: 'POST',
@@ -383,8 +426,8 @@ class TelegramService {
           console.log(`[TELEGRAM] Tentando editar mensagem para ticket #${approval.ticketNumber} (pagamento normal)`);
           console.log(`[TELEGRAM] Casino: ${approval.casino}, Tem imagem: ${!!approval.bcGameProfileImage}`);
           
-          // Se for BCGame e tiver imagem, editar como foto
-          if (approval.casino === 'BCGame' && approval.bcGameProfileImage) {
+          // LÓGICA: Editar com foto apenas quando não verificado (para verificação)
+          if (approval.casino === 'BCGame' && approval.bcGameProfileImage && !approval.isVerified) {
             console.log(`[TELEGRAM] Editando como foto para BCGame (pagamento normal)`);
             const response = await fetch(`${this.baseUrl}/editMessageMedia`, {
               method: 'POST',
@@ -552,8 +595,8 @@ class TelegramService {
 
           const rejectionButtons = this.createRejectionButtons(approvalId);
 
-          // Se for BCGame e tiver imagem, editar como foto
-          if (approval.casino === 'BCGame' && approval.bcGameProfileImage) {
+          // LÓGICA: Editar com foto apenas quando não verificado (para verificação)
+          if (approval.casino === 'BCGame' && approval.bcGameProfileImage && !approval.isVerified) {
             await fetch(`${this.baseUrl}/editMessageMedia`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -684,8 +727,8 @@ class TelegramService {
         updatedText += `\n💳 <b>Endereço LTC:</b> ${approval.ltcAddress}`;
         updatedText += `\n\n❌ <b>Não aprovado por @${from.username}</b>\n📝 <b>Motivo:</b> ${reason}`;
 
-        // Se for BCGame e tiver imagem, editar como foto
-        if (approval.casino === 'BCGame' && approval.bcGameProfileImage) {
+        // LÓGICA: Editar com foto apenas quando não verificado (para verificação)
+        if (approval.casino === 'BCGame' && approval.bcGameProfileImage && !approval.isVerified) {
           await fetch(`${this.baseUrl}/editMessageMedia`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
