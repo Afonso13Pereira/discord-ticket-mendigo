@@ -145,7 +145,9 @@ module.exports = {
         bcGameId,
         null, // bcGameProfileImage
         null, // messageId
-        isVerified // NOVO: Passar o status de verificação
+        isVerified, // NOVO: Passar o status de verificação
+        interaction.user.id, // approverId
+        interaction.user.tag // approverTag
       );
 
       if (!approvalId) {
@@ -188,8 +190,8 @@ module.exports = {
         components: [components]
       });
 
-      // Atualizar approval com messageId
-      await client.db.updateApproval(approvalId, 'pending', approvalMessage.id);
+      // Salvar ID da mensagem do Discord no approval
+      await client.db.updateApprovalMessageIds(approvalId, approvalMessage.id, null);
 
       // Log da ação
       await client.db.logAction(

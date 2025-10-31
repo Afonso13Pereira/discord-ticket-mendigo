@@ -357,7 +357,9 @@ module.exports = {
           bcGameId,
           bcGameProfileImage,
           null, // messageId será atualizado depois quando a mensagem for enviada
-          isVerified // NOVO: Passar o status de verificação
+          isVerified, // NOVO: Passar o status de verificação
+          interaction.user.id, // approverId
+          interaction.user.tag // approverTag
         );
         
         if (!approvalId) {
@@ -390,11 +392,8 @@ module.exports = {
           components: [components]
         });
 
-        // Update approval with message info
-        await client.db.updateApproval(approvalId, 'pending', approvalMessage.id);
-
         // Salvar ID da mensagem do Discord no approval
-        await client.db.updateApproval(approvalId, 'pending', approvalMessage.id);
+        await client.db.updateApprovalMessageIds(approvalId, approvalMessage.id, null);
 
         // NOVO: Enviar mensagem para o Telegram
         const telegramService = require('../utils/telegram');
@@ -404,9 +403,8 @@ module.exports = {
             const telegramMessage = await telegramService.sendApprovalMessage(approval);
             // Salvar ID da mensagem do Telegram no approval
             if (telegramMessage && telegramMessage.message_id) {
-              // Note: The updateApproval method doesn't support telegramMessageId yet
-              // This would need to be added to the database manager if needed
-              console.log(`Telegram message ID: ${telegramMessage.message_id} for approval ${approvalId}`);
+              await client.db.updateApprovalMessageIds(approvalId, null, telegramMessage.message_id);
+              console.log(`[TELEGRAM] Message ID salvo na base: ${telegramMessage.message_id} para approval ${approvalId}`);
             }
             Logger.telegram(`Approval message sent for ticket #${submission.ticketNumber}`);
           } catch (error) {
@@ -567,7 +565,7 @@ module.exports = {
                 components: [components]
               });
               
-              console.log('[EDIT][DEBUG] Mensagem Discord atualizada com sucesso');
+              console.log('[EDIT][DEBUG] Mensagem Discord atualizada com sucesso usando discordMessageId:', finalApproval.discordMessageId);
             } catch (error) {
               console.error('[EDIT][ERROR] Erro ao atualizar mensagem do Discord:', error);
             }
@@ -587,7 +585,7 @@ module.exports = {
               
               const telegramService = require('../utils/telegram');
               await telegramService.updateApprovalMessage(finalApproval);
-              console.log('[EDIT][DEBUG] Mensagem Telegram atualizada com sucesso');
+              console.log('[EDIT][DEBUG] Mensagem Telegram atualizada com sucesso usando telegramMessageId:', finalApproval.telegramMessageId);
             } catch (error) {
               console.error('[EDIT][ERROR] Erro ao atualizar mensagem do Telegram:', error);
             }
@@ -701,8 +699,77 @@ module.exports = {
 
           console.log(`[EDIT] Ticket ${channelId} updated successfully`);
           
+          // NOVO: Atualizar mensagens no Discord e Telegram se existirem
+          try {
+            // Buscar approval relacionada a este ticket
+            const approval = await client.db.Approval.findOne({ 
+              ticketChannelId: channelId, 
+              status: 'pending' 
+            });
+
+            if (approval) {
+              console.log(`[EDIT] Encontrada approval para atualização:`, approval.approvalId);
+              
+              // Atualizar approval no banco também
+              await client.db.updateApprovalFields(approval.approvalId, {
+                casino,
+                prize,
+                bcGameId,
+                ltcAddress
+              });
+
+              // Buscar approval atualizada
+              const updatedApproval = await client.db.getApproval(approval.approvalId);
+              
+              // Atualizar mensagem no Discord
+              if (updatedApproval.discordMessageId) {
+                try {
+                  const approveChannel = await interaction.guild.channels.fetch(CHANNELS.APPROVE);
+                  const discordMessage = await approveChannel.messages.fetch(updatedApproval.discordMessageId);
+                  
+                  const updatedEmbed = EmbedFactory.approvalFinal(
+                    casino,
+                    prize,
+                    updatedApproval.userTag,
+                    updatedApproval.ticketNumber,
+                    ltcAddress,
+                    bcGameId,
+                    updatedApproval.isVerified,
+                    updatedApproval.bcGameProfileImage
+                  );
+                  const components = ComponentFactory.approvalButtons(approval.approvalId, updatedApproval.ticketChannelId);
+                  
+                  await discordMessage.edit({
+                    embeds: [updatedEmbed],
+                    components: [components]
+                  });
+                  
+                  console.log('[EDIT] Mensagem Discord atualizada com sucesso usando discordMessageId:', updatedApproval.discordMessageId);
+                } catch (error) {
+                  console.error('[EDIT] Erro ao atualizar mensagem do Discord:', error);
+                }
+              }
+
+              // Atualizar mensagem no Telegram
+              if (updatedApproval.telegramMessageId) {
+                try {
+                  console.log('[EDIT] Atualizando mensagem Telegram...');
+                  const telegramService = require('../utils/telegram');
+                  await telegramService.updateApprovalMessage(updatedApproval);
+                  console.log('[EDIT] Mensagem Telegram atualizada com sucesso usando telegramMessageId:', updatedApproval.telegramMessageId);
+                } catch (error) {
+                  console.error('[EDIT] Erro ao atualizar mensagem do Telegram:', error);
+                }
+              } else {
+                console.log('[EDIT] Approval não tem telegramMessageId, pulando atualização Telegram');
+              }
+            }
+          } catch (error) {
+            console.error('[EDIT] Erro ao atualizar mensagens:', error);
+          }
+          
           return interaction.reply({
-            embeds: [EmbedFactory.success('✅ Informações atualizadas com sucesso!')],
+            embeds: [EmbedFactory.success('✅ **Informações atualizadas com sucesso!**\n\nAs mensagens no Discord e Telegram foram atualizadas.')],
             flags: 64
           });
 
@@ -986,7 +1053,17 @@ module.exports = {
         }
       }
 
-      const ticketState = client.ticketStates.get(interaction.channel.id);
+      let ticketState = client.ticketStates.get(interaction.channel.id);
+
+      // Check if ticketState exists, if not create a default one
+      if (!ticketState) {
+        ticketState = {
+          ticketNumber: 0,
+          ownerTag: 'Unknown',
+          ownerId: '0',
+          category: 'unknown'
+        };
+      }
       
       try {
         // Always create transcript

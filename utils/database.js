@@ -112,7 +112,9 @@ const ApprovalSchema = new mongoose.Schema({
   isVerified: { type: Boolean, default: false }, // NOVO: Se o usuário é verificado
   status: { type: String, default: 'pending' },
   createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  updatedAt: { type: Date, default: Date.now },
+  approverId: { type: String, default: null }, // Moderator who approved
+  approverTag: { type: String, default: null } // Moderator tag who approved
 });
 
 // NOVO: Remover índice problemático e criar um mais seguro
@@ -567,7 +569,7 @@ class DatabaseManager {
   }
 
   // === APPROVALS ===
-  async saveApproval(ticketChannelId, ticketNumber, userId, userTag, casino, prize, ltcAddress, bcGameId = null, bcGameProfileImage = null, messageId = null, isVerified = false) {
+  async saveApproval(ticketChannelId, ticketNumber, userId, userTag, casino, prize, ltcAddress, bcGameId = null, bcGameProfileImage = null, messageId = null, isVerified = false, approverId = null, approverTag = null) {
     if (!this.connected) return null;
     
     try {
@@ -581,7 +583,9 @@ class DatabaseManager {
         casino,
         bcGameId,
         bcGameProfileImage: !!bcGameProfileImage,
-        isVerified
+        isVerified,
+        approverId,
+        approverTag
       });
       
       // Try to create approval with retry mechanism
@@ -603,8 +607,10 @@ class DatabaseManager {
             ltcAddress: finalLtcAddress,
             bcGameId,
             bcGameProfileImage,
-            messageId,
-            isVerified
+            messageId: messageId || `legacy_${Date.now()}`, // Garantir que não seja null para tickets antigos
+            isVerified,
+            approverId,
+            approverTag
           });
           
           await approval.save();
@@ -651,7 +657,7 @@ class DatabaseManager {
             ltcAddress: finalLtcAddress,
             bcGameId,
             bcGameProfileImage,
-            messageId: messageId || `manual_${Date.now()}`, // Garantir que não seja null
+            messageId: messageId || `retry_${Date.now()}`, // Garantir que não seja null
             isVerified
           });
           
@@ -696,6 +702,8 @@ class DatabaseManager {
         telegramMessageId: doc.telegramMessageId,
         isVerified: doc.isVerified,
         status: doc.status,
+        approverId: doc.approverId,
+        approverTag: doc.approverTag,
         createdAt: doc.createdAt,
         updatedAt: doc.updatedAt
       };
@@ -724,6 +732,78 @@ class DatabaseManager {
     }
   }
 
+  // NOVO: Função para atualizar IDs de mensagens separadamente
+  async updateApprovalMessageIds(approvalId, discordMessageId = null, telegramMessageId = null) {
+    if (!this.connected) return;
+    
+    try {
+      const updateData = {};
+      if (discordMessageId) {
+        updateData.discordMessageId = discordMessageId;
+      }
+      if (telegramMessageId) {
+        updateData.telegramMessageId = telegramMessageId;
+      }
+      
+      if (Object.keys(updateData).length > 0) {
+        await this.Approval.findOneAndUpdate(
+          { approvalId },
+          { $set: updateData },
+          { new: true }
+        );
+        console.log(`[DATABASE] Message IDs atualizados para approval ${approvalId}:`, updateData);
+      }
+    } catch (error) {
+      console.error('Error updating approval message IDs:', error);
+    }
+  }
+
+  // NOVO: Função para migrar tickets antigos com messageId null
+  async migrateLegacyApprovals() {
+    if (!this.connected) return;
+    
+    try {
+      console.log('[DATABASE] Iniciando migração de approvals antigas...');
+      
+      // Buscar approvals com messageId null ou legacy
+      const legacyApprovals = await this.Approval.find({
+        $or: [
+          { messageId: null },
+          { messageId: { $regex: /^legacy_/ } },
+          { messageId: { $regex: /^retry_/ } }
+        ]
+      });
+      
+      console.log(`[DATABASE] Encontradas ${legacyApprovals.length} approvals para migrar`);
+      
+      for (const approval of legacyApprovals) {
+        try {
+          // Atualizar com um messageId único
+          const newMessageId = `migrated_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          
+          await this.Approval.findOneAndUpdate(
+            { approvalId: approval.approvalId },
+            { 
+              $set: { 
+                messageId: newMessageId,
+                updatedAt: new Date()
+              }
+            }
+          );
+          
+          console.log(`[DATABASE] Approval ${approval.approvalId} migrada com messageId: ${newMessageId}`);
+        } catch (error) {
+          console.error(`[DATABASE] Erro ao migrar approval ${approval.approvalId}:`, error);
+        }
+      }
+      
+      console.log('[DATABASE] Migração de approvals antigas concluída');
+      
+    } catch (error) {
+      console.error('Error migrating legacy approvals:', error);
+    }
+  }
+
   async updateApprovalFields(approvalId, fields) {
     if (!this.connected) return null;
     
@@ -746,30 +826,54 @@ class DatabaseManager {
   }
 
   async updateTicketState(channelId, fields) {
-    if (!this.connected) return;
+    if (!this.connected) return null;
     
     try {
-      await this.TicketState.findOneAndUpdate(
+      const updatedTicket = await this.TicketState.findOneAndUpdate(
         { channelId },
         { $set: { ...fields, updatedAt: new Date() } },
         { new: true }
       );
+      
+      // NOVO: Emitir evento de mudança para hooks
+      if (updatedTicket && this.onTicketStateChange) {
+        try {
+          await this.onTicketStateChange(channelId, updatedTicket);
+        } catch (error) {
+          console.error('Error in ticket state change hook:', error);
+        }
+      }
+      
+      return updatedTicket;
     } catch (error) {
       console.error('Error updating ticket state:', error);
+      return null;
     }
   }
 
   async updateSubmissionFields(submissionId, fields) {
-    if (!this.connected) return;
+    if (!this.connected) return null;
     
     try {
-      await this.Submission.findOneAndUpdate(
+      const updatedSubmission = await this.Submission.findOneAndUpdate(
         { submissionId },
         { $set: { ...fields, updatedAt: new Date() } },
         { new: true }
       );
+      
+      // NOVO: Emitir evento de mudança para hooks
+      if (updatedSubmission && this.onSubmissionChange) {
+        try {
+          await this.onSubmissionChange(submissionId, updatedSubmission);
+        } catch (error) {
+          console.error('Error in submission change hook:', error);
+        }
+      }
+      
+      return updatedSubmission;
     } catch (error) {
       console.error('Error updating submission fields:', error);
+      return null;
     }
   }
 

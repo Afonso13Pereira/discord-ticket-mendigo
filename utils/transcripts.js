@@ -8,6 +8,16 @@ class TranscriptManager {
 
   async generateTranscript(channel, ticketState) {
     try {
+      // Check if ticketState exists, if not create a default one
+      if (!ticketState) {
+        ticketState = {
+          ticketNumber: 0,
+          ownerTag: 'Unknown',
+          ownerId: '0',
+          category: 'unknown'
+        };
+      }
+
       // Fetch all messages from the channel
       const messages = [];
       let lastMessageId = null;

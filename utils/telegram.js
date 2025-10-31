@@ -123,11 +123,13 @@ class TelegramService {
     
     if (!this.botToken || !this.chatId) {
       console.error('[TELEGRAM] Bot token ou chat ID não configurados');
+      console.error('[TELEGRAM] Bot Token:', this.botToken ? 'Configurado' : 'NÃO CONFIGURADO');
+      console.error('[TELEGRAM] Chat ID:', this.chatId ? 'Configurado' : 'NÃO CONFIGURADO');
       return;
     }
     
     if (!approval.telegramMessageId) {
-      console.log('[TELEGRAM] No message ID found for approval:', approval.approvalId);
+      console.log('[TELEGRAM] No telegram message ID found for approval:', approval.approvalId);
       return;
     }
 
@@ -143,6 +145,19 @@ class TelegramService {
     if (approval.casino === 'BCGame' && approval.bcGameProfileImage && !approval.isVerified) {
       console.log('[TELEGRAM][DEBUG] Atualizando mensagem BCGame com foto (usuário não verificado)');
       try {
+        console.log('[TELEGRAM][DEBUG] Enviando requisição editMessageMedia para:', `${this.baseUrl}/editMessageMedia`);
+              console.log('[TELEGRAM][DEBUG] Payload editMessageMedia:', {
+        chat_id: this.chatId,
+        message_id: approval.telegramMessageId,
+        media: {
+          type: 'photo',
+          media: approval.bcGameProfileImage,
+          caption: text.substring(0, 100) + '...',
+          parse_mode: 'HTML'
+        },
+        reply_markup: JSON.stringify(replyMarkup)
+      });
+        
         const response = await fetch(`${this.baseUrl}/editMessageMedia`, {
           method: 'POST',
           headers: {
@@ -161,13 +176,21 @@ class TelegramService {
           })
         });
 
+        console.log('[TELEGRAM][DEBUG] Resposta editMessageMedia:', {
+          status: response.status,
+          statusText: response.statusText,
+          ok: response.ok
+        });
+
         if (!response.ok) {
           const errorData = await response.json();
           console.error('[TELEGRAM] Error updating photo message:', errorData);
           // Fallback para atualização de texto
           await this.updateTextMessage(approval, text, replyMarkup);
         } else {
+          const result = await response.json();
           console.log('[TELEGRAM] Photo message updated successfully for approval:', approval.approvalId);
+          console.log('[TELEGRAM] Result:', result);
         }
       } catch (error) {
         console.error('[TELEGRAM] Error updating photo message:', error);
@@ -190,6 +213,15 @@ class TelegramService {
     });
     
     try {
+      console.log('[TELEGRAM][DEBUG] Enviando requisição para:', `${this.baseUrl}/editMessageText`);
+      console.log('[TELEGRAM][DEBUG] Payload:', {
+        chat_id: this.chatId,
+        message_id: approval.telegramMessageId,
+        text: text.substring(0, 100) + '...',
+        parse_mode: 'HTML',
+        reply_markup: JSON.stringify(replyMarkup)
+      });
+      
       const response = await fetch(`${this.baseUrl}/editMessageText`, {
         method: 'POST',
         headers: {
@@ -204,11 +236,19 @@ class TelegramService {
         })
       });
 
+      console.log('[TELEGRAM][DEBUG] Resposta recebida:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      });
+
       if (!response.ok) {
         const errorData = await response.json();
         console.error('[TELEGRAM] Error updating text message:', errorData);
       } else {
+        const result = await response.json();
         console.log('[TELEGRAM] Text message updated successfully for approval:', approval.approvalId);
+        console.log('[TELEGRAM] Result:', result);
       }
     } catch (error) {
       console.error('[TELEGRAM] Error updating text message:', error);
@@ -257,7 +297,17 @@ class TelegramService {
       }
     }
     
-    text += `💳 <b>Endereço LTC:</b> ${approval.ltcAddress}\n\n`;
+    text += `💳 <b>Endereço LTC:</b> ${approval.ltcAddress}\n`;
+    
+    // Adicionar linha do moderador acima do status de pagamento
+    if (approval.approverTag) {
+      text += `👮 <b>Mod:</b> ${approval.approverTag}\n\n`;
+    } else if (approval.approverId) {
+      text += `👮 <b>Mod:</b> <code>${approval.approverId}</code>\n\n`;
+    } else {
+      text += `\n`;
+    }
+    
     text += `⏰ <i>Aguardando pagamento...</i>`;
     
     return text;

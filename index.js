@@ -9,6 +9,7 @@ const ErrorHandler = require('./utils/errorHandler');
 const { CHANNELS } = require('./config/constants');
 const { updateTicketMessage } = require('./commands/atualizartickets');
 const TelegramPolling = require('./utils/telegramPolling');
+const AutoMessageUpdater = require('./utils/autoMessageUpdater');
 
 const client = new Client({
   intents: [
@@ -28,6 +29,9 @@ let errorHandler;
 
 // Map que guarda o estado de cada ticket (por channelId)
 client.ticketStates = new Map();
+
+// Sistema de atualização automática de mensagens
+let autoMessageUpdater;
 
 // Restore ticket states from database on startup
 async function restoreTicketStates() {
@@ -213,6 +217,39 @@ client.once('ready', async () => {
   // Initialize Telegram polling
   const telegramPolling = new TelegramPolling(client);
   telegramPolling.start();
+  
+  // Initialize auto message updater
+  autoMessageUpdater = new AutoMessageUpdater(client);
+  
+  // Configurar hooks de atualização automática na base de dados
+  db.onTicketStateChange = async (channelId, ticketState) => {
+    if (autoMessageUpdater) {
+      await autoMessageUpdater.onTicketStateChange(channelId, ticketState);
+    }
+  };
+  
+  db.onSubmissionChange = async (submissionId, submission) => {
+    if (autoMessageUpdater) {
+      // Buscar approval relacionada e atualizar mensagens
+      const approval = await db.Approval.findOne({ 
+        ticketChannelId: submission.ticketChannelId, 
+        status: 'pending' 
+      });
+      if (approval) {
+        await autoMessageUpdater.onApprovalChange(approval.approvalId);
+      }
+    }
+  };
+  
+  // NOVO: Migrar approvals antigas no startup
+  try {
+    await db.migrateLegacyApprovals();
+    console.log('✅ Migração de approvals antigas concluída');
+  } catch (error) {
+    console.error('❌ Erro na migração de approvals antigas:', error);
+  }
+  
+  console.log('✅ Sistema de atualização automática de mensagens inicializado');
   
   // Update statistics and ticket message on startup
   setTimeout(updateStatistics, 5000); // Wait 5 seconds for everything to load
