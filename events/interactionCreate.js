@@ -1791,6 +1791,13 @@ module.exports = {
       }
 
       const ticketState = client.ticketStates.get(interaction.channel.id);
+      if (!ticketState) {
+        return interaction.followUp({
+          embeds: [EmbedFactory.error('❌ **Erro!**\n\nNenhum ticket encontrado. Por favor, crie um ticket primeiro.')],
+          flags: 64
+        });
+      }
+      
       // NOVO: Se estiver aguardando seleção filtrada, só permitir allowedCasinos
       if (ticketState.awaitingCasinoSelection && Array.isArray(ticketState.allowedCasinos)) {
         if (!ticketState.allowedCasinos.includes(choice)) {
