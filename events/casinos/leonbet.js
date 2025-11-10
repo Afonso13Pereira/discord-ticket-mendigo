@@ -3,7 +3,7 @@ module.exports = {
   id: 'Leon Bet',
   cargoafiliado: '1437395454898864260', // NOVO: Cargo de afiliado verificado
   label: 'Leon Bet',
-  emoji: '🧡',
+  emoji: '🖤',
   default: false,
 
 
