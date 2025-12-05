@@ -19,10 +19,14 @@ function validateImageUrl(url) {
       return null;
     }
     
+    // O Discord rejeita hostnames com underscores (ex: api_cdn)
+    // Substituir underscore por hífen no hostname
+    if (urlObj.hostname.includes('_')) {
+      urlObj.hostname = urlObj.hostname.replace(/_/g, '-');
+    }
+    
     // Garantir que a URL está bem formada
     // O Discord aceita webp, então não precisamos filtrar por extensão
-    // Usar href para garantir que a URL está completamente codificada
-    // Mas manter os caracteres especiais no pathname se necessário
     return urlObj.href;
   } catch (error) {
     // Se não for uma URL válida, retornar null
