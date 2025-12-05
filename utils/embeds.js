@@ -3,6 +3,30 @@ const { EmbedBuilder } = require('discord.js');
 const { COLORS, EMOJIS, ICONS } = require('../config/constants');
 const MESSAGES = require('../config/messages');
 
+// Função auxiliar para validar e sanitizar URLs de imagem
+function validateImageUrl(url) {
+  if (!url || typeof url !== 'string') return null;
+  
+  // Remover espaços e quebras de linha
+  url = url.trim();
+  
+  // Verificar se é uma URL válida
+  try {
+    const urlObj = new URL(url);
+    
+    // Verificar se o protocolo é http ou https
+    if (!['http:', 'https:'].includes(urlObj.protocol)) {
+      return null;
+    }
+    
+    // Retornar a URL sanitizada (aceita webp, png, jpg, jpeg, gif, etc.)
+    return urlObj.toString();
+  } catch (error) {
+    // Se não for uma URL válida, retornar null
+    return null;
+  }
+}
+
 class EmbedFactory {
   static success(description, title = null) {
     const embed = new EmbedBuilder()
@@ -297,7 +321,12 @@ class EmbedFactory {
         .replace('{current}', step)
         .replace('{total}', total) });
     
-    if (image) embed.setImage(image);
+    if (image) {
+      const validatedUrl = validateImageUrl(image);
+      if (validatedUrl) {
+        embed.setImage(validatedUrl);
+      }
+    }
     return embed;
   }
 
@@ -483,7 +512,10 @@ class EmbedFactory {
     
     // NOVO: Adicionar imagem do perfil BCGame se disponível, exceto se for afiliado
     if (casino === 'BCGame' && bcGameProfileImage && !isVerified) {
-      embed.setImage(bcGameProfileImage);
+      const validatedUrl = validateImageUrl(bcGameProfileImage);
+      if (validatedUrl) {
+        embed.setImage(validatedUrl);
+      }
     }
     
     return embed;
