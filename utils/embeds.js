@@ -19,11 +19,10 @@ function validateImageUrl(url) {
       return null;
     }
     
-    // O Discord pode rejeitar hostnames com underscores, mas vamos tentar mesmo assim
-    // Se o Discord rejeitar, o erro será capturado no try-catch do método checklist
-    
-    // Garantir que a URL está bem formada e retornar
+    // Garantir que a URL está bem formada
+    // O Discord aceita webp, então não precisamos filtrar por extensão
     // Usar href para garantir que a URL está completamente codificada
+    // Mas manter os caracteres especiais no pathname se necessário
     return urlObj.href;
   } catch (error) {
     // Se não for uma URL válida, retornar null
@@ -327,14 +326,11 @@ class EmbedFactory {
         .replace('{total}', total) });
     
     if (image) {
+      // Validar URL básica (apenas verificar se é uma string válida e tem protocolo)
       const validatedUrl = validateImageUrl(image);
       if (validatedUrl) {
-        try {
-          embed.setImage(validatedUrl);
-        } catch (error) {
-          console.warn('[EMBED] Erro ao definir imagem no embed:', error.message, 'URL:', validatedUrl);
-          // Se houver erro, simplesmente não adiciona a imagem ao embed
-        }
+        // Passar a URL diretamente para o Discord (aceita webp, png, jpg, gif, etc.)
+        embed.setImage(validatedUrl);
       } else {
         console.warn('[EMBED] URL de imagem inválida ou não validada:', image);
       }
