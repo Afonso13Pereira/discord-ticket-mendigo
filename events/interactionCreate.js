@@ -2762,5 +2762,22 @@ function askVipChecklist(channel, ticketState) {
   channel.send({
     embeds: [embed],
     components: components
+  }).catch(error => {
+    // Se houver erro ao enviar (ex: URL de imagem inválida), tentar enviar sem imagem
+    if (error.code === 50035 && error.message && error.message.includes('image.url')) {
+      console.warn('[INTERACTION] Erro ao enviar embed VIP com imagem, tentando sem imagem:', error.message);
+      // Criar embed sem imagem
+      const embedWithoutImage = EmbedFactory.checklist(
+        stepIndex + 1,
+        vip.checklist.length,
+        stepDescription,
+        null
+      );
+      return channel.send({
+        embeds: [embedWithoutImage],
+        components: components
+      });
+    }
+    throw error;
   });
 }
