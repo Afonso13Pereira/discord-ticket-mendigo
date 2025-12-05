@@ -19,10 +19,15 @@ function validateImageUrl(url) {
       return null;
     }
     
-    // Retornar a URL sanitizada (aceita webp, png, jpg, jpeg, gif, etc.)
-    return urlObj.toString();
+    // O Discord pode rejeitar hostnames com underscores, mas vamos tentar mesmo assim
+    // Se o Discord rejeitar, o erro será capturado no try-catch do método checklist
+    
+    // Garantir que a URL está bem formada e retornar
+    // Usar href para garantir que a URL está completamente codificada
+    return urlObj.href;
   } catch (error) {
     // Se não for uma URL válida, retornar null
+    console.warn('[EMBED] URL de imagem inválida:', url, error.message);
     return null;
   }
 }
@@ -324,7 +329,14 @@ class EmbedFactory {
     if (image) {
       const validatedUrl = validateImageUrl(image);
       if (validatedUrl) {
-        embed.setImage(validatedUrl);
+        try {
+          embed.setImage(validatedUrl);
+        } catch (error) {
+          console.warn('[EMBED] Erro ao definir imagem no embed:', error.message, 'URL:', validatedUrl);
+          // Se houver erro, simplesmente não adiciona a imagem ao embed
+        }
+      } else {
+        console.warn('[EMBED] URL de imagem inválida ou não validada:', image);
       }
     }
     return embed;
