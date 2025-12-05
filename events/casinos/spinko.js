@@ -21,7 +21,7 @@ module.exports = {
     },
     {
       title: 'Passo 3',
-      description: '👤 Envia GRAVAÇÃO DE ECRA do perfil da Spinko com email visível e GRAVAÇÃO DE ECRA do depósito em LTC e cola o endereço LTC em texto',
+      description: '👤 Envia GRAVAÇÃO DE ECRA do perfil da Spinko com email visível e GRAVAÇÃO DE ECRA do depósito em LTC e cola o endereço LTC em texto | Se não souberes como fazer a gravação de ecrã, faz o comando /gravacaoecra',
       type: ['image', "text"],
       image: "https://i.imgur.com/A7BArwj.gif"
     }
