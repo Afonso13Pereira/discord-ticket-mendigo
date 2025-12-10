@@ -120,13 +120,26 @@ async function updateStatistics() {
 // Update ticket message in create ticket channel
 async function updateTicketMessagePeriodically() {
   try {
+    console.log('🔄 Iniciando atualização periódica da mensagem de tickets...');
+    
+    // Wait a bit to ensure client is ready
+    if (!client.isReady()) {
+      console.log('⏳ Client não está pronto, aguardando...');
+      return;
+    }
+    
     const guild = client.guilds.cache.first();
-    if (!guild) return;
-
+    if (!guild) {
+      console.error('❌ Nenhum guild encontrado no cache');
+      return;
+    }
+    
+    console.log(`📋 Guild encontrado: ${guild.name} (${guild.id})`);
     await updateTicketMessage(guild, client);
-    console.log('🎫 Ticket message updated automatically');
+    console.log('✅ Mensagem de tickets atualizada automaticamente');
   } catch (error) {
-    console.error('Error updating ticket message:', error);
+    console.error('❌ Erro ao atualizar mensagem de tickets periodicamente:', error);
+    console.error('Stack:', error.stack);
   }
 }
 
@@ -252,8 +265,24 @@ client.once('ready', async () => {
   console.log('✅ Sistema de atualização automática de mensagens inicializado');
   
   // Update statistics and ticket message on startup
-  setTimeout(updateStatistics, 5000); // Wait 5 seconds for everything to load
-  setTimeout(updateTicketMessagePeriodically, 7000); // Wait 7 seconds for everything to load
+  // Wait longer to ensure database and categories are fully loaded
+  setTimeout(async () => {
+    try {
+      console.log('📊 Atualizando estatísticas no startup...');
+      await updateStatistics();
+    } catch (error) {
+      console.error('❌ Erro ao atualizar estatísticas no startup:', error);
+    }
+  }, 10000); // Wait 10 seconds for everything to load
+  
+  setTimeout(async () => {
+    try {
+      console.log('🎫 Atualizando mensagem de tickets no startup...');
+      await updateTicketMessagePeriodically();
+    } catch (error) {
+      console.error('❌ Erro ao atualizar mensagem de tickets no startup:', error);
+    }
+  }, 12000); // Wait 12 seconds for everything to load (categories need more time)
 });
 
 // Safe command execution with error handling

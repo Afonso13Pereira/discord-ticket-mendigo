@@ -20,17 +20,40 @@ module.exports = {
 
   async execute(interaction, client) {
     try {
+      await interaction.deferReply({ ephemeral: true });
+      
+      if (!interaction.guild) {
+        return interaction.editReply({
+          embeds: [EmbedFactory.error('Erro: Guild não encontrado')]
+        });
+      }
+      
       await updateTicketMessage(interaction.guild, client);
       
-      return interaction.reply({
-        embeds: [EmbedFactory.success('Mensagem de tickets atualizada com sucesso!')],
-        flags: 64
+      return interaction.editReply({
+        embeds: [EmbedFactory.success('Mensagem de tickets atualizada com sucesso!')]
       });
     } catch (error) {
-      console.error('Error updating ticket message:', error);
-      return interaction.reply({
-        embeds: [EmbedFactory.error('Erro ao atualizar mensagem de tickets')],
-        flags: 64
+      console.error('❌ Error updating ticket message:', error);
+      console.error('Stack:', error.stack);
+      
+      const errorMessage = error.message || 'Erro desconhecido ao atualizar mensagem de tickets';
+      return interaction.editReply({
+        embeds: [EmbedFactory.error(`Erro ao atualizar mensagem de tickets: ${errorMessage}`)]
+      }).catch(err => {
+        console.error('❌ Error sending error message:', err);
+        // Try to reply if edit fails
+        if (interaction.replied || interaction.deferred) {
+          interaction.followUp({
+            embeds: [EmbedFactory.error(`Erro ao atualizar mensagem de tickets: ${errorMessage}`)],
+            ephemeral: true
+          }).catch(() => {});
+        } else {
+          interaction.reply({
+            embeds: [EmbedFactory.error(`Erro ao atualizar mensagem de tickets: ${errorMessage}`)],
+            ephemeral: true
+          }).catch(() => {});
+        }
       });
     }
   }
@@ -39,34 +62,62 @@ module.exports = {
 // Function to update ticket message
 async function updateTicketMessage(guild, client) {
   try {
-    const ticketChannel = await guild.channels.fetch(CHANNELS.CREATETICKET);
-    if (!ticketChannel) {
-      console.error('Ticket channel not found:', CHANNELS.CREATETICKET);
-      return;
+    if (!guild) {
+      throw new Error('Guild não fornecido');
     }
+    
+    if (!client || !client.user) {
+      throw new Error('Client não está pronto');
+    }
+    
+    console.log('🔄 Iniciando atualização da mensagem de tickets...');
+    console.log(`📋 Guild: ${guild.name} (${guild.id})`);
+    console.log(`📋 Canal ID: ${CHANNELS.CREATETICKET}`);
+    
+    const ticketChannel = await guild.channels.fetch(CHANNELS.CREATETICKET).catch(err => {
+      console.error('❌ Erro ao buscar canal:', err);
+      throw new Error(`Canal não encontrado: ${CHANNELS.CREATETICKET}`);
+    });
+    
+    if (!ticketChannel) {
+      throw new Error(`Canal de tickets não encontrado: ${CHANNELS.CREATETICKET}`);
+    }
+    
+    console.log(`✅ Canal encontrado: ${ticketChannel.name} (${ticketChannel.id})`);
 
     // CORREÇÃO CRÍTICA: Garantir inicialização e refresh completo
+    console.log('🔄 Garantindo inicialização das categorias...');
     await ensureInitialized();
+    console.log('✅ Categorias inicializadas');
+    
+    console.log('🔄 Atualizando categorias...');
     await refreshCategories();
+    console.log('✅ Categorias atualizadas');
     
     // Wait a bit for the refresh to complete
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    console.log(`📋 Creating ticket message with categories:`, Object.keys(cats));
-    console.log(`📋 All categories:`, cats);
+    console.log(`📋 Criando mensagem com categorias:`, Object.keys(cats));
+    console.log(`📋 Total de categorias:`, Object.keys(cats).length);
     
     const activeCats = Object.entries(cats).filter(([id, cat]) => cat.active);
-    console.log(`📋 Active categories:`, activeCats.map(([id, cat]) => `${cat.name} (${id})`));
+    console.log(`📋 Categorias ativas:`, activeCats.map(([id, cat]) => `${cat.name} (${id})`));
     
     const embed = EmbedFactory.ticket();
+    console.log('✅ Embed criado');
 
     // CORREÇÃO: Passar as categorias atualizadas diretamente
     const components = ComponentFactory.categoryButtons(STATIC_CATEGORIES, cats);
-    console.log(`📋 Created ${components.length} component rows for ticket message`);
+    console.log(`✅ Criados ${components.length} rows de componentes para a mensagem de tickets`);
 
     // Try to find existing ticket message to edit
-    const messages = await ticketChannel.messages.fetch({ limit: 10 });
-    console.log(`🔍 Searching for existing ticket message in ${messages.size} messages`);
+    console.log('🔍 Procurando mensagem existente...');
+    const messages = await ticketChannel.messages.fetch({ limit: 50 }).catch(err => {
+      console.error('❌ Erro ao buscar mensagens:', err);
+      throw new Error('Erro ao buscar mensagens do canal');
+    });
+    
+    console.log(`🔍 Procurando em ${messages.size} mensagens`);
     
     let existingMessage = messages.find(msg => 
       msg.author.id === client.user.id && 
@@ -83,30 +134,38 @@ async function updateTicketMessage(guild, client) {
         msg.components.length > 0
       );
       if (existingMessage) {
-        console.log('🔍 Found message with buttons, will edit it');
+        console.log('🔍 Mensagem com botões encontrada, será editada');
       }
     }
 
     if (existingMessage) {
       // Edit existing message
+      console.log(`✏️ Editando mensagem existente (ID: ${existingMessage.id})...`);
       await existingMessage.edit({
         embeds: [embed],
         components: components
+      }).catch(err => {
+        console.error('❌ Erro ao editar mensagem:', err);
+        throw new Error(`Erro ao editar mensagem: ${err.message}`);
       });
-      console.log('✅ Ticket message edited in channel:', ticketChannel.name);
+      console.log('✅ Mensagem de tickets editada com sucesso no canal:', ticketChannel.name);
     } else {
       // Send new message if no existing message found
-      console.log('📝 No existing ticket message found, sending new one');
+      console.log('📝 Nenhuma mensagem existente encontrada, enviando nova mensagem...');
       await ticketChannel.send({
         embeds: [embed],
         components: components
+      }).catch(err => {
+        console.error('❌ Erro ao enviar mensagem:', err);
+        throw new Error(`Erro ao enviar mensagem: ${err.message}`);
       });
-      console.log('✅ New ticket message sent in channel:', ticketChannel.name);
+      console.log('✅ Nova mensagem de tickets enviada com sucesso no canal:', ticketChannel.name);
     }
 
-    console.log('✅ Ticket message updated in channel:', ticketChannel.name);
+    console.log('✅ Mensagem de tickets atualizada com sucesso!');
   } catch (error) {
-    console.error('Error updating ticket message:', error);
+    console.error('❌ Erro ao atualizar mensagem de tickets:', error);
+    console.error('Stack:', error.stack);
     throw error;
   }
 }
